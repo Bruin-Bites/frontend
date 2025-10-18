@@ -1,26 +1,84 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, StyleSheet, Pressable, FlatList } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  Pressable,
+  FlatList,
+} from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
-
-const MOCK = [
-  { id: "1", name: "Bella Pita", price: "$", dist: "0.3 mi", tag: "Near Campus", deal: "Falafel combo $8.49" },
-  { id: "2", name: "Diddy Riese", price: "$", dist: "0.4 mi", tag: "Dessert", deal: "Cookie sandwich $3" },
-  { id: "3", name: "Tender Greens", price: "$$", dist: "0.5 mi", tag: "Happy Hour", deal: "2–5pm $2 off bowls" },
-];
+// import restaurant data hook
+import useRestaurantList from "../hooks/useRestaurantList";
 
 export default function MapScreen() {
   const [q, setQ] = useState("");
-  const [active, setActive] = useState(["≤ $8", "Near Campus"]);
+  const [active, setActive] = useState(["Near Campus"]);
+  // use restaurant data hook
+  const { restaurants, loading } = useRestaurantList();
 
-  const filters = ["≤ $8", "Happy Hour", "Near Campus", "Vegetarian", "Open Now"];
+  const filters = [
+    "≤ $8",
+    "Happy Hour",
+    "Near Campus",
+    "Vegetarian",
+    "Open Now",
+  ];
 
-  const filtered = MOCK.filter(item => {
-    const okQ = item.name.toLowerCase().includes(q.toLowerCase());
-    const okPrice = active.includes("≤ $8") ? item.price === "$" : true;
-    const okNear = active.includes("Near Campus") ? item.dist.endsWith("mi") && parseFloat(item.dist) <= 0.6 : true;
-    return okQ && okPrice && okNear;
+  // Sort by distance (closest first)
+  const sorted = [...restaurants].sort(
+    (a, b) => (a.distance_value || 999999) - (b.distance_value || 999999)
+  );
+
+  // const filtered = restaurants.filter((item) => {
+  //   const okQ = item.name.toLowerCase().includes(q.toLowerCase());
+  //   const okPrice = active.includes("≤ $8") ? item.price === "$" : true;
+  //   const okNear = active.includes("Near Campus")
+  //     ? item.dist.endsWith("mi") && parseFloat(item.dist) <= 0.6
+  //     : true;
+  //   return okQ && okPrice && okNear;
+  // });
+
+  // This is the Mongoose schema for restaurants on the backend so you know what fields are available
+  // if you want to call it from backend, then use item.<fieldname>
+  //const restaurantSchema = new mongoose.Schema({
+  //   name: String,
+  //   address: String,
+  //   rating: Number,
+  //   place_id: String,
+  //   types: [String],
+  //   geometry: {
+  //     location: {
+  //       lat: Number,
+  //       lng: Number,
+  //     },
+  //   },
+  // });
+
+  // Applying the filter above with the google maps distance filters and search
+  const filtered = sorted.filter((item) => {
+    const nameMatch = item.name?.toLowerCase().includes(q.toLowerCase());
+
+    // ≤ $8 <-- how could we get the price for each restaurant tho...
+    const priceMatch = active.includes("≤ $8")
+      ? item.price_level && item.price_level <= 1
+      : true;
+
+    // Near Campus (less than or equal to 1 km)
+    const nearCampusMatch = active.includes("Near Campus")
+      ? item.distance_value && item.distance_value <= 1000 // meters
+      : true;
+
+    return nameMatch && priceMatch && nearCampusMatch;
   });
+
+  if (loading)
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <Text>Loading restaurants...</Text>
+      </View>
+    );
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
@@ -44,40 +102,51 @@ export default function MapScreen() {
 
       {/* Filter chips */}
       <View style={styles.chipsRow}>
-        {filters.map(label => {
+        {filters.map((label) => {
           const on = active.includes(label);
           return (
             <Pressable
               key={label}
               onPress={() =>
-                setActive(on ? active.filter(x => x !== label) : [...active, label])
+                setActive(
+                  on ? active.filter((x) => x !== label) : [...active, label]
+                )
               }
               style={[styles.chip, on && styles.chipOn]}
             >
               <View style={[styles.dot, on && { backgroundColor: "#fff" }]} />
-              <Text style={[styles.chipText, on && { color: "#fff" }]}>{label}</Text>
+              <Text style={[styles.chipText, on && { color: "#fff" }]}>
+                {label}
+              </Text>
             </Pressable>
           );
         })}
       </View>
 
-      {/* Results (placeholder list for now) */}
+      {/* Results */}
       <FlatList
         data={filtered}
-        keyExtractor={i => i.id}
+        keyExtractor={(i) => i._id || i.id || i.place_id || i.name}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         renderItem={({ item }) => (
           <Pressable style={styles.card}>
             <View style={styles.iconWrap}>
-              <MaterialCommunityIcons name="map-marker-radius" size={22} color={colors.uclaBlue} />
+              <MaterialCommunityIcons
+                name="map-marker-radius"
+                size={22}
+                color={colors.uclaBlue}
+              />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.name}>{item.name}</Text>
               <Text style={styles.meta}>
-                {item.price} • {item.dist} • {item.tag}
+                ⭐ {item.rating || "N/A"} • 🚗 {item.distance_text} • ⏱{" "}
+                {item.duration_text}
               </Text>
-              <Text style={styles.deal}>Deal: {item.deal}</Text>
+              <Text style={styles.deal}>
+                {item.address || "Address not marked "}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#88939E" />
           </Pressable>
@@ -99,7 +168,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F7FAFF",
     flexDirection: "row",
     alignItems: "center",
-    gap: 8
+    gap: 8,
   },
   searchInput: { flex: 1, fontSize: 15, color: "#223" },
   chipsRow: {
@@ -107,7 +176,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 10,
     paddingHorizontal: 16,
-    paddingVertical: 12
+    paddingVertical: 12,
   },
   chip: {
     flexDirection: "row",
@@ -118,14 +187,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.uclaBlue,
     backgroundColor: "#fff",
-    gap: 6
+    gap: 6,
   },
   chipOn: {
     backgroundColor: colors.uclaBlue,
-    borderColor: colors.uclaBlue
+    borderColor: colors.uclaBlue,
   },
   chipText: { fontSize: 12, fontWeight: "700", color: colors.uclaBlue },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.uclaGold },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.uclaGold,
+  },
   card: {
     backgroundColor: "#fff",
     padding: 14,
@@ -139,16 +213,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
-    elevation: 2
+    elevation: 2,
   },
   iconWrap: {
-    width: 36, height: 36, borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: "#EEF3FF",
-    alignItems: "center", justifyContent: "center"
+    alignItems: "center",
+    justifyContent: "center",
   },
   name: { fontSize: 16, fontWeight: "800", color: "#1B2430" },
   meta: { fontSize: 12, color: "#5F6C7B", marginTop: 2 },
-  deal: { fontSize: 12, color: "#223", marginTop: 6, fontWeight: "600" }
+  deal: { fontSize: 12, color: "#223", marginTop: 6, fontWeight: "600" },
 });
 
 /*import React from "react";
