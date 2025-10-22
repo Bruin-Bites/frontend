@@ -32,6 +32,8 @@ import HomeScreen from "../screens/HomeScreen";
 import MapScreen from "../screens/MapScreen";
 import RecipesScreen from "../screens/RecipesScreen";
 import CommunityScreen from "../screens/CommunityScreen";
+import ProfileScreen from "../screens/ProfileScreen";
+
 import { colors } from "../theme/colors";
 
 const Stack = createNativeStackNavigator();
@@ -54,15 +56,35 @@ export default function AppNavigator() {
               >
                 <Ionicons name="home" size={20} color="#fff" />
               </Pressable>
-            ) : null
+            ) : route.name == "Home" ? (
+              <Pressable
+                onPress={() => navigation.navigate("Profile")}
+                style={{ paddingHorizontal: 8 }}
+                hitSlop={8}
+              >
+                <Ionicons name="person" size={20} color="#fff" />
+              </Pressable>
+            ) : null,
         })}
       >
         <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="Map" component={MapScreen} options={{ title: "Cheap Eats Map" }} />
-        <Stack.Screen name="Recipes" component={RecipesScreen} options={{ title: "Budget Recipes" }} />
+        <Stack.Screen
+          name="Map"
+          component={MapScreen}
+          options={{ title: "Cheap Eats Map" }}
+        />
+        <Stack.Screen
+          name="Recipes"
+          component={RecipesScreen}
+          options={{ title: "Budget Recipes" }}
+        />
         <Stack.Screen name="Community" component={CommunityScreen} />
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{ title: "My Profile" }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
-
