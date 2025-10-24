@@ -4,9 +4,25 @@ import { colors } from "../theme/colors";
 
 export default function ProfileScreen() {
   return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.h1}>My Profile</Text>
-      <Text style={styles.sub}>Manage and edit your personal information</Text>
+    <View>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.h1}>Personal Info</Text>
+        <Text style={styles.sub}>
+          Manage and edit your personal information
+        </Text>
+      </View>
+      <View>
+        <InfoCard title="Name" info="Joe Bruin"></InfoCard>
+      </View>
+    </View>
+  );
+}
+
+function InfoCard({ title, info }) {
+  return (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{title}</Text>
+      <Text style={styles.cardMeta}>{info}</Text>
     </View>
   );
 }
@@ -21,7 +37,7 @@ const styles = StyleSheet.create({
   sub: { fontSize: 13, color: "#5F6C7B", marginTop: 2 },
 
   card: {
-    width: 260,
+    width: 400,
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 14,
@@ -34,7 +50,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardTitle: { fontSize: 16, fontWeight: "800", color: "#1B2430" },
-  cardMeta: { fontSize: 12, color: "#5F6C7B", marginTop: 6 },
+  cardMeta: { fontSize: 16, color: "#5F6C7B", marginTop: 6 },
   cardCta: {
     flexDirection: "row",
     alignItems: "center",
