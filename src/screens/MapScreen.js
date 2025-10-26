@@ -30,7 +30,10 @@ export default function MapScreen() {
   const { restaurants, loading } = useRestaurantList();
 
   const filters = [
-    "≤ $8",
+    "$",
+    "$$",
+    "$$$",
+    "$$$$",
     "Happy Hour",
     "Near Campus",
     "Vegetarian",
@@ -46,9 +49,16 @@ export default function MapScreen() {
   const filtered = sorted.filter((item) => {
     const nameMatch = item.name?.toLowerCase().includes(q.toLowerCase());
 
-    // ≤ $8 <-- how could we get the price for each restaurant tho...
-    const priceMatch = active.includes("≤ $8")
-      ? item.price_level && item.price_level <= 1
+    //filter by price level
+    const anyPriceActive = ["$", "$$", "$$$", "$$$$"].some(p => active.includes(p));
+
+    const priceOne = item.priceLevel == 1 && active.includes("$");
+    const priceTwo = item.priceLevel == 2 && active.includes("$$");
+    const priceThree = item.priceLevel == 3 && active.includes("$$$");
+    const priceFour = item.priceLevel == 4 && active.includes("$$$$");
+
+    const priceMatch = anyPriceActive
+      ? priceOne || priceTwo || priceThree || priceFour
       : true;
 
     // Near Campus (less than or equal to 1 km)
