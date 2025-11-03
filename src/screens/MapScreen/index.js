@@ -324,7 +324,9 @@ const MapScreen = () => {
       if (!restaurant) {
         return;
       }
+
       setTransientError(null);
+
       const lat = restaurant?.geometry?.location?.lat;
       const lng = restaurant?.geometry?.location?.lng;
       const hasCoords =
@@ -332,50 +334,127 @@ const MapScreen = () => {
         !Number.isNaN(lat) &&
         typeof lng === "number" &&
         !Number.isNaN(lng);
+      const placeId =
+        restaurant?.place_id ||
+        restaurant?.placeId ||
+        restaurant?.placeID ||
+        restaurant?.googlePlaceId ||
+        restaurant?.google_place_id ||
+        null;
       const name =
-        typeof restaurant.name === "string" && restaurant.name.trim().length > 0
+        typeof restaurant?.name === "string" && restaurant.name.trim().length > 0
           ? restaurant.name.trim()
           : "Destination";
-      const latLng = hasCoords ? `${lat},${lng}` : null;
       const addressText =
-        typeof restaurant.address === "string" && restaurant.address.trim()
+        typeof restaurant?.address === "string" && restaurant.address.trim()
           ? restaurant.address.trim()
           : null;
-      const destinationLabel = latLng || addressText;
-      if (!destinationLabel) {
-        setTransientError("Missing destination details for this restaurant.");
-        return;
-      }
-      const placeId =
-        restaurant.place_id || restaurant.placeId || restaurant.placeID || null;
       const origin =
         userLocation && typeof userLocation.latitude === "number"
           ? `${userLocation.latitude},${userLocation.longitude}`
           : null;
-      const url = Platform.select({
-        ios: latLng
-          ? `http://maps.apple.com/?daddr=${latLng}&q=${encodeURIComponent(
-              name
-            )}${origin ? `&saddr=${encodeURIComponent(origin)}` : ""}`
-          : `http://maps.apple.com/?daddr=${encodeURIComponent(
-              addressText || name
-            )}${origin ? `&saddr=${encodeURIComponent(origin)}` : ""}`,
-        android: latLng
-          ? `google.navigation:q=${latLng}`
-          : `google.navigation:q=${encodeURIComponent(addressText || name)}`,
-        default: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-          destinationLabel
-        )}${
-          placeId ? `&destination_place_id=${encodeURIComponent(placeId)}` : ""
-        }${origin ? `&origin=${encodeURIComponent(origin)}` : ""}`,
-      });
-      if (!url) {
-        setTransientError("This device cannot open navigation links.");
+
+      const buildWebFallback = () => {
+        if (hasCoords) {
+          return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}${
+            placeId ? `&destination_place_id=${encodeURIComponent(placeId)}` : ""
+          }${origin ? `&origin=${encodeURIComponent(origin)}` : ""}`;
+        }
+        if (addressText) {
+          return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+            addressText
+          )}${origin ? `&origin=${encodeURIComponent(origin)}` : ""}`;
+        }
+        return null;
+      };
+
+      const openFallbackWeb = () => {
+        const fallback = buildWebFallback();
+        if (!fallback) {
+          setTransientError("Missing destination details for this restaurant.");
+          return;
+        }
+        Linking.openURL(fallback).catch(() => {
+          setTransientError("Unable to open navigation on this device.");
+        });
+      };
+
+      if (Platform.OS === "ios") {
+        if (hasCoords) {
+          const label = encodeURIComponent(name);
+          const appleUrl = `maps://?daddr=${lat},${lng}&q=${label}`;
+          Linking.openURL(appleUrl).catch(() => {
+            const httpUrl = `http://maps.apple.com/?daddr=${lat},${lng}&q=${label}${
+              origin ? `&saddr=${encodeURIComponent(origin)}` : ""
+            }`;
+            Linking.openURL(httpUrl).catch(() => {
+              if (addressText) {
+                const addressUrl = `http://maps.apple.com/?daddr=${encodeURIComponent(
+                  addressText
+                )}${origin ? `&saddr=${encodeURIComponent(origin)}` : ""}`;
+                Linking.openURL(addressUrl).catch(openFallbackWeb);
+              } else {
+                openFallbackWeb();
+              }
+            });
+          });
+          return;
+        }
+
+        if (addressText) {
+          const appleAddressUrl = `http://maps.apple.com/?daddr=${encodeURIComponent(
+            addressText
+          )}${origin ? `&saddr=${encodeURIComponent(origin)}` : ""}`;
+          Linking.openURL(appleAddressUrl).catch(openFallbackWeb);
+          return;
+        }
+
+        setTransientError("Missing destination details for this restaurant.");
         return;
       }
-      Linking.openURL(url).catch(() => {
-        setTransientError("Unable to open navigation on this device.");
-      });
+
+      if (Platform.OS === "android") {
+        const openAndroid = async () => {
+          try {
+            if (placeId) {
+              const googleIntent = `google.navigation:q=place_id:${placeId}`;
+              const supported = await Linking.canOpenURL(googleIntent);
+              if (supported) {
+                await Linking.openURL(googleIntent);
+                return;
+              }
+
+              const geoPlaceUrl = `geo:0,0?q=place_id:${placeId}`;
+              const geoSupported = await Linking.canOpenURL(geoPlaceUrl);
+              if (geoSupported) {
+                await Linking.openURL(geoPlaceUrl);
+                return;
+              }
+            }
+
+            if (hasCoords) {
+              const geoCoordUrl = `geo:${lat},${lng}?q=${encodeURIComponent(name)}`;
+              await Linking.openURL(geoCoordUrl);
+              return;
+            }
+
+            if (addressText) {
+              const geoAddressUrl = `geo:0,0?q=${encodeURIComponent(addressText)}`;
+              await Linking.openURL(geoAddressUrl);
+              return;
+            }
+
+            openFallbackWeb();
+          } catch (error) {
+            openFallbackWeb();
+          }
+        };
+
+        openAndroid();
+        return;
+      }
+
+      openFallbackWeb();
     },
     [userLocation]
   );
