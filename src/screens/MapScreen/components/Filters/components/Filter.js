@@ -8,32 +8,42 @@ import LocationType from "./LocationType";
 import FoodType from "./FoodType";
 import DateFilter from "./DateFilter";
 
-export default function Filter({ onApply, onClose }) {
+export default function Filter({ 
+  filters,
+  activeFilters,
+  onUpdateFilters,
+  onClose, 
+  onApply,
+  onReset }) {
+
+  const oldFilters = structuredClone(activeFilters);
+
   const handleReset = () => {
-    // Reset all filters - this will need to be implemented with state management
-    // For now, just log
     console.log("Reset filters");
-    if (onClose) {
-      onClose();
+    if (onReset) {
+      onReset();
     }
   };
 
   const handleApply = () => {
-    // Apply filters - this will need to collect all filter values
     console.log("Apply filters");
     if (onApply) {
       onApply();
-    }
-    if (onClose) {
-      onClose();
+      
     }
   };
 
+  const handleClose = () => {
+    if (onClose) {
+      onClose(oldFilters);
+    }
+  };
+  
   return (
     <View style={styles.container}>
       <View style={styles.filterHeader}>
         <Text style={styles.headerText}>Filters</Text>
-        <Pressable onPress={onClose || (() => console.log("Close"))}>
+        <Pressable onPress={handleClose}>
           <Text style={styles.closeButton}>✕</Text>
         </Pressable>
       </View>
@@ -42,13 +52,13 @@ export default function Filter({ onApply, onClose }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContainer}
       >
-        <PriceFilter />
-        <DistanceFilter />
-        <DietaryFilter />
-        <DealTypes />
-        <LocationType />
-        <FoodType />
-        <DateFilter />
+        <PriceFilter filters = {filters} activeFilters = {activeFilters} onUpdateFilters = {onUpdateFilters} />
+        <DistanceFilter filters = {filters} activeFilters = {activeFilters} onUpdateFilters = {onUpdateFilters} />
+        <DietaryFilter filters = {filters} activeFilters = {activeFilters} onUpdateFilters = {onUpdateFilters} />
+        <DealTypes filters = {filters} activeFilters = {activeFilters} onUpdateFilters = {onUpdateFilters} />
+        <LocationType filters = {filters} activeFilters = {activeFilters} onUpdateFilters = {onUpdateFilters} />
+        <FoodType filters = {filters} activeFilters = {activeFilters} onUpdateFilters = {onUpdateFilters} />
+        <DateFilter filters = {filters} activeFilters = {activeFilters} onUpdateFilters = {onUpdateFilters} />
       </ScrollView>
 
       {/* Buttons at the bottom */}

@@ -45,17 +45,19 @@ const FILTER_OPTIONS = {
   date: ["Today"],
 };
 
+const DEFAULT_FILTERS = {
+  price: [],
+  distance: { min: 0, max: 50 },
+  dietary: [],
+  deals: [],
+  location: [],
+  foodType: [],
+  date: [],
+};
+
 const MapScreen = () => {
   const [query, setQuery] = useState("");
-  const [activeFilters, setActiveFilters] = useState({
-    price: ["$", "$$", "$$$", "$$$$"],
-    distance: { min: 0, max: 50 },
-    dietary: [],
-    deals: [],
-    location: ["Near Campus"],
-    foodType: [],
-    date: [],
-  });
+  const [activeFilters, setActiveFilters] = useState(DEFAULT_FILTERS);
   const [mapMode, setMapMode] = useState("native");
   const [selectedId, setSelectedId] = useState(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
@@ -69,6 +71,26 @@ const MapScreen = () => {
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
+
+  //-------------handle filter state
+  //------------------------------------------------
+  const onUpdateFilters = (newFilters) => {
+    setActiveFilters(newFilters);
+  };
+
+  const onClose = (oldFilters) => {
+    setActiveFilters(oldFilters);
+    setFiltersVisible(false);
+  };
+
+  const onApply = () => {
+    setFiltersVisible(false);
+  };
+
+  const onReset = () => {
+    setActiveFilters(DEFAULT_FILTERS);
+  };
+  //------------------------------------------------
 
   const collapsedHeight = 180;
   const sheetHeight = useMemo(
@@ -682,11 +704,12 @@ const MapScreen = () => {
           />
           <View style={styles.modalCard}>
             <Filter
-              onApply={() => {
-                // Handle apply logic here
-                setFiltersVisible(false);
-              }}
-              onClose={() => setFiltersVisible(false)}
+              filters={FILTER_OPTIONS}
+              activeFilters={activeFilters}
+              onUpdateFilters={onUpdateFilters}
+              onClose={onClose}
+              onApply={onApply}
+              onReset={onReset}
             />
           </View>
         </View>

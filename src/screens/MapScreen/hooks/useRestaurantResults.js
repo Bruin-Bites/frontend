@@ -10,16 +10,26 @@ const hasCoordinate = (item) =>
   item?.geometry?.location?.lat !== undefined &&
   item?.geometry?.location?.lng !== undefined;
 
-const buildDestination = (item) => ({
-  latitude: item?.geometry?.location?.lat,
-  longitude: item?.geometry?.location?.lng,
-});
+const buildDestination = (item) => {
+  if (!hasCoordinate(item)) {
+    return null;
+  }
+  return {
+    latitude: item?.geometry?.location?.lat,
+    longitude: item?.geometry?.location?.lng,
+  };
+};
 
 const useRestaurantResults = ({ restaurants, userLocation, query, active }) => {
   const withUserMetrics = useMemo(() => {
     if (!Array.isArray(restaurants)) {
       return [];
     }
+
+    if (!userLocation || !hasCoordinate({ geometry: { location: userLocation } })) {
+      return restaurants;
+    }
+    console.log("userLocation", userLocation);
 
     return restaurants.map((item) => {
       const destination = buildDestination(item);

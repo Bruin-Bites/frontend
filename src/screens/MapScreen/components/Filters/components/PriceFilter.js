@@ -1,44 +1,57 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, FlatList } from "react-native";
 
-const priceLevels = [1, 2, 3, 4];
+export default function PriceFilter({ filters, activeFilters, onUpdateFilters }) {
+  const priceSymbols = Array.isArray(filters?.price) && filters.price.length > 0
+    ? filters.price
+    : ["$", "$$", "$$$", "$$$$"];
 
-export default function PriceFilter() {
-  const [selectedLevels, setSelectedLevels] = useState([]);
+  const [selectedSymbols, setSelectedSymbols] = useState(
+    Array.isArray(activeFilters?.price) && activeFilters.price.length > 0
+      ? activeFilters.price
+      : priceSymbols
+  );
 
-  const getPriceSymbol = (level) => {
-    return "$".repeat(level);
-  };
+  // Sync local state when parent-provided filters change (e.g., Reset)
+  useEffect(() => {
+    if (Array.isArray(activeFilters?.price)) {
+      setSelectedSymbols(activeFilters.price);
+    }
+  }, [activeFilters?.price, priceSymbols]);
 
-  const toggleLevel = (level) => {
-    setSelectedLevels((prev) =>
-      prev.includes(level)
-        ? prev.filter((item) => item !== level)
-        : [...prev, level]
-    );
+  const toggleSymbol = (symbol) => {
+    const next = selectedSymbols.includes(symbol)
+      ? selectedSymbols.filter((s) => s !== symbol)
+      : [...selectedSymbols, symbol];
+    
+    setSelectedSymbols(next);
+    
+    if (typeof onUpdateFilters === "function") {
+      onUpdateFilters({ ...activeFilters, price: next });
+    }
   };
 
   const renderItem = ({ item }) => {
-    const isSelected = selectedLevels.includes(item);
+    const isSelected = selectedSymbols.includes(item);
     return (
       <TouchableOpacity
         style={styles.optionContainer}
-        onPress={() => toggleLevel(item)}
+        onPress={() => toggleSymbol(item)}
       >
         <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
           {isSelected && <Text style={styles.checkMark}>✓</Text>}
         </View>
-        <Text style={styles.optionText}>{getPriceSymbol(item)}</Text>
+        <Text style={styles.optionText}>{item}</Text>
       </TouchableOpacity>
     );
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Price Level</Text>
+      <Text style={styles.label}>Price</Text>
       <FlatList
-        data={priceLevels}
-        keyExtractor={(item) => item.toString()}
+        data={priceSymbols}
+        keyExtractor={(item) => item}
         renderItem={renderItem}
         scrollEnabled={false}
       />
