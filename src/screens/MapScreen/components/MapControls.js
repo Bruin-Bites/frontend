@@ -1,36 +1,28 @@
 import React from "react";
-import { View, TextInput, Pressable, StyleSheet, Text } from "react-native";
+import { View, Pressable, StyleSheet, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../../theme/colors";
 
 const MapControls = ({
-  query,
-  onQueryChange,
   filters,
   activeFilters,
   onToggleFilter,
   mapMode,
   onChangeMapMode,
+  onClose,
 }) => {
   return (
-    <>
-      <View style={styles.searchWrap}>
-        <Ionicons name="search" size={18} color="#667" />
-        <TextInput
-          value={query}
-          onChangeText={onQueryChange}
-          placeholder="Search places, cuisine, or deals…"
-          placeholderTextColor="#99A3AD"
-          style={styles.searchInput}
-          returnKeyType="search"
-        />
-        {query.length > 0 && (
-          <Pressable onPress={() => onQueryChange("")} hitSlop={8}>
-            <Ionicons name="close-circle" size={18} color="#99A3AD" />
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Filters</Text>
+        {onClose && (
+          <Pressable onPress={onClose} hitSlop={12}>
+            <Ionicons name="close" size={22} color="#364152" />
           </Pressable>
         )}
       </View>
 
+      <Text style={styles.sectionLabel}>Popular</Text>
       <View style={styles.chipsRow}>
         {filters.map((label) => {
           const active = activeFilters.includes(label);
@@ -40,7 +32,9 @@ const MapControls = ({
               onPress={() => onToggleFilter(label)}
               style={[styles.chip, active && styles.chipOn]}
             >
-              <View style={[styles.dot, active && { backgroundColor: "#fff" }]} />
+              <View
+                style={[styles.dot, active && { backgroundColor: "#fff" }]}
+              />
               <Text style={[styles.chipText, active && { color: "#fff" }]}>
                 {label}
               </Text>
@@ -49,6 +43,9 @@ const MapControls = ({
         })}
       </View>
 
+      <Text style={[styles.sectionLabel, styles.sectionSpacing]}>
+        Map provider
+      </Text>
       <View style={styles.mapToggleRow}>
         <Pressable
           style={[
@@ -83,31 +80,42 @@ const MapControls = ({
           </Text>
         </Pressable>
       </View>
-    </>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  searchWrap: {
-    marginTop: 12,
-    marginHorizontal: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(39,116,174,0.25)",
-    backgroundColor: "#F7FAFF",
+  container: {
+    width: "100%",
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+  },
+  header: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "space-between",
+    marginBottom: 12,
   },
-  searchInput: { flex: 1, fontSize: 15, color: "#223" },
+  title: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#1C2534",
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    color: "#59616D",
+  },
+  sectionSpacing: {
+    marginTop: 20,
+  },
   chipsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    marginTop: 12,
   },
   chip: {
     flexDirection: "row",
@@ -136,16 +144,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    marginTop: 12,
   },
   mapToggleButton: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.uclaBlue,
     alignItems: "center",
+    backgroundColor: "#fff",
   },
   mapToggleButtonOn: {
     backgroundColor: colors.uclaBlue,

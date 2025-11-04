@@ -13,10 +13,22 @@ import {
   Linking,
   Platform,
   Alert,
+  TextInput,
+  TouchableOpacity,
+  Modal,
+  Pressable,
+  TouchableWithoutFeedback,
+  useWindowDimensions,
+  Animated,
+  PanResponder,
 } from "react-native";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
+import { Ionicons } from "@expo/vector-icons";
+import { useHeaderHeight } from "@react-navigation/elements";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MapControls from "./components/MapControls";
 import RestaurantCard from "./components/RestaurantCard";
+import RestaurantDetail from "./components/RestaurantDetail";
 import RestaurantMarkers from "./components/RestaurantMarkers";
 import useRestaurantList from "../../hooks/useRestaurantList";
 import useUserLocation from "./hooks/useUserLocation";
@@ -38,11 +50,32 @@ const MapScreen = () => {
   const [activeFilters, setActiveFilters] = useState(["Near Campus"]);
   const [mapMode, setMapMode] = useState("native");
   const [selectedId, setSelectedId] = useState(null);
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [viewMode, setViewMode] = useState("list");
   const [transientError, setTransientError] = useState(null);
+  const [filtersVisible, setFiltersVisible] = useState(false);
+  const [topBarHeight, setTopBarHeight] = useState(0);
+  const [favoriteIds, setFavoriteIds] = useState(() => new Set());
   const mapRef = useRef(null);
   const lastFitSignatureRef = useRef(null);
+  const { height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
 
-  const { restaurants, loading } = useRestaurantList();
+  const collapsedHeight = 180;
+  const sheetHeight = useMemo(
+    () => Math.min(windowHeight * 0.75, 560),
+    [windowHeight]
+  );
+  const maxTranslate = useMemo(
+    () => Math.max(sheetHeight - collapsedHeight, 0),
+    [sheetHeight]
+  );
+  const sheetTranslate = useRef(new Animated.Value(maxTranslate)).current;
+  const sheetValueRef = useRef(maxTranslate);
+  const panOffsetRef = useRef(maxTranslate);
+
+  const { restaurants, loading, error: listError } = useRestaurantList();
   const { userLocation, locationError } = useUserLocation();
 
   const { filtered, restaurantsWithCoordinates } = useRestaurantResults({
@@ -59,6 +92,36 @@ const MapScreen = () => {
         : undefined,
     [mapMode]
   );
+  const searchBarHeight = useMemo(
+    () => (topBarHeight > 0 ? topBarHeight : 64),
+    [topBarHeight]
+  );
+
+  const overlayTopOffset = useMemo(() => {
+    const base = headerHeight > 0 ? headerHeight : insets.top;
+    return Math.max(base - 18, 0);
+  }, [headerHeight, insets.top]);
+
+  const effectiveTopPadding = useMemo(
+    () => overlayTopOffset + searchBarHeight + 32,
+    [overlayTopOffset, searchBarHeight]
+  );
+
+  const mapEdgePadding = useMemo(
+    () => ({
+      top: effectiveTopPadding,
+      right: 40,
+      bottom: sheetHeight + 80,
+      left: 40,
+    }),
+    [effectiveTopPadding, sheetHeight]
+  );
+
+  useEffect(() => {
+    sheetTranslate.setValue(maxTranslate);
+    sheetValueRef.current = maxTranslate;
+    panOffsetRef.current = maxTranslate;
+  }, [maxTranslate, sheetTranslate]);
 
   const fitSignature = useMemo(() => {
     if (!restaurantsWithCoordinates.length) {
@@ -112,11 +175,11 @@ const MapScreen = () => {
     }
 
     mapRef.current.fitToCoordinates(coordinates, {
-      edgePadding: { top: 80, right: 40, bottom: 320, left: 40 },
+      edgePadding: mapEdgePadding,
       animated: true,
     });
     lastFitSignatureRef.current = fitSignature;
-  }, [fitSignature, restaurantsWithCoordinates, mapMode]);
+  }, [fitSignature, restaurantsWithCoordinates, mapMode, mapEdgePadding]);
 
   useEffect(() => {
     lastFitSignatureRef.current = null;
@@ -130,34 +193,130 @@ const MapScreen = () => {
     );
   }, []);
 
+  const animateSheetTo = useCallback(
+    (toValue) => {
+      sheetValueRef.current = toValue;
+      panOffsetRef.current = toValue;
+      Animated.spring(sheetTranslate, {
+        toValue,
+        useNativeDriver: true,
+        damping: 18,
+        stiffness: 220,
+        mass: 0.9,
+      }).start();
+    },
+    [sheetTranslate]
+  );
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dy) > Math.abs(gestureState.dx) &&
+          Math.abs(gestureState.dy) > 4,
+        onPanResponderGrant: () => {
+          sheetTranslate.stopAnimation((value) => {
+            sheetValueRef.current = value;
+            panOffsetRef.current = value;
+          });
+        },
+        onPanResponderMove: (_, gestureState) => {
+          const next = Math.min(
+            Math.max(panOffsetRef.current + gestureState.dy, 0),
+            maxTranslate
+          );
+          sheetTranslate.setValue(next);
+          sheetValueRef.current = next;
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          const current = sheetValueRef.current;
+          const shouldExpand =
+            gestureState.vy < -0.5 ||
+            (Math.abs(gestureState.vy) <= 0.5 && current < maxTranslate / 2);
+          animateSheetTo(shouldExpand ? 0 : maxTranslate);
+        },
+        onPanResponderTerminate: () => {
+          const isExpanded = sheetValueRef.current < maxTranslate / 2;
+          animateSheetTo(isExpanded ? 0 : maxTranslate);
+        },
+      }),
+    [animateSheetTo, maxTranslate, sheetTranslate]
+  );
+
+  const handleToggleSheet = useCallback(() => {
+    const isExpanded = sheetValueRef.current <= maxTranslate / 2;
+    animateSheetTo(isExpanded ? maxTranslate : 0);
+  }, [animateSheetTo, maxTranslate]);
+
+  const resetSelection = useCallback(() => {
+    setViewMode("list");
+    setSelectedRestaurant(null);
+    setSelectedId(null);
+  }, [setSelectedId, setSelectedRestaurant, setViewMode]);
+
+  const handleCollapseSheet = useCallback(() => {
+    resetSelection();
+    animateSheetTo(maxTranslate);
+  }, [animateSheetTo, maxTranslate, resetSelection]);
+
+  const handleReturnToList = useCallback(() => {
+    setViewMode("list");
+    setSelectedRestaurant(null);
+    const target = Math.max(maxTranslate - 180, 0);
+    animateSheetTo(target);
+  }, [animateSheetTo, maxTranslate, setSelectedRestaurant, setViewMode]);
+
+  const toggleFavorite = useCallback((item) => {
+    if (!item) {
+      return;
+    }
+    const id = item._id || item.id || item.place_id || item.name;
+    if (!id) {
+      return;
+    }
+    setFavoriteIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
   const handleSelectRestaurant = useCallback(
-    (item) => {
+    (item, { openDetail = false } = {}) => {
       if (!item) {
         return;
       }
       const id = item._id || item.id || item.place_id || item.name;
       setSelectedId(id);
+      setSelectedRestaurant(item);
       const lat = item?.geometry?.location?.lat;
       const lng = item?.geometry?.location?.lng;
       if (
-        lat === undefined ||
-        lng === undefined ||
-        !mapRef.current ||
-        typeof mapRef.current.animateToRegion !== "function"
+        lat !== undefined &&
+        lng !== undefined &&
+        mapRef.current &&
+        typeof mapRef.current.animateToRegion === "function"
       ) {
-        return;
+        mapRef.current.animateToRegion(
+          {
+            latitude: lat,
+            longitude: lng,
+            latitudeDelta: 0.015,
+            longitudeDelta: 0.015,
+          },
+          250
+        );
       }
-      mapRef.current.animateToRegion(
-        {
-          latitude: lat,
-          longitude: lng,
-          latitudeDelta: 0.015,
-          longitudeDelta: 0.015,
-        },
-        250
-      );
+      if (openDetail) {
+        setViewMode("detail");
+        animateSheetTo(0);
+      }
     },
-    [setSelectedId]
+    [animateSheetTo, setSelectedRestaurant, setSelectedId, setViewMode]
   );
 
   const handleNavigate = useCallback(
@@ -165,7 +324,9 @@ const MapScreen = () => {
       if (!restaurant) {
         return;
       }
+
       setTransientError(null);
+
       const lat = restaurant?.geometry?.location?.lat;
       const lng = restaurant?.geometry?.location?.lng;
       const hasCoords =
@@ -173,37 +334,127 @@ const MapScreen = () => {
         !Number.isNaN(lat) &&
         typeof lng === "number" &&
         !Number.isNaN(lng);
-      const destinationLabel =
-        typeof restaurant.address === "string" &&
-        restaurant.address.trim().length > 0
+      const placeId =
+        restaurant?.place_id ||
+        restaurant?.placeId ||
+        restaurant?.placeID ||
+        restaurant?.googlePlaceId ||
+        restaurant?.google_place_id ||
+        null;
+      const name =
+        typeof restaurant?.name === "string" && restaurant.name.trim().length > 0
+          ? restaurant.name.trim()
+          : "Destination";
+      const addressText =
+        typeof restaurant?.address === "string" && restaurant.address.trim()
           ? restaurant.address.trim()
-          : hasCoords
-          ? `${lat},${lng}`
           : null;
-      if (!destinationLabel) {
-        setTransientError("Missing destination details for this restaurant.");
-        return;
-      }
       const origin =
         userLocation && typeof userLocation.latitude === "number"
           ? `${userLocation.latitude},${userLocation.longitude}`
           : null;
-      const url = Platform.select({
-        ios: `http://maps.apple.com/?daddr=${encodeURIComponent(
-          destinationLabel
-        )}${origin ? `&saddr=${encodeURIComponent(origin)}` : ""}`,
-        android: `google.navigation:q=${encodeURIComponent(destinationLabel)}`,
-        default: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
-          destinationLabel
-        )}${origin ? `&origin=${encodeURIComponent(origin)}` : ""}`,
-      });
-      if (!url) {
-        setTransientError("This device cannot open navigation links.");
+
+      const buildWebFallback = () => {
+        if (hasCoords) {
+          return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}${
+            placeId ? `&destination_place_id=${encodeURIComponent(placeId)}` : ""
+          }${origin ? `&origin=${encodeURIComponent(origin)}` : ""}`;
+        }
+        if (addressText) {
+          return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+            addressText
+          )}${origin ? `&origin=${encodeURIComponent(origin)}` : ""}`;
+        }
+        return null;
+      };
+
+      const openFallbackWeb = () => {
+        const fallback = buildWebFallback();
+        if (!fallback) {
+          setTransientError("Missing destination details for this restaurant.");
+          return;
+        }
+        Linking.openURL(fallback).catch(() => {
+          setTransientError("Unable to open navigation on this device.");
+        });
+      };
+
+      if (Platform.OS === "ios") {
+        if (hasCoords) {
+          const label = encodeURIComponent(name);
+          const appleUrl = `maps://?daddr=${lat},${lng}&q=${label}`;
+          Linking.openURL(appleUrl).catch(() => {
+            const httpUrl = `http://maps.apple.com/?daddr=${lat},${lng}&q=${label}${
+              origin ? `&saddr=${encodeURIComponent(origin)}` : ""
+            }`;
+            Linking.openURL(httpUrl).catch(() => {
+              if (addressText) {
+                const addressUrl = `http://maps.apple.com/?daddr=${encodeURIComponent(
+                  addressText
+                )}${origin ? `&saddr=${encodeURIComponent(origin)}` : ""}`;
+                Linking.openURL(addressUrl).catch(openFallbackWeb);
+              } else {
+                openFallbackWeb();
+              }
+            });
+          });
+          return;
+        }
+
+        if (addressText) {
+          const appleAddressUrl = `http://maps.apple.com/?daddr=${encodeURIComponent(
+            addressText
+          )}${origin ? `&saddr=${encodeURIComponent(origin)}` : ""}`;
+          Linking.openURL(appleAddressUrl).catch(openFallbackWeb);
+          return;
+        }
+
+        setTransientError("Missing destination details for this restaurant.");
         return;
       }
-      Linking.openURL(url).catch(() => {
-        setTransientError("Unable to open navigation on this device.");
-      });
+
+      if (Platform.OS === "android") {
+        const openAndroid = async () => {
+          try {
+            if (placeId) {
+              const googleIntent = `google.navigation:q=place_id:${placeId}`;
+              const supported = await Linking.canOpenURL(googleIntent);
+              if (supported) {
+                await Linking.openURL(googleIntent);
+                return;
+              }
+
+              const geoPlaceUrl = `geo:0,0?q=place_id:${placeId}`;
+              const geoSupported = await Linking.canOpenURL(geoPlaceUrl);
+              if (geoSupported) {
+                await Linking.openURL(geoPlaceUrl);
+                return;
+              }
+            }
+
+            if (hasCoords) {
+              const geoCoordUrl = `geo:${lat},${lng}?q=${encodeURIComponent(name)}`;
+              await Linking.openURL(geoCoordUrl);
+              return;
+            }
+
+            if (addressText) {
+              const geoAddressUrl = `geo:0,0?q=${encodeURIComponent(addressText)}`;
+              await Linking.openURL(geoAddressUrl);
+              return;
+            }
+
+            openFallbackWeb();
+          } catch (error) {
+            openFallbackWeb();
+          }
+        };
+
+        openAndroid();
+        return;
+      }
+
+      openFallbackWeb();
     },
     [userLocation]
   );
@@ -225,7 +476,16 @@ const MapScreen = () => {
     [handleNavigate]
   );
 
-  const errorMessage = transientError || locationError;
+  const errorMessage = transientError || locationError || listError;
+  const isDetailView = viewMode === "detail" && selectedRestaurant;
+  const handleTopLayout = useCallback(
+    ({ nativeEvent }) => {
+      if (nativeEvent?.layout?.height) {
+        setTopBarHeight(nativeEvent.layout.height);
+      }
+    },
+    [setTopBarHeight]
+  );
 
   const renderItem = useCallback(
     ({ item }) => {
@@ -234,14 +494,13 @@ const MapScreen = () => {
         <RestaurantCard
           item={item}
           selected={id === selectedId}
-          onPress={() => {
-            confirmNavigate(item);
-            handleSelectRestaurant(item);
-          }}
+          favorite={favoriteIds.has(id)}
+          onPress={() => handleSelectRestaurant(item, { openDetail: true })}
+          onToggleFavorite={() => toggleFavorite(item)}
         />
       );
     },
-    [confirmNavigate, handleSelectRestaurant, selectedId]
+    [favoriteIds, handleSelectRestaurant, selectedId, toggleFavorite]
   );
 
   if (loading) {
@@ -253,22 +512,12 @@ const MapScreen = () => {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#fff" }}>
-      <MapControls
-        query={query}
-        onQueryChange={setQuery}
-        filters={FILTER_OPTIONS}
-        activeFilters={activeFilters}
-        onToggleFilter={toggleFilter}
-        mapMode={mapMode}
-        onChangeMapMode={setMapMode}
-      />
-
-      <View style={styles.mapContainer}>
+    <View style={styles.container}>
+      <View style={styles.mapWrapper}>
         <MapView
           ref={mapRef}
           provider={mapProvider}
-          style={styles.map}
+          style={StyleSheet.absoluteFillObject}
           initialRegion={{
             latitude: userLocation?.latitude || 34.0689,
             longitude: userLocation?.longitude || -118.4452,
@@ -282,52 +531,334 @@ const MapScreen = () => {
           <RestaurantMarkers
             restaurants={restaurantsWithCoordinates}
             selectedId={selectedId}
-            onSelect={handleSelectRestaurant}
+            onSelect={(item) =>
+              handleSelectRestaurant(item, { openDetail: true })
+            }
             onNavigate={confirmNavigate}
           />
         </MapView>
-        {errorMessage && (
-          <Text style={styles.mapErrorText}>{errorMessage}</Text>
-        )}
+
+        <Animated.View
+          style={[
+            styles.resultsSheet,
+            {
+              height: sheetHeight,
+              transform: [{ translateY: sheetTranslate }],
+            },
+          ]}
+        >
+          <View style={styles.sheetHandleArea} {...panResponder.panHandlers}>
+            <TouchableWithoutFeedback onPress={handleToggleSheet}>
+              <View style={styles.sheetHandle} />
+            </TouchableWithoutFeedback>
+          </View>
+
+          {isDetailView ? (
+            <>
+              <View style={styles.sheetHeader} {...panResponder.panHandlers}>
+                <View style={styles.detailHeaderRow}>
+                  <TouchableOpacity
+                    onPress={handleReturnToList}
+                    hitSlop={12}
+                    style={styles.detailHeaderButton}
+                  >
+                    <Ionicons name="chevron-back" size={20} color="#475467" />
+                  </TouchableOpacity>
+                  <Text style={styles.detailHeaderTitle} numberOfLines={1}>
+                    {selectedRestaurant?.name || "Details"}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={handleCollapseSheet} hitSlop={12}>
+                  <Ionicons name="close" size={20} color="#475467" />
+                </TouchableOpacity>
+              </View>
+              {selectedRestaurant ? (
+                <RestaurantDetail
+                  restaurant={selectedRestaurant}
+                  favorite={selectedId ? favoriteIds.has(selectedId) : false}
+                  onToggleFavorite={() => toggleFavorite(selectedRestaurant)}
+                  onGetDirections={() => confirmNavigate(selectedRestaurant)}
+                />
+              ) : null}
+            </>
+          ) : (
+            <>
+              <View style={styles.sheetHeader} {...panResponder.panHandlers}>
+                <View>
+                  <Text style={styles.sheetTitle}>Search Results</Text>
+                  <Text style={styles.sheetSubtitle}>
+                    {filtered.length} place{filtered.length === 1 ? "" : "s"} nearby
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={handleCollapseSheet} hitSlop={12}>
+                  <Ionicons name="close" size={20} color="#475467" />
+                </TouchableOpacity>
+              </View>
+
+              <FlatList
+              data={filtered}
+              keyExtractor={(item) =>
+                item._id || item.id || item.place_id || item.name
+              }
+              extraData={favoriteIds}
+              contentContainerStyle={styles.resultsContent}
+              ItemSeparatorComponent={() => <View style={styles.cardSpacer} />}
+              renderItem={renderItem}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={
+                  <Text style={styles.emptyText}>
+                    We could not find any places that match your filters yet.
+                  </Text>
+                }
+              />
+            </>
+          )}
+        </Animated.View>
       </View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) =>
-          item._id || item.id || item.place_id || item.name
-        }
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
-        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        renderItem={renderItem}
-      />
+      <View
+        pointerEvents="box-none"
+        style={[
+          styles.overlayTop,
+          {
+            top: overlayTopOffset,
+          },
+        ]}
+        onLayout={handleTopLayout}
+      >
+        <View style={styles.searchField}>
+          <Ionicons name="search" size={18} color="#475467" />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Find deals, discounts, offers"
+            placeholderTextColor="#98A2B3"
+            style={styles.searchInput}
+            returnKeyType="search"
+          />
+          {query.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setQuery("")}
+              hitSlop={{ top: 10, left: 10, bottom: 10, right: 10 }}
+            >
+              <Ionicons name="close-circle" size={18} color="#98A2B3" />
+            </TouchableOpacity>
+          )}
+          <View style={styles.filterDivider} />
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setFiltersVisible(true)}
+            hitSlop={{ top: 12, left: 12, bottom: 12, right: 12 }}
+          >
+            <Ionicons name="options-outline" size={20} color="#1D2939" />
+          </TouchableOpacity>
+        </View>
+
+        {errorMessage ? (
+          <View style={styles.inlineError}>
+            <Text style={styles.inlineErrorText}>{errorMessage}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      <Modal
+        transparent
+        animationType="fade"
+        visible={filtersVisible}
+        onRequestClose={() => setFiltersVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setFiltersVisible(false)}
+          />
+          <View style={styles.modalCard}>
+            <MapControls
+              filters={FILTER_OPTIONS}
+              activeFilters={activeFilters}
+              onToggleFilter={toggleFilter}
+              mapMode={mapMode}
+              onChangeMapMode={setMapMode}
+              onClose={() => setFiltersVisible(false)}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#E7ECF5",
+  },
   loadingWrapper: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#F5F7FB",
   },
-  mapContainer: {
-    marginHorizontal: 16,
-    borderRadius: 16,
-    overflow: "hidden",
+  overlayTop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    gap: 10,
+    backgroundColor: "transparent",
+  },
+  mapWrapper: {
+    flex: 1,
+    position: "relative",
+  },
+  searchField: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 12,
+    elevation: 3,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.08)",
-    marginBottom: 16,
+    borderColor: "rgba(226,232,240,0.8)",
   },
-  map: {
-    width: "100%",
-    height: 280,
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: "#1F2937",
   },
-  mapErrorText: {
-    padding: 8,
+  filterDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: "rgba(226,232,240,0.8)",
+  },
+  filterButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: "#EEF2FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  inlineError: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(239,68,68,0.95)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  inlineErrorText: {
+    color: "#FFFFFF",
     fontSize: 12,
+    fontWeight: "600",
+  },
+  resultsSheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#F9FAFB",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: "hidden",
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: -8 },
+    elevation: 16,
+  },
+  sheetHandleArea: {
+    paddingTop: 12,
+    paddingBottom: 4,
+    alignItems: "center",
+  },
+  sheetHandle: {
+    width: 48,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#D0D5DD",
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1F2937",
+  },
+  detailHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  detailHeaderButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#EEF2FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  detailHeaderTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  sheetSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  resultsContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    paddingTop: 8,
+  },
+  cardSpacer: {
+    height: 12,
+  },
+  emptyText: {
     textAlign: "center",
-    color: "#A33",
-    backgroundColor: "rgba(255,0,0,0.08)",
+    color: "#64748B",
+    fontSize: 13,
+    fontWeight: "500",
+    marginTop: 40,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
+    paddingBottom: 8,
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15, 23, 42, 0.45)",
+  },
+  modalCard: {
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingBottom: 32,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    maxHeight: 520,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
   },
 });
 
