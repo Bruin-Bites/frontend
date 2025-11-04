@@ -1,88 +1,46 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, StyleSheet } from "react-native";
-import Slider from "@react-native-community/slider";
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, FlatList } from "react-native";
+
+const priceLevels = [1, 2, 3, 4];
 
 export default function PriceFilter() {
-  const MIN = 0;
-  const MAX = 250;
-  const STEP = 5; // step size in dollars
+  const [selectedLevels, setSelectedLevels] = useState([]);
 
-  const [minPrice, setMinPrice] = useState(MIN);
-  const [maxPrice, setMaxPrice] = useState(MAX);
-  const [sliderMin, setSliderMin] = useState(minPrice);
-  const [sliderMax, setSliderMax] = useState(maxPrice);
-
-  // Sync slider values when inputs change
-  useEffect(() => {
-    if (sliderMin !== minPrice) setSliderMin(minPrice);
-    if (sliderMax !== maxPrice) setSliderMax(maxPrice);
-  }, [minPrice, maxPrice]);
-
-  // Handle input change with validation
-  const handleMinChange = (val) => {
-    let num = Number(val);
-    if (!isNaN(num)) {
-      if (num < MIN) num = MIN;
-      if (num > maxPrice) num = maxPrice;
-      setMinPrice(num);
-    }
+  const getPriceSymbol = (level) => {
+    return "$".repeat(level);
   };
 
-  const handleMaxChange = (val) => {
-    let num = Number(val);
-    if (!isNaN(num)) {
-      if (num > MAX) num = MAX;
-      if (num < minPrice) num = minPrice;
-      setMaxPrice(num);
-    }
+  const toggleLevel = (level) => {
+    setSelectedLevels((prev) =>
+      prev.includes(level)
+        ? prev.filter((item) => item !== level)
+        : [...prev, level]
+    );
+  };
+
+  const renderItem = ({ item }) => {
+    const isSelected = selectedLevels.includes(item);
+    return (
+      <TouchableOpacity
+        style={styles.optionContainer}
+        onPress={() => toggleLevel(item)}
+      >
+        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+          {isSelected && <Text style={styles.checkMark}>✓</Text>}
+        </View>
+        <Text style={styles.optionText}>{getPriceSymbol(item)}</Text>
+      </TouchableOpacity>
+    );
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>
-        Price: ${minPrice} – ${maxPrice}
-      </Text>
-
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          keyboardType="numeric"
-          value={minPrice.toString()}
-          onChangeText={handleMinChange}
-        />
-        <Text style={{ marginHorizontal: 8 }}>to</Text>
-        <TextInput
-          style={styles.input}
-          keyboardType="numeric"
-          value={maxPrice.toString()}
-          onChangeText={handleMaxChange}
-        />
-      </View>
-
-      <Text style={{ marginTop: 16 }}>Min Price</Text>
-      <Slider
-        style={styles.slider}
-        minimumValue={MIN}
-        maximumValue={MAX}
-        step={STEP}
-        value={sliderMin}
-        minimumTrackTintColor="#007AFF"
-        maximumTrackTintColor="#ccc"
-        thumbTintColor="#007AFF"
-        onValueChange={(val) => setMinPrice(val)}
-      />
-
-      <Text style={{ marginTop: 16 }}>Max Price</Text>
-      <Slider
-        style={styles.slider}
-        minimumValue={MIN}
-        maximumValue={MAX}
-        step={STEP}
-        value={sliderMax}
-        minimumTrackTintColor="#007AFF"
-        maximumTrackTintColor="#ccc"
-        thumbTintColor="#007AFF"
-        onValueChange={(val) => setMaxPrice(val)}
+      <Text style={styles.label}>Price Level</Text>
+      <FlatList
+        data={priceLevels}
+        keyExtractor={(item) => item.toString()}
+        renderItem={renderItem}
+        scrollEnabled={false}
       />
     </View>
   );
@@ -94,27 +52,40 @@ const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: "#fafafa",
     borderRadius: 10,
+    marginBottom: 8,
   },
   label: {
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: "600",
     marginBottom: 12,
   },
-  slider: {
-    width: "100%",
-    height: 40,
-  },
-  inputRow: {
+  optionContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    paddingVertical: 8,
   },
-  input: {
-    width: 70,
-    height: 40,
-    borderColor: "#ccc",
+  checkbox: {
+    width: 24,
+    height: 24,
     borderWidth: 1,
-    borderRadius: 6,
-    textAlign: "center",
+    borderColor: "#333",
+    borderRadius: 4,
+    marginRight: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  checkboxSelected: {
+    backgroundColor: "#007AFF",
+    borderColor: "#007AFF",
+  },
+  checkMark: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  optionText: {
+    fontSize: 16,
+    color: "#333",
   },
 });

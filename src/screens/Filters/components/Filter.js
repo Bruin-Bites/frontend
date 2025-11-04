@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ScrollView, Text, View, StyleSheet, Pressable } from "react-native";
+import { ScrollView, Text, View, StyleSheet, Pressable, TouchableOpacity } from "react-native";
 import PriceFilter from "./PriceFilter";
 import DistanceFilter from "./DistanceFilter";
 import DietaryFilter from "./DietaryPreferences";
@@ -8,42 +8,67 @@ import LocationType from "./LocationType";
 import FoodType from "./FoodType";
 import DateFilter from "./DateFilter";
 
-const filters = ["All", "Trending", "Music", "Sports", "Tech", "Art", "Movies", "Food", "Travel", "News", "Gaming", "Education"];
+export default function Filter({ onApply, onClose }) {
+  const handleReset = () => {
+    // Reset all filters - this will need to be implemented with state management
+    // For now, just log
+    console.log("Reset filters");
+    if (onClose) {
+      onClose();
+    }
+  };
 
-export default function Filter() {
-  const [selected, setSelected] = useState("All");
+  const handleApply = () => {
+    // Apply filters - this will need to collect all filter values
+    console.log("Apply filters");
+    if (onApply) {
+      onApply();
+    }
+    if (onClose) {
+      onClose();
+    }
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.filterHeader}>
-        <Text>Filters</Text>
-        <Pressable onPress={() => console.log("Close")}>
-            <Text>✕</Text>
+        <Text style={styles.headerText}>Filters</Text>
+        <Pressable onPress={onClose || (() => console.log("Close"))}>
+          <Text style={styles.closeButton}>✕</Text>
         </Pressable>
       </View>
-
 
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContainer}
       >
-        <PriceFilter></PriceFilter>
-        <DistanceFilter></DistanceFilter>
-        <DietaryFilter></DietaryFilter>
-        <DealTypes></DealTypes>
-        <LocationType></LocationType>
-        <FoodType></FoodType>
-        <DateFilter></DateFilter>
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            styles.applyButton,
-            pressed && styles.buttonPressed,
-          ]}
-        >
-          <Text style={styles.applyText}>Apply</Text>
-      </Pressable>
+        <PriceFilter />
+        <DistanceFilter />
+        <DietaryFilter />
+        <DealTypes />
+        <LocationType />
+        <FoodType />
+        <DateFilter />
       </ScrollView>
+
+      {/* Buttons at the bottom */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity 
+          style={styles.resetButton} 
+          onPress={handleReset}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.resetButtonText}>Reset</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.applyButton} 
+          onPress={handleApply}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.applyButtonText}>Apply</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -58,32 +83,60 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     paddingVertical: 10,
-  },
-  filterButton: {
-    backgroundColor: "#f2f2f2",
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginVertical: 4,
-    marginHorizontal: 8,
-  },
-  filterButtonActive: {
-    backgroundColor: "#007AFF",
-  },
-  filterText: {
-    color: "#333",
-    fontSize: 16,
-  },
-  filterTextActive: {
-    color: "#fff",
-    fontWeight: "600",
+    paddingBottom: 20,
   },
   filterHeader: {
-    flexDirection: "row",        // horizontal layout
-    justifyContent: "space-between", // push items to the ends
-    alignItems: "center",        // vertically center items
-    paddingHorizontal: 16,       // optional padding
-    height: 50, 
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    height: 50,
     backgroundColor: "lightgray",
+  },
+  headerText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+  },
+  closeButton: {
+    fontSize: 24,
+    color: "#333",
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#ddd",
+    backgroundColor: "#fff",
+    gap: 12,
+  },
+  resetButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#007AFF",
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  resetButtonText: {
+    color: "#007AFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  applyButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 8,
+    backgroundColor: "#007AFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  applyButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
