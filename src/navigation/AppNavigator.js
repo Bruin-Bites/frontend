@@ -32,7 +32,6 @@ import HomeScreen from "../screens/HomeScreen";
 import MapScreen from "../screens/MapScreen";
 import RecipesScreen from "../screens/RecipesScreen";
 import CommunityScreen from "../screens/CommunityScreen";
-import Filters from "../screens/Filters"
 import { colors } from "../theme/colors";
 
 const Stack = createNativeStackNavigator();
@@ -60,7 +59,6 @@ export default function AppNavigator() {
       >
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Map" component={MapScreen} options={{ title: "Cheap Eats Map" }} />
-        <Stack.Screen name="Filters" component={Filters} options={{ title: "Filters" }} />
         <Stack.Screen name="Recipes" component={RecipesScreen} options={{ title: "Budget Recipes" }} />
         <Stack.Screen name="Community" component={CommunityScreen} />
       </Stack.Navigator>

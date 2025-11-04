@@ -29,15 +29,6 @@ export default function HomeScreen({ navigation }) {
             onPress={() => navigation.navigate("Map")}
           />
 
-          <ActionCard
-            big
-            accent="map"
-            icon={<Ionicons name="search" size={28} color={colors.uclaBlue} />}
-            title="Filters"
-            text="Filters"
-            onPress={() => navigation.navigate("Filters")}
-          />
-
           {/* Two-up row */}
           <View style={styles.row}>
             <ActionCard

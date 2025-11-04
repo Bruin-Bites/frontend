@@ -30,6 +30,7 @@ import MapControls from "./components/MapControls";
 import RestaurantCard from "./components/RestaurantCard";
 import RestaurantDetail from "./components/RestaurantDetail";
 import RestaurantMarkers from "./components/RestaurantMarkers";
+import Filter from "./components/Filters/components/Filter";
 import useRestaurantList from "../../hooks/useRestaurantList";
 import useUserLocation from "./hooks/useUserLocation";
 import useRestaurantResults from "./hooks/useRestaurantResults";
@@ -673,12 +674,11 @@ const MapScreen = () => {
             onPress={() => setFiltersVisible(false)}
           />
           <View style={styles.modalCard}>
-            <MapControls
-              filters={FILTER_OPTIONS}
-              activeFilters={activeFilters}
-              onToggleFilter={toggleFilter}
-              mapMode={mapMode}
-              onChangeMapMode={setMapMode}
+            <Filter
+              onApply={() => {
+                // Handle apply logic here
+                setFiltersVisible(false);
+              }}
               onClose={() => setFiltersVisible(false)}
             />
           </View>
@@ -851,10 +851,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    paddingBottom: 32,
-    paddingTop: 12,
-    paddingHorizontal: 20,
-    maxHeight: 520,
+    paddingBottom: 0,
+    paddingTop: 0,
+    paddingHorizontal: 0,
+    maxHeight: "90%",
     shadowColor: "#0F172A",
     shadowOpacity: 0.2,
     shadowRadius: 16,
