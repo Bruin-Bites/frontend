@@ -35,20 +35,27 @@ import useRestaurantList from "../../hooks/useRestaurantList";
 import useUserLocation from "./hooks/useUserLocation";
 import useRestaurantResults from "./hooks/useRestaurantResults";
 
-const FILTER_OPTIONS = [
-  "$",
-  "$$",
-  "$$$",
-  "$$$$",
-  "Happy Hour",
-  "Near Campus",
-  "Vegetarian",
-  "Open Now",
-];
+const FILTER_OPTIONS = {
+  price: ["$", "$$", "$$$", "$$$$"],
+  distance: { min: 0, max: 50 },
+  dietary: ["Vegetarian"],
+  deals: ["Free Item"],
+  location: ["Near Campus"],
+  foodType: [],
+  date: ["Today"],
+};
 
 const MapScreen = () => {
   const [query, setQuery] = useState("");
-  const [activeFilters, setActiveFilters] = useState(["Near Campus"]);
+  const [activeFilters, setActiveFilters] = useState({
+    price: ["$", "$$", "$$$", "$$$$"],
+    distance: { min: 0, max: 50 },
+    dietary: [],
+    deals: [],
+    location: ["Near Campus"],
+    foodType: [],
+    date: [],
+  });
   const [mapMode, setMapMode] = useState("native");
   const [selectedId, setSelectedId] = useState(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);

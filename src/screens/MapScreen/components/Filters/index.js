@@ -6,21 +6,10 @@ import {
 } from "react-native";
 import Filter from "./components/Filter";
 
-const FILTER_OPTIONS = [
-  "$",
-  "$$",
-  "$$$",
-  "$$$$",
-  "Happy Hour",
-  "Near Campus",
-  "Vegetarian",
-  "Open Now",
-];
-
-const FilterPage = () => {
+const FilterPage = (filter_options) => {
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
-      <Filter></Filter>
+      <Filter filters={filter_options}></Filter>
     </View>
   );
 }
