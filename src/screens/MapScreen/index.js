@@ -30,7 +30,7 @@ import MapControls from "./components/MapControls";
 import RestaurantCard from "./components/RestaurantCard";
 import RestaurantDetail from "./components/RestaurantDetail";
 import RestaurantMarkers from "./components/RestaurantMarkers";
-import Filter from "./components/Filters/components/Filter";
+import Filter from "./components/Filter";
 import useRestaurantList from "../../hooks/useRestaurantList";
 import useUserLocation from "./hooks/useUserLocation";
 import useRestaurantResults from "./hooks/useRestaurantResults";
