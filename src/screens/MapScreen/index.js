@@ -37,7 +37,7 @@ import useRestaurantResults from "./hooks/useRestaurantResults";
 
 const FILTER_OPTIONS = {
   price: ["$", "$$", "$$$", "$$$$"],
-  distance: { min: 0, max: 50 },
+  distance: { min: 0, max: 5 }, // 0-5 miles range with 0.1 mile increments
   dietary: ["Vegetarian"],
   deals: ["Free Item"],
   location: ["Near Campus"],
@@ -47,7 +47,7 @@ const FILTER_OPTIONS = {
 
 const DEFAULT_FILTERS = {
   price: [],
-  distance: { min: 0, max: 50 },
+  distance: { min: 0, max: 5 }, // Default to 5 miles: grid search covers ~2.3mi, 5mi provides good buffer
   dietary: [],
   deals: [],
   location: [],

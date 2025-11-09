@@ -33,13 +33,26 @@ const useUserLocation = () => {
         return;
       }
 
-      const current = await Location.getCurrentPositionAsync({});
+      // Request high accuracy location with timeout
+      const current = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+        timeout: 10000, // 10 second timeout
+        maximumAge: 0, // Don't use cached location
+      });
+            
       setUserLocation({
         latitude: current.coords.latitude,
         longitude: current.coords.longitude,
       });
     } catch (error) {
+      console.error("Location error:", error);
       setLocationError(error?.message || "Failed to fetch user location.");
+      
+      // If location fails, check if we're in a simulator/emulator
+      // In development, location might be mocked or unavailable
+      if (__DEV__) {
+        console.warn("Location fetch failed. If you're in a simulator, location may be mocked.");
+      }
     } finally {
       setIsRequesting(false);
     }

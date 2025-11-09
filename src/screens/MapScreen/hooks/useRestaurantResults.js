@@ -6,17 +6,24 @@ import {
 
 const INFINITY_DISTANCE = Number.POSITIVE_INFINITY;
 
-const hasCoordinate = (item) =>
-  item?.geometry?.location?.lat !== undefined &&
-  item?.geometry?.location?.lng !== undefined;
+const hasCoordinate = (item) => {
+  // Check for both formats: lat/lng (abbreviated) and latitude/longitude (full)
+  const hasLat = item?.geometry?.location?.lat !== undefined || 
+                 item?.geometry?.location?.latitude !== undefined;
+  const hasLng = item?.geometry?.location?.lng !== undefined || 
+                 item?.geometry?.location?.longitude !== undefined;
+  
+  return hasLat && hasLng;
+};
 
 const buildDestination = (item) => {
   if (!hasCoordinate(item)) {
     return null;
   }
+  // Support both formats: lat/lng (abbreviated) and latitude/longitude (full)
   return {
-    latitude: item?.geometry?.location?.lat,
-    longitude: item?.geometry?.location?.lng,
+    latitude: item?.geometry?.location?.latitude ?? item?.geometry?.location?.lat,
+    longitude: item?.geometry?.location?.longitude ?? item?.geometry?.location?.lng,
   };
 };
 
@@ -29,7 +36,6 @@ const useRestaurantResults = ({ restaurants, userLocation, query, active }) => {
     if (!userLocation || !hasCoordinate({ geometry: { location: userLocation } })) {
       return restaurants;
     }
-    console.log("userLocation", userLocation);
 
     return restaurants.map((item) => {
       const destination = buildDestination(item);
@@ -82,11 +88,26 @@ const useRestaurantResults = ({ restaurants, userLocation, query, active }) => {
 
       // Distance filtering - use userDistanceMeters converted to miles
       let distanceMatch = true;
-      if (activeSet.distance && activeSet.distance.min !== undefined && activeSet.distance.max !== undefined) {
+      if (
+        activeSet.distance && 
+        activeSet.distance.min !== undefined && 
+        activeSet.distance.max !== undefined &&
+        typeof activeSet.distance.min === 'number' &&
+        typeof activeSet.distance.max === 'number'
+      ) {
+        // Check if this is a restrictive filter (not the default 0-5)
+        const isDefaultFilter = activeSet.distance.min === 0 && activeSet.distance.max === 5;
+        
+        // If distance filter is set, we need distance information
         if (userLocation && Number.isFinite(item.userDistanceMeters)) {
           // Convert meters to miles (1 mile = 1609.34 meters)
           const distanceMiles = item.userDistanceMeters / 1609.34;
           distanceMatch = distanceMiles >= activeSet.distance.min && distanceMiles <= activeSet.distance.max;
+        } else {
+          // If user location is not available or distance cannot be calculated:
+          // - Allow through if it's the default filter (0-5 miles) - user hasn't customized it
+          // - Filter out if it's a restrictive filter - user has set a specific range
+          distanceMatch = isDefaultFilter;
         }
       }
 

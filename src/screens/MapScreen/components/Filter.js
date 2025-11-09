@@ -14,7 +14,8 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MIN_DISTANCE = 0;
-const MAX_DISTANCE = 50;
+const MAX_DISTANCE = 5; // 0-5 miles range
+const DISTANCE_STEP = 0.1; // 0.1 mile increments
 const CONTAINER_PADDING = 16;
 const SLIDER_PADDING = 24;
 const TRACK_WIDTH = SCREEN_WIDTH - CONTAINER_PADDING * 2 - SLIDER_PADDING * 2;
@@ -108,17 +109,17 @@ export default function Filter({
 
   // Distance filter state
   const [minDistance, setMinDistance] = useState(
-    activeFilters?.distance?.min ?? 1
+    activeFilters?.distance?.min ?? 0
   );
   const [maxDistance, setMaxDistance] = useState(
-    activeFilters?.distance?.max ?? 40
+    activeFilters?.distance?.max ?? 5
   );
   const [activeThumb, setActiveThumb] = useState(null);
   const [minInput, setMinInput] = useState(
-    (activeFilters?.distance?.min ?? 1).toString()
+    (activeFilters?.distance?.min ?? 0).toString()
   );
   const [maxInput, setMaxInput] = useState(
-    (activeFilters?.distance?.max ?? 40).toString()
+    (activeFilters?.distance?.max ?? 5).toString()
   );
 
   // Sync local state when activeFilters change (e.g., Reset)
@@ -142,8 +143,8 @@ export default function Filter({
       setSelectedDate(activeFilters.date || null);
     }
     if (activeFilters?.distance) {
-      const min = activeFilters.distance.min ?? 1;
-      const max = activeFilters.distance.max ?? 40;
+      const min = activeFilters.distance.min ?? 0;
+      const max = activeFilters.distance.max ?? 5;
       setMinDistance(min);
       setMaxDistance(max);
       setMinInput(min.toString());
@@ -151,14 +152,24 @@ export default function Filter({
     }
   }, [activeFilters]);
 
-  // Sync distance inputs when slider values change
+  // Track if inputs are focused to prevent syncing while user is typing
+  const [minInputFocused, setMinInputFocused] = useState(false);
+  const [maxInputFocused, setMaxInputFocused] = useState(false);
+  
+  // Sync distance inputs when slider values change (but not when input is being edited)
   useEffect(() => {
-    setMinInput(minDistance.toString());
-  }, [minDistance]);
+    // Only update input if it's not currently focused (user isn't typing)
+    if (!minInputFocused) {
+      setMinInput(minDistance.toFixed(1));
+    }
+  }, [minDistance, minInputFocused]);
 
   useEffect(() => {
-    setMaxInput(maxDistance.toString());
-  }, [maxDistance]);
+    // Only update input if it's not currently focused (user isn't typing)
+    if (!maxInputFocused) {
+      setMaxInput(maxDistance.toFixed(1));
+    }
+  }, [maxDistance, maxInputFocused]);
 
   const handleReset = () => {
     console.log("Reset filters");
@@ -257,7 +268,12 @@ export default function Filter({
 
   // Distance filter helpers
   const formatDistance = (value) => {
-    return value === 1 ? `${value} Mile` : `${value} Miles`;
+    // Round to 1 decimal place for display
+    const rounded = Math.round(value * 10) / 10;
+    if (rounded === 1) {
+      return "1.0 Mile";
+    }
+    return `${rounded.toFixed(1)} Miles`;
   };
 
   const getPositionFromValue = (value) => {
@@ -265,78 +281,74 @@ export default function Filter({
   };
 
   const getValueFromPosition = (position) => {
-    const value = Math.round((position / (TRACK_WIDTH - THUMB_SIZE)) * (MAX_DISTANCE - MIN_DISTANCE) + MIN_DISTANCE);
-    return Math.max(MIN_DISTANCE, Math.min(MAX_DISTANCE, value));
+    // Calculate raw value
+    const rawValue = (position / (TRACK_WIDTH - THUMB_SIZE)) * (MAX_DISTANCE - MIN_DISTANCE) + MIN_DISTANCE;
+    // Round to nearest 0.1 mile increment
+    const steppedValue = Math.round(rawValue / DISTANCE_STEP) * DISTANCE_STEP;
+    // Clamp to valid range
+    return Math.max(MIN_DISTANCE, Math.min(MAX_DISTANCE, steppedValue));
   };
 
   const handleMinInputChange = (text) => {
     setMinInput(text);
-    const num = parseInt(text, 10);
-    if (!isNaN(num)) {
-      const clampedValue = Math.max(MIN_DISTANCE, Math.min(num, maxDistance - 1));
-      setMinDistance(clampedValue);
-      if (typeof onUpdateFilters === "function") {
-        onUpdateFilters({ ...activeFilters, distance: { min: clampedValue, max: maxDistance } });
-      }
-    }
+    // Don't update state while typing - only update the input field
+    // Validation and state updates will happen on blur
   };
 
   const handleMaxInputChange = (text) => {
     setMaxInput(text);
-    const num = parseInt(text, 10);
-    if (!isNaN(num)) {
-      const clampedValue = Math.min(MAX_DISTANCE, Math.max(num, minDistance + 1));
-      setMaxDistance(clampedValue);
-      if (typeof onUpdateFilters === "function") {
-        onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: clampedValue } });
-      }
-    }
+    // Don't update state while typing - only update the input field
+    // Validation and state updates will happen on blur
   };
 
   const handleMinBlur = () => {
-    const num = parseInt(minInput, 10);
+    const num = parseFloat(minInput);
     if (isNaN(num) || num < MIN_DISTANCE) {
       setMinDistance(MIN_DISTANCE);
-      setMinInput(MIN_DISTANCE.toString());
+      setMinInput(MIN_DISTANCE.toFixed(1));
       if (typeof onUpdateFilters === "function") {
         onUpdateFilters({ ...activeFilters, distance: { min: MIN_DISTANCE, max: maxDistance } });
       }
     } else if (num >= maxDistance) {
-      const newMin = maxDistance - 1;
+      const newMin = Math.max(MIN_DISTANCE, Math.round((maxDistance - DISTANCE_STEP) / DISTANCE_STEP) * DISTANCE_STEP);
       setMinDistance(newMin);
-      setMinInput(newMin.toString());
+      setMinInput(newMin.toFixed(1));
       if (typeof onUpdateFilters === "function") {
         onUpdateFilters({ ...activeFilters, distance: { min: newMin, max: maxDistance } });
       }
     } else {
-      setMinDistance(num);
-      setMinInput(num.toString());
+      // Round to nearest 0.1 step
+      const steppedValue = Math.round(num / DISTANCE_STEP) * DISTANCE_STEP;
+      setMinDistance(steppedValue);
+      setMinInput(steppedValue.toFixed(1));
       if (typeof onUpdateFilters === "function") {
-        onUpdateFilters({ ...activeFilters, distance: { min: num, max: maxDistance } });
+        onUpdateFilters({ ...activeFilters, distance: { min: steppedValue, max: maxDistance } });
       }
     }
   };
 
   const handleMaxBlur = () => {
-    const num = parseInt(maxInput, 10);
+    const num = parseFloat(maxInput);
     if (isNaN(num) || num > MAX_DISTANCE) {
       setMaxDistance(MAX_DISTANCE);
-      setMaxInput(MAX_DISTANCE.toString());
+      setMaxInput(MAX_DISTANCE.toFixed(1));
       if (typeof onUpdateFilters === "function") {
         onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: MAX_DISTANCE } });
       }
     } else if (num <= minDistance) {
-      const newMax = minDistance + 1;
+      const newMax = Math.min(MAX_DISTANCE, Math.round((minDistance + DISTANCE_STEP) / DISTANCE_STEP) * DISTANCE_STEP);
       setMaxDistance(newMax);
-      setMaxInput(newMax.toString());
+      setMaxInput(newMax.toFixed(1));
       if (typeof onUpdateFilters === "function") {
         onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: newMax } });
       }
     } else {
-      setMaxDistance(num);
-      setMaxInput(num.toString());
+      // Round to nearest 0.1 step
+      const steppedValue = Math.round(num / DISTANCE_STEP) * DISTANCE_STEP;
+      setMaxDistance(steppedValue);
+      setMaxInput(steppedValue.toFixed(1));
       if (typeof onUpdateFilters === "function") {
-        onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: num } });
+        onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: steppedValue } });
       }
     }
   };
@@ -350,10 +362,12 @@ export default function Filter({
     onPanResponderMove: (evt, gestureState) => {
       const newPosition = getPositionFromValue(minDistance) + gestureState.dx;
       const newValue = getValueFromPosition(newPosition);
-      if (newValue >= MIN_DISTANCE && newValue < maxDistance) {
-        setMinDistance(newValue);
+      // Ensure min stays at least DISTANCE_STEP below max
+      const clampedValue = Math.min(newValue, maxDistance - DISTANCE_STEP);
+      if (clampedValue >= MIN_DISTANCE && clampedValue < maxDistance) {
+        setMinDistance(clampedValue);
         if (typeof onUpdateFilters === "function") {
-          onUpdateFilters({ ...activeFilters, distance: { min: newValue, max: maxDistance } });
+          onUpdateFilters({ ...activeFilters, distance: { min: clampedValue, max: maxDistance } });
         }
       }
     },
@@ -371,10 +385,12 @@ export default function Filter({
     onPanResponderMove: (evt, gestureState) => {
       const newPosition = getPositionFromValue(maxDistance) + gestureState.dx;
       const newValue = getValueFromPosition(newPosition);
-      if (newValue <= MAX_DISTANCE && newValue > minDistance) {
-        setMaxDistance(newValue);
+      // Ensure max stays at least DISTANCE_STEP above min
+      const clampedValue = Math.max(newValue, minDistance + DISTANCE_STEP);
+      if (clampedValue <= MAX_DISTANCE && clampedValue > minDistance) {
+        setMaxDistance(clampedValue);
         if (typeof onUpdateFilters === "function") {
-          onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: newValue } });
+          onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: clampedValue } });
         }
       }
     },
@@ -388,19 +404,21 @@ export default function Filter({
     const newValue = getValueFromPosition(x);
     
     if (Math.abs(newValue - minDistance) < Math.abs(newValue - maxDistance)) {
-      // Closer to min thumb
-      if (newValue < maxDistance) {
-        setMinDistance(newValue);
+      // Closer to min thumb - ensure it's at least DISTANCE_STEP below max
+      const clampedValue = Math.min(newValue, maxDistance - DISTANCE_STEP);
+      if (clampedValue >= MIN_DISTANCE && clampedValue < maxDistance) {
+        setMinDistance(clampedValue);
         if (typeof onUpdateFilters === "function") {
-          onUpdateFilters({ ...activeFilters, distance: { min: newValue, max: maxDistance } });
+          onUpdateFilters({ ...activeFilters, distance: { min: clampedValue, max: maxDistance } });
         }
       }
     } else {
-      // Closer to max thumb
-      if (newValue > minDistance) {
-        setMaxDistance(newValue);
+      // Closer to max thumb - ensure it's at least DISTANCE_STEP above min
+      const clampedValue = Math.max(newValue, minDistance + DISTANCE_STEP);
+      if (clampedValue <= MAX_DISTANCE && clampedValue > minDistance) {
+        setMaxDistance(clampedValue);
         if (typeof onUpdateFilters === "function") {
-          onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: newValue } });
+          onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: clampedValue } });
         }
       }
     }
@@ -532,11 +550,15 @@ export default function Filter({
               <Text style={styles.inputLabel}>Min</Text>
               <TextInput
                 style={styles.inputBox}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 value={minInput}
                 onChangeText={handleMinInputChange}
-                onBlur={handleMinBlur}
-                placeholder="0"
+                onFocus={() => setMinInputFocused(true)}
+                onBlur={() => {
+                  setMinInputFocused(false);
+                  handleMinBlur();
+                }}
+                placeholder="0.0"
                 placeholderTextColor="#999"
               />
             </View>
@@ -545,11 +567,15 @@ export default function Filter({
               <Text style={styles.inputLabel}>Max</Text>
               <TextInput
                 style={styles.inputBox}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 value={maxInput}
                 onChangeText={handleMaxInputChange}
-                onBlur={handleMaxBlur}
-                placeholder="50"
+                onFocus={() => setMaxInputFocused(true)}
+                onBlur={() => {
+                  setMaxInputFocused(false);
+                  handleMaxBlur();
+                }}
+                placeholder="5.0"
                 placeholderTextColor="#999"
               />
             </View>
