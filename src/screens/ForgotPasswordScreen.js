@@ -9,17 +9,20 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
+import api from "../services/api";
 
 export default function ForgotPasswordScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!email.trim()) {
       Alert.alert("Error", "Please enter your email address");
       return;
@@ -30,16 +33,66 @@ export default function ForgotPasswordScreen({ navigation }) {
       return;
     }
     
-    // For demo purposes, just show success message
-    setIsSubmitted(true);
+    setIsLoading(true);
+    try {
+      const response = await api.post("/auth/forgot-password", {
+        email: email.trim(),
+      });
+
+      // Show success message
+      setIsSubmitted(true);
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      let errorMessage = "Failed to send reset instructions. Please try again.";
+      
+      if (error.response) {
+        // Server responded with error
+        if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.response.data.errors && error.response.data.errors.length > 0) {
+          errorMessage = error.response.data.errors[0].msg || errorMessage;
+        }
+      } else if (error.request) {
+        errorMessage = "Unable to connect to server. Please check your connection.";
+      }
+
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBackToLogin = () => {
     navigation.navigate("Login");
   };
 
-  const handleResendEmail = () => {
-    Alert.alert("Email Sent", "Reset instructions have been sent again!");
+  const handleResendEmail = async () => {
+    if (!email.trim()) {
+      Alert.alert("Error", "Please enter your email address");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await api.post("/auth/forgot-password", {
+        email: email.trim(),
+      });
+
+      Alert.alert("Email Sent", "Reset instructions have been sent again!");
+    } catch (error) {
+      console.error("Resend email error:", error);
+      let errorMessage = "Failed to send reset instructions. Please try again.";
+      
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.request) {
+        errorMessage = "Unable to connect to server. Please check your connection.";
+      }
+
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -102,15 +155,23 @@ export default function ForgotPasswordScreen({ navigation }) {
                     style={({ pressed }) => [
                       styles.submitButton,
                       pressed && styles.buttonPressed,
+                      isLoading && styles.buttonDisabled,
                     ]}
                     onPress={handleSubmit}
+                    disabled={isLoading}
                   >
                     <LinearGradient
                       colors={[colors.loginPrimaryGreen, colors.loginSoftGreen]}
                       style={styles.buttonGradient}
                     >
-                      <Text style={styles.submitButtonText}>Send Reset Instructions</Text>
-                      <Ionicons name="send" size={20} color="white" />
+                      {isLoading ? (
+                        <ActivityIndicator color="white" />
+                      ) : (
+                        <>
+                          <Text style={styles.submitButtonText}>Send Reset Instructions</Text>
+                          <Ionicons name="send" size={20} color="white" />
+                        </>
+                      )}
                     </LinearGradient>
                   </Pressable>
 
@@ -141,10 +202,16 @@ export default function ForgotPasswordScreen({ navigation }) {
                       style={({ pressed }) => [
                         styles.resendButton,
                         pressed && styles.buttonPressed,
+                        isLoading && styles.buttonDisabled,
                       ]}
                       onPress={handleResendEmail}
+                      disabled={isLoading}
                     >
-                      <Text style={styles.resendButtonText}>Resend Email</Text>
+                      {isLoading ? (
+                        <ActivityIndicator color={colors.loginPrimaryGreen} />
+                      ) : (
+                        <Text style={styles.resendButtonText}>Resend Email</Text>
+                      )}
                     </Pressable>
                     
                     <Pressable
@@ -309,6 +376,9 @@ const styles = StyleSheet.create({
   buttonPressed: {
     transform: [{ scale: 0.98 }],
     opacity: 0.9,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
 
   // Back to Login Button
