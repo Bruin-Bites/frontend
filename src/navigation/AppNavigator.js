@@ -34,6 +34,10 @@ import CommunityScreen from "../screens/CommunityScreen";
 import LoginScreen from "../screens/LoginScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import CreateAccountScreen from "../screens/CreateAccountScreen";
+import AIRecipeBotScreen from "../screens/AIRecipeBotScreen";
+import RecipeDetailScreen from "../screens/RecipeDetailScreen";
+import RecipeEditScreen from "../screens/RecipeEditScreen";
+import SavedRecipesScreen from "../screens/SavedRecipesScreen";
 import { colors } from "../theme/colors";
 
 const Stack = createNativeStackNavigator();
@@ -87,6 +91,26 @@ export default function AppNavigator() {
         <Stack.Screen name="Map" component={MapScreen} options={{ title: "Cheap Eats Map" }} />
         <Stack.Screen name="Recipes" component={RecipesScreen} options={{ title: "Budget Recipes" }} />
         <Stack.Screen name="Community" component={CommunityScreen} />
+        <Stack.Screen
+          name="AIRecipeBot"
+          component={AIRecipeBotScreen}
+          options={{ title: "AI Recipe Generator" }}
+        />
+        <Stack.Screen
+          name="RecipeDetail"
+          component={RecipeDetailScreen}
+          options={{ title: "Recipe Details" }}
+        />
+        <Stack.Screen
+          name="RecipeEdit"
+          component={RecipeEditScreen}
+          options={{ title: "Edit Recipe" }}
+        />
+        <Stack.Screen
+          name="SavedRecipes"
+          component={SavedRecipesScreen}
+          options={{ title: "My Recipes" }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

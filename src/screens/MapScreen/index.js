@@ -14,7 +14,18 @@ import {
   Platform,
   Alert,
 } from "react-native";
-import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
+
+// Conditionally import MapView only on native platforms
+let MapView, PROVIDER_GOOGLE;
+try {
+  if (Platform.OS !== 'web') {
+    const MapModule = require("react-native-maps");
+    MapView = MapModule.default;
+    PROVIDER_GOOGLE = MapModule.PROVIDER_GOOGLE;
+  }
+} catch (e) {
+  // Map not available on web
+}
 import MapControls from "./components/MapControls";
 import RestaurantCard from "./components/RestaurantCard";
 import RestaurantMarkers from "./components/RestaurantMarkers";
@@ -265,27 +276,34 @@ const MapScreen = () => {
       />
 
       <View style={styles.mapContainer}>
-        <MapView
-          ref={mapRef}
-          provider={mapProvider}
-          style={styles.map}
-          initialRegion={{
-            latitude: userLocation?.latitude || 34.0689,
-            longitude: userLocation?.longitude || -118.4452,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
-          showsUserLocation
-          showsMyLocationButton
-          showsCompass
-        >
-          <RestaurantMarkers
-            restaurants={restaurantsWithCoordinates}
-            selectedId={selectedId}
-            onSelect={handleSelectRestaurant}
-            onNavigate={confirmNavigate}
-          />
-        </MapView>
+        {Platform.OS === 'web' ? (
+          <View style={[styles.map, styles.webMapPlaceholder]}>
+            <Text style={styles.webMapText}>Map view not available on web</Text>
+            <Text style={styles.webMapSubtext}>Please use the list view below</Text>
+          </View>
+        ) : (
+          <MapView
+            ref={mapRef}
+            provider={mapProvider}
+            style={styles.map}
+            initialRegion={{
+              latitude: userLocation?.latitude || 34.0689,
+              longitude: userLocation?.longitude || -118.4452,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            }}
+            showsUserLocation
+            showsMyLocationButton
+            showsCompass
+          >
+            <RestaurantMarkers
+              restaurants={restaurantsWithCoordinates}
+              selectedId={selectedId}
+              onSelect={handleSelectRestaurant}
+              onNavigate={confirmNavigate}
+            />
+          </MapView>
+        )}
         {errorMessage && (
           <Text style={styles.mapErrorText}>{errorMessage}</Text>
         )}
@@ -328,6 +346,21 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#A33",
     backgroundColor: "rgba(255,0,0,0.08)",
+  },
+  webMapPlaceholder: {
+    backgroundColor: '#f0f4ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  webMapText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+  },
+  webMapSubtext: {
+    fontSize: 14,
+    color: '#999',
   },
 });
 

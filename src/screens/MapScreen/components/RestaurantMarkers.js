@@ -1,15 +1,30 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { Marker, Callout } from "react-native-maps";
+import { StyleSheet, Text, View, Platform } from "react-native";
 import { colors } from "../../../theme/colors";
+
+// Conditionally import Marker and Callout only on native platforms
+let Marker, Callout;
+try {
+  if (Platform.OS !== 'web') {
+    const MapModule = require("react-native-maps");
+    Marker = MapModule.Marker;
+    Callout = MapModule.Callout;
+  }
+} catch (e) {
+  // Map components not available on web
+}
 
 const RestaurantMarkers = ({
   restaurants,
   selectedId,
   onSelect,
   onNavigate,
-}) =>
-  restaurants.map((item) => {
+}) => {
+  if (Platform.OS === 'web') {
+    return null;
+  }
+
+  return restaurants.map((item) => {
     const lat = item?.geometry?.location?.lat;
     const lng = item?.geometry?.location?.lng;
     if (lat === undefined || lng === undefined) {
@@ -40,6 +55,7 @@ const RestaurantMarkers = ({
       </Marker>
     );
   });
+};
 
 const styles = StyleSheet.create({
   callout: {
