@@ -3,6 +3,7 @@ import { View, Text, FlatList, StyleSheet, TextInput, Pressable, ActivityIndicat
 import { Ionicons } from "@expo/vector-icons";
 import api from "../services/api";
 import { colors } from "../theme/colors";
+import RecipeCard from "../components/RecipeCard";
 
 export default function RecipesScreen() {
   // list of sample recipes from /api/recipes
@@ -33,17 +34,34 @@ export default function RecipesScreen() {
         message: trimmed,
         history: newHistory.map(({ role, text }) => ({ role, content: text }))
       });
-      const botText = res?.data?.reply || "Sorry, I couldn’t generate a recipe.";
+
+      const recipe = res?.data?.reply;
       const tips = res?.data?.tips || [];
+      const totalCost = res?.data?.totalCost || 0;
+      const costPerServing = res?.data?.costPerServing || 0;
+
+      if (!recipe) {
+        setMessages(prev => [
+          ...prev,
+          { id: `a-${Date.now()}`, role: "assistant", text: "Sorry, I couldn't generate a recipe." }
+        ]);
+        return;
+      }
+
       const assistantMsg = {
         id: `a-${Date.now()}`,
         role: "assistant",
-        text: botText + (tips.length ? `\n\nQuick tips:\n- ${tips.join("\n- ")}` : "")
+        recipe,
+        tips,
+        totalCost,
+        costPerServing
       };
+
       setMessages(prev => [...prev, assistantMsg]);
       // scroll to bottom
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     } catch (e) {
+      console.error("Error fetching recipe:", e);
       setMessages(prev => [
         ...prev,
         { id: `a-${Date.now()}`, role: "assistant", text: "Network error. Try again in a sec." }
@@ -69,12 +87,12 @@ export default function RecipesScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 16 }}
         ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-        renderItem={({ item }) => <RecipeCard title={item.title} />}
+        renderItem={({ item }) => <FeaturedRecipeCard title={item.title} />}
         ListEmptyComponent={
           <View style={{ paddingHorizontal: 16 }}>
-            <RecipeCard title="TJ’s Cauliflower Gnocchi + Marinara" />
+            <FeaturedRecipeCard title="TJ's Cauliflower Gnocchi + Marinara" />
             <View style={{ width: 12 }} />
-            <RecipeCard title="$5 Ralphs Lentil Soup Hack" />
+            <FeaturedRecipeCard title="$5 Ralphs Lentil Soup Hack" />
           </View>
         }
       />
@@ -90,7 +108,7 @@ export default function RecipesScreen() {
         data={messages}
         keyExtractor={(m) => m.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8 }}
-        renderItem={({ item }) => <Bubble role={item.role} text={item.text} />}
+        renderItem={({ item }) => <Bubble message={item} />}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
       />
 
@@ -114,7 +132,7 @@ export default function RecipesScreen() {
   );
 }
 
-function RecipeCard({ title }) {
+function FeaturedRecipeCard({ title }) {
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{title}</Text>
@@ -127,12 +145,28 @@ function RecipeCard({ title }) {
   );
 }
 
-function Bubble({ role, text }) {
-  const isUser = role === "user";
+function Bubble({ message }) {
+  const isUser = message.role === "user";
+
+  // If the message has a recipe, render the RecipeCard
+  if (message.recipe) {
+    return (
+      <View style={styles.recipeContainer}>
+        <RecipeCard
+          recipe={message.recipe}
+          tips={message.tips}
+          totalCost={message.totalCost}
+          costPerServing={message.costPerServing}
+        />
+      </View>
+    );
+  }
+
+  // Otherwise render a text bubble
   return (
     <View style={[styles.bubbleRow, isUser ? { justifyContent: "flex-end" } : { justifyContent: "flex-start" }]}>
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
-        <Text style={[styles.bubbleText, isUser && { color: "#fff" }]}>{text}</Text>
+        <Text style={[styles.bubbleText, isUser && { color: "#fff" }]}>{message.text}</Text>
       </View>
     </View>
   );
@@ -169,6 +203,7 @@ const styles = StyleSheet.create({
   bubbleBot: { backgroundColor: "#F1F5FA", borderWidth: 1, borderColor: "rgba(39,116,174,0.12)" },
   bubbleUser: { backgroundColor: colors.uclaBlue },
   bubbleText: { fontSize: 14, color: "#1B2430" },
+  recipeContainer: { width: "100%", paddingVertical: 4 },
 
   composer: {
     flexDirection: "row",
