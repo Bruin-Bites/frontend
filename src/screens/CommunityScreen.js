@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, FlatList, Pressable, TextInput, KeyboardAvoidingView, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { formatDistanceToNow } from "date-fns";
 import api from "../services/api";
 import { colors } from "../theme/colors";
 
@@ -12,20 +11,22 @@ export default function CommunityScreen() {
   const [tag, setTag] = useState("Near Campus");
   const [text, setText] = useState("");
 
-  // Fetches posts when the component loads
   useEffect(() => {
     api.get("/community")
       .then(res => {
-        // This now gets REAL, sorted data from your server.
-        // We map over it to ensure the key for the list is `id`.
-        const realPosts = (res.data.posts || []).map(p => ({
-          ...p,
-          id: p._id, // Use the real database ID (_id) for the FlatList key
-        }));
-        setPosts(realPosts);
+        const base = res.data?.posts || [];
+        // enrich with mock meta for nicer UI
+        setPosts(
+          base.map((p, i) => ({
+            ...p,
+            votes: 3 + i,
+            tag: TAGS[i % TAGS.length],
+            author: ["Anonymous Bruin", "2nd-year CS", "Grad Student"][i % 3],
+            time: ["1h", "3h", "Today"][i % 3]
+          }))
+        );
       })
       .catch(() =>
-        // This fallback data is used if your backend server isn't running.
         setPosts([
           { id: "p1", text: "Diddy Riese for dessert—cash only!", votes: 12, tag: "Dessert", author: "Anonymous Bruin", time: "Today" },
           { id: "p2", text: "Kerckhoff coffee happy hour 2–4pm", votes: 7, tag: "Happy Hour", author: "2nd-year CS", time: "3h" }
@@ -33,33 +34,19 @@ export default function CommunityScreen() {
       );
   }, []);
 
-  // Submits a new post to the backend
-  const submit = async () => {
+  const submit = () => {
     const body = text.trim();
     if (!body) return;
-
-    const newPostData = {
+    const newPost = {
+      id: `local-${Date.now()}`,
       text: body,
+      votes: 0,
       tag,
       author: "You",
+      time: "just now"
     };
-
-    try {
-      // Send the new post data to the backend API
-      const res = await api.post("/community", newPostData);
-      const savedPost = res.data;
-
-      // Add the new post returned from the server to the top of the list
-      setPosts([
-        { ...savedPost, id: savedPost._id, time: "just now" }, 
-        ...posts
-      ]);
-      
-      setText(""); // Clear the input box
-    } catch (err) {
-      console.error("Failed to submit post:", err);
-      // You could add an error message for the user here
-    }
+    setPosts([newPost, ...posts]);
+    setText("");
   };
 
   const upvote = (id) => {
@@ -113,12 +100,7 @@ export default function CommunityScreen() {
               </View>
               <Text style={styles.author}>{item.author}</Text>
               <Text style={styles.dot}>•</Text>
-              <Text style={styles.time}>
-                {/* This now displays a relative time like "5 minutes ago" */}
-                {item.createdAt
-                  ? `${formatDistanceToNow(new Date(item.createdAt))} ago`
-                  : item.time}
-              </Text>
+              <Text style={styles.time}>{item.time}</Text>
               <View style={{ flex: 1 }} />
               <View style={[styles.pill, { borderColor: colors.uclaBlue }]}>
                 <Text style={[styles.pillText, { color: colors.uclaBlue }]}>{item.tag}</Text>
@@ -144,7 +126,6 @@ export default function CommunityScreen() {
   );
 }
 
-// STYLES (no changes needed)
 const styles = StyleSheet.create({
   banner: {
     margin: 16,
@@ -158,16 +139,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start"
   },
   bannerText: { flex: 1, color: "#334155" },
-  postBtn: {
-    backgroundColor: colors.uclaBlue,
-    paddingHorizontal: 12,
-    height: 36,
-    borderRadius: 999,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6
-  },
-  postBtnText: { color: "#fff", fontWeight: "700" },
+
   composer: {
     marginHorizontal: 16,
     marginBottom: 8,
@@ -229,7 +201,7 @@ const styles = StyleSheet.create({
   pill: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   pillText: { fontSize: 12, fontWeight: "700" },
 
-  actions: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 4 },
+  actions: { flexDirection: "row", alignItems: "center", gap: 14 },
   voteBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 6 },
   voteText: { fontWeight: "800", color: colors.uclaBlue },
   replyBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 6 },
