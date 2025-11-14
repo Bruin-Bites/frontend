@@ -14,7 +14,7 @@ import {
   Platform,
   Alert,
 } from "react-native";
-import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { PROVIDER_GOOGLE } from "../../utils/maps";
 import MapControls from "./components/MapControls";
 import RestaurantCard from "./components/RestaurantCard";
 import RestaurantMarkers from "./components/RestaurantMarkers";
