@@ -9,11 +9,13 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
+import api from "../services/api";
 
 export default function CreateAccountScreen({ navigation }) {
   const [formData, setFormData] = useState({
@@ -27,6 +29,7 @@ export default function CreateAccountScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -63,12 +66,53 @@ export default function CreateAccountScreen({ navigation }) {
     return true;
   };
 
-  const handleCreateAccount = () => {
-    if (validateForm()) {
-      // For demo purposes, just navigate to home
-      // In a real app, you would create the account here
-      Alert.alert("Success", "Account created successfully!");
-      navigation.navigate("Home");
+  const handleCreateAccount = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { firstName, lastName, email, password } = formData;
+      const name = `${firstName.trim()} ${lastName.trim()}`.trim();
+
+      const response = await api.post("/auth/register", {
+        email: email.trim(),
+        password,
+        name,
+        isUCLAStudent: false, // You can add a checkbox for this if needed
+      });
+
+      // Store token if needed (you might want to use AsyncStorage or a context)
+      // For now, just show success and navigate
+      Alert.alert("Success", "Account created successfully!", [
+        {
+          text: "OK",
+          onPress: () => navigation.navigate("Login"),
+        },
+      ]);
+    } catch (error) {
+      console.error("Registration error:", error);
+      let errorMessage = "Failed to create account. Please try again.";
+      
+      if (error.response) {
+        // Server responded with error
+        if (error.response.status === 400) {
+          if (error.response.data.error) {
+            errorMessage = error.response.data.error;
+          } else if (error.response.data.errors && error.response.data.errors.length > 0) {
+            errorMessage = error.response.data.errors[0].msg || errorMessage;
+          }
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        }
+      } else if (error.request) {
+        errorMessage = "Unable to connect to server. Please check your connection.";
+      }
+
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -256,15 +300,23 @@ export default function CreateAccountScreen({ navigation }) {
                 style={({ pressed }) => [
                   styles.createAccountButton,
                   pressed && styles.buttonPressed,
+                  isLoading && styles.buttonDisabled,
                 ]}
                 onPress={handleCreateAccount}
+                disabled={isLoading}
               >
                 <LinearGradient
                   colors={[colors.loginPrimaryGreen, colors.loginSoftGreen]}
                   style={styles.buttonGradient}
                 >
-                  <Text style={styles.createAccountButtonText}>Create Account</Text>
-                  <Ionicons name="arrow-forward" size={20} color="white" />
+                  {isLoading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <>
+                      <Text style={styles.createAccountButtonText}>Create Account</Text>
+                      <Ionicons name="arrow-forward" size={20} color="white" />
+                    </>
+                  )}
                 </LinearGradient>
               </Pressable>
 
@@ -459,6 +511,9 @@ const styles = StyleSheet.create({
   buttonPressed: {
     transform: [{ scale: 0.98 }],
     opacity: 0.9,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
 
   // Back to Login Button
