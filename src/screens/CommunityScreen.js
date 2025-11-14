@@ -62,45 +62,94 @@ export default function CommunityScreen() {
     }
   };
 
+  // Deletes a post
+  const deletePost = async (postId) => {
+    try {
+      // 1. Call the backend API to delete the post
+      await api.delete(`/community/${postId}`);
+
+      // 2. Update the local state to remove the post
+      setPosts((prevPosts) =>
+        prevPosts.filter((post) => post.id !== postId)
+      );
+    } catch (err) {
+      console.error("Failed to delete post:", err);
+    }
+  };
+
   const upvote = (id) => {
     setPosts(p => p.map(item => (item.id === id ? { ...item, votes: item.votes + 1 } : item)));
   };
+  
+  // State for managing which post's reply input is open
+const [showReplyInput, setShowReplyInput] = useState(null);
+const [replyText, setReplyText] = useState("");
+
+// Toggle reply input for a specific post
+const toggleReplyInput = (postId) => {
+  if (showReplyInput === postId) {
+    setShowReplyInput(null); // Close if already open
+    setReplyText("");
+  } else {
+    setShowReplyInput(postId); // Open the reply input for this post
+  }
+};
+
+// Submit a reply for a specific post
+const submitReply = async (postId) => {
+  const text = replyText.trim();
+  if (!text) return;
+
+  const replyData = {
+    text,
+    author: "You",
+  };
+
+  try {
+    const res = await api.post(`/community/${postId}/reply`, replyData);
+    const savedReply = res.data;
+
+    // Update the post locally with the new reply
+    setPosts((prevPosts) =>
+      prevPosts.map((post) =>
+        post.id === postId
+          ? { ...post, replies: [...(post.replies || []), savedReply] }
+          : post
+      )
+    );
+
+    // Clear input
+    setReplyText("");
+    setShowReplyInput(null);
+  } catch (err) {
+    console.error("Failed to submit reply:", err);
+  }
+};
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: "#fff" }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      {/* Intro banner */}
-      <View style={styles.banner}>
-        <Ionicons name="megaphone" size={18} color={colors.uclaBlue} />
-        <Text style={styles.bannerText}>Share a $5 meal, happy hour, or dorm-kitchen hack with other Bruins.</Text>
-      </View>
+  <KeyboardAvoidingView 
+  style={{ flex: 1, backgroundColor: "#fff" }} // KAV becomes the main container
+  behavior={Platform.OS === "ios" ? "padding" : "height"}
+  keyboardVerticalOffset={70} // You may need to adjust this
+>
 
-      {/* Composer */}
-      <View style={styles.composer}>
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          placeholder="Share a quick tip… (e.g., 'BPlate power bowl remix for $5')"
-          placeholderTextColor="#99A3AD"
-          style={styles.input}
-          multiline
-        />
-        <View style={styles.composerRow}>
-          <View style={styles.tagsRow}>
-            {TAGS.slice(0, 4).map(t => (
-              <Pressable key={t} onPress={() => setTag(t)} style={[styles.tag, tag === t && styles.tagOn]}>
-                <Text style={[styles.tagText, tag === t && { color: "#fff" }]}>{t}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Pressable onPress={submit} style={({ pressed }) => [styles.postBtn, pressed && { opacity: 0.9 }]}>
-            <Ionicons name="send" size={16} color="#fff" />
-            <Text style={styles.postBtnText}>Post</Text>
-          </Pressable>
-        </View>
-      </View>
+    {/* Intro banner */}
+    <View style={styles.banner}>
+      <Ionicons name="megaphone" size={18} color={colors.uclaBlue} />
+      <Text style={styles.bannerText}>
+        Share a $5 meal, happy hour, or dorm-kitchen hack with other Bruins.
+      </Text>
+    </View>
 
-      {/* Feed */}
-      <FlatList
+    {/* Composer (only this is inside KeyboardAvoidingView) */}
+   
+      
+
+    {/* Feed — this MUST be outside KeyboardAvoidingView */}
+          <FlatList
+        
+        style={{ flex: 1 }}
+
         data={posts}
         keyExtractor={item => item.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
@@ -114,10 +163,7 @@ export default function CommunityScreen() {
               <Text style={styles.author}>{item.author}</Text>
               <Text style={styles.dot}>•</Text>
               <Text style={styles.time}>
-                {/* This now displays a relative time like "5 minutes ago" */}
-                {item.createdAt
-                  ? `${formatDistanceToNow(new Date(item.createdAt))} ago`
-                  : item.time}
+                {item.createdAt ? `${formatDistanceToNow(new Date(item.createdAt))} ago` : item.time}
               </Text>
               <View style={{ flex: 1 }} />
               <View style={[styles.pill, { borderColor: colors.uclaBlue }]}>
@@ -127,22 +173,103 @@ export default function CommunityScreen() {
 
             <Text style={styles.body}>{item.text}</Text>
 
+            {/* Post actions */}
             <View style={styles.actions}>
               <Pressable onPress={() => upvote(item.id)} style={styles.voteBtn} hitSlop={8}>
                 <Ionicons name="thumbs-up" size={16} color={colors.uclaBlue} />
                 <Text style={styles.voteText}>{item.votes}</Text>
               </Pressable>
-              <Pressable style={styles.replyBtn} hitSlop={8}>
+              <Pressable onPress={() => toggleReplyInput(item.id)} style={styles.replyBtn} hitSlop={8}>
                 <Ionicons name="chatbubble-ellipses" size={16} color="#5F6C7B" />
                 <Text style={styles.replyText}>Reply</Text>
               </Pressable>
+              {item.author === "You" && (
+                <Pressable onPress={() => deletePost(item.id)} style={styles.replyBtn} hitSlop={8}>
+                  <Ionicons name="trash-bin" size={16} color="#E11D48" /> 
+                </Pressable>
+              )}
             </View>
+
+            {/* Replies */}
+            {item.replies && item.replies.length > 0 && (
+              <View style={{ marginTop: 8, paddingLeft: 16 }}>
+                {item.replies.map(reply => (
+                  <Text key={reply._id} style={{ fontSize: 13, color: "#5F6C7B", marginBottom: 4 }}>
+                    <Text style={{ fontWeight: "700" }}>{reply.author}: </Text>
+                    {reply.text}
+                  </Text>
+                ))}
+              </View>
+            )}
+
+            {/* Reply input */}
+            {showReplyInput === item.id && (
+              <View style={{ flexDirection: "row", marginTop: 6 }}>
+                <TextInput
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: "#ccc",
+                    borderRadius: 8,
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    fontSize: 13,
+                  }}
+                  placeholder="Write a reply..."
+                  value={replyText}
+                  onChangeText={setReplyText}
+                />
+                <Pressable
+                  onPress={() => submitReply(item.id)}
+                  style={{ marginLeft: 6, justifyContent: "center", paddingHorizontal: 8 }}
+                >
+                  <Ionicons name="send" size={16} color={colors.uclaBlue} />
+                </Pressable>
+              </View>
+            )}
           </View>
         )}
       />
-    </KeyboardAvoidingView>
-  );
+
+
+
+    <View style={styles.composer}>
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          placeholder="Share a quick tip… (e.g., 'BPlate power bowl remix for $5')"
+          placeholderTextColor="#99A3AD"
+          style={styles.input}
+          multiline
+        />
+        <View style={styles.composerRow}>
+          <View style={styles.tagsRow}>
+            {TAGS.slice(0, 4).map(t => (
+              <Pressable
+                key={t}
+                onPress={() => setTag(t)}
+                style={[styles.tag, tag === t && styles.tagOn]}
+              >
+                <Text style={[styles.tagText, tag === t && { color: "#fff" }]}>{t}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Pressable onPress={submit} style={({ pressed }) => [styles.postBtn, pressed && { opacity: 0.9 }]}>
+            <Ionicons name="send" size={16} color="#fff" />
+            <Text style={styles.postBtnText}>Post</Text>
+          </Pressable>
+        </View>
+      </View>
+
+  </KeyboardAvoidingView>
+);
+
+
+
 }
+
+
+
 
 // STYLES (no changes needed)
 const styles = StyleSheet.create({
