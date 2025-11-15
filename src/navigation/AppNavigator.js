@@ -27,11 +27,13 @@ import { Pressable } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-
 import HomeScreen from "../screens/HomeScreen";
 import MapScreen from "../screens/MapScreen";
 import RecipesScreen from "../screens/RecipesScreen";
 import CommunityScreen from "../screens/CommunityScreen";
+import LoginScreen from "../screens/LoginScreen";
+import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
+import CreateAccountScreen from "../screens/CreateAccountScreen";
 import { colors } from "../theme/colors";
 
 const Stack = createNativeStackNavigator();
@@ -57,6 +59,30 @@ export default function AppNavigator() {
             ) : null
         })}
       >
+        <Stack.Screen 
+          name="Login" 
+          component={LoginScreen} 
+          options={{ 
+            headerShown: false,
+            title: "Sign In" 
+          }} 
+        />
+        <Stack.Screen 
+          name="ForgotPassword" 
+          component={ForgotPasswordScreen} 
+          options={{ 
+            headerShown: false,
+            title: "Forgot Password" 
+          }} 
+        />
+        <Stack.Screen 
+          name="CreateAccount" 
+          component={CreateAccountScreen} 
+          options={{ 
+            headerShown: false,
+            title: "Create Account" 
+          }} 
+        />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Map" component={MapScreen} options={{ title: "Cheap Eats Map" }} />
         <Stack.Screen name="Recipes" component={RecipesScreen} options={{ title: "Budget Recipes" }} />
