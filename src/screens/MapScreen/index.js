@@ -372,7 +372,8 @@ const MapScreen = () => {
         restaurant?.google_place_id ||
         null;
       const name =
-        typeof restaurant?.name === "string" && restaurant.name.trim().length > 0
+        typeof restaurant?.name === "string" &&
+        restaurant.name.trim().length > 0
           ? restaurant.name.trim()
           : "Destination";
       const addressText =
@@ -387,7 +388,9 @@ const MapScreen = () => {
       const buildWebFallback = () => {
         if (hasCoords) {
           return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}${
-            placeId ? `&destination_place_id=${encodeURIComponent(placeId)}` : ""
+            placeId
+              ? `&destination_place_id=${encodeURIComponent(placeId)}`
+              : ""
           }${origin ? `&origin=${encodeURIComponent(origin)}` : ""}`;
         }
         if (addressText) {
@@ -463,13 +466,17 @@ const MapScreen = () => {
             }
 
             if (hasCoords) {
-              const geoCoordUrl = `geo:${lat},${lng}?q=${encodeURIComponent(name)}`;
+              const geoCoordUrl = `geo:${lat},${lng}?q=${encodeURIComponent(
+                name
+              )}`;
               await Linking.openURL(geoCoordUrl);
               return;
             }
 
             if (addressText) {
-              const geoAddressUrl = `geo:0,0?q=${encodeURIComponent(addressText)}`;
+              const geoAddressUrl = `geo:0,0?q=${encodeURIComponent(
+                addressText
+              )}`;
               await Linking.openURL(geoAddressUrl);
               return;
             }
@@ -614,21 +621,29 @@ const MapScreen = () => {
           ) : (
             <>
               <View style={styles.sheetHeader} {...panResponder.panHandlers}>
-                <Text style={styles.sheetTitle}>Search Results</Text>
+                <View>
+                  <Text style={styles.sheetTitle}>Search Results</Text>
+                  <Text style={styles.sheetSubtitle}>
+                    {filtered.length} place{filtered.length === 1 ? "" : "s"}{" "}
+                    nearby
+                  </Text>
+                </View>
                 <TouchableOpacity onPress={handleCollapseSheet} hitSlop={12}>
                   <Ionicons name="close" size={20} color="#000000" />
                 </TouchableOpacity>
               </View>
 
               <FlatList
-              data={filtered}
-              keyExtractor={(item) =>
-                item._id || item.id || item.place_id || item.name
-              }
-              extraData={favoriteIds}
-              contentContainerStyle={styles.resultsContent}
-              ItemSeparatorComponent={() => <View style={styles.cardSpacer} />}
-              renderItem={renderItem}
+                data={filtered}
+                keyExtractor={(item) =>
+                  item._id || item.id || item.place_id || item.name
+                }
+                extraData={favoriteIds}
+                contentContainerStyle={styles.resultsContent}
+                ItemSeparatorComponent={() => (
+                  <View style={styles.cardSpacer} />
+                )}
+                renderItem={renderItem}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                   <Text style={styles.emptyText}>

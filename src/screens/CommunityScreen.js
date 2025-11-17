@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, FlatList, Pressable, TextInput, KeyboardAvoidingView, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { formatDistanceToNow } from "date-fns";
 import api from "../services/api";
 import { colors } from "../theme/colors";
 
@@ -11,22 +12,20 @@ export default function CommunityScreen() {
   const [tag, setTag] = useState("Near Campus");
   const [text, setText] = useState("");
 
+  // Fetches posts when the component loads
   useEffect(() => {
     api.get("/community")
       .then(res => {
-        const base = res.data?.posts || [];
-        // enrich with mock meta for nicer UI
-        setPosts(
-          base.map((p, i) => ({
-            ...p,
-            votes: 3 + i,
-            tag: TAGS[i % TAGS.length],
-            author: ["Anonymous Bruin", "2nd-year CS", "Grad Student"][i % 3],
-            time: ["1h", "3h", "Today"][i % 3]
-          }))
-        );
+        // This now gets REAL, sorted data from your server.
+        // We map over it to ensure the key for the list is `id`.
+        const realPosts = (res.data.posts || []).map(p => ({
+          ...p,
+          id: p._id, // Use the real database ID (_id) for the FlatList key
+        }));
+        setPosts(realPosts);
       })
       .catch(() =>
+        // This fallback data is used if your backend server isn't running.
         setPosts([
           { id: "p1", text: "Diddy Riese for dessert—cash only!", votes: 12, tag: "Dessert", author: "Anonymous Bruin", time: "Today" },
           { id: "p2", text: "Kerckhoff coffee happy hour 2–4pm", votes: 7, tag: "Happy Hour", author: "2nd-year CS", time: "3h" }
@@ -34,60 +33,123 @@ export default function CommunityScreen() {
       );
   }, []);
 
-  const submit = () => {
+  // Submits a new post to the backend
+  const submit = async () => {
     const body = text.trim();
     if (!body) return;
-    const newPost = {
-      id: `local-${Date.now()}`,
+
+    const newPostData = {
       text: body,
-      votes: 0,
       tag,
       author: "You",
-      time: "just now"
     };
-    setPosts([newPost, ...posts]);
-    setText("");
+
+    try {
+      // Send the new post data to the backend API
+      const res = await api.post("/community", newPostData);
+      const savedPost = res.data;
+
+      // Add the new post returned from the server to the top of the list
+      setPosts([
+        { ...savedPost, id: savedPost._id, time: "just now" }, 
+        ...posts
+      ]);
+      
+      setText(""); // Clear the input box
+    } catch (err) {
+      console.error("Failed to submit post:", err);
+      // You could add an error message for the user here
+    }
+  };
+
+  // Deletes a post
+  const deletePost = async (postId) => {
+    try {
+      // 1. Call the backend API to delete the post
+      await api.delete(`/community/${postId}`);
+
+      // 2. Update the local state to remove the post
+      setPosts((prevPosts) =>
+        prevPosts.filter((post) => post.id !== postId)
+      );
+    } catch (err) {
+      console.error("Failed to delete post:", err);
+    }
   };
 
   const upvote = (id) => {
     setPosts(p => p.map(item => (item.id === id ? { ...item, votes: item.votes + 1 } : item)));
   };
+  
+  // State for managing which post's reply input is open
+const [showReplyInput, setShowReplyInput] = useState(null);
+const [replyText, setReplyText] = useState("");
+
+// Toggle reply input for a specific post
+const toggleReplyInput = (postId) => {
+  if (showReplyInput === postId) {
+    setShowReplyInput(null); // Close if already open
+    setReplyText("");
+  } else {
+    setShowReplyInput(postId); // Open the reply input for this post
+  }
+};
+
+// Submit a reply for a specific post
+const submitReply = async (postId) => {
+  const text = replyText.trim();
+  if (!text) return;
+
+  const replyData = {
+    text,
+    author: "You",
+  };
+
+  try {
+    const res = await api.post(`/community/${postId}/reply`, replyData);
+    const savedReply = res.data;
+
+    // Update the post locally with the new reply
+    setPosts((prevPosts) =>
+      prevPosts.map((post) =>
+        post.id === postId
+          ? { ...post, replies: [...(post.replies || []), savedReply] }
+          : post
+      )
+    );
+
+    // Clear input
+    setReplyText("");
+    setShowReplyInput(null);
+  } catch (err) {
+    console.error("Failed to submit reply:", err);
+  }
+};
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: "#fff" }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      {/* Intro banner */}
-      <View style={styles.banner}>
-        <Ionicons name="megaphone" size={18} color={colors.uclaBlue} />
-        <Text style={styles.bannerText}>Share a $5 meal, happy hour, or dorm-kitchen hack with other Bruins.</Text>
-      </View>
+  <KeyboardAvoidingView 
+  style={{ flex: 1, backgroundColor: "#fff" }} // KAV becomes the main container
+  behavior={Platform.OS === "ios" ? "padding" : "height"}
+  keyboardVerticalOffset={70} // You may need to adjust this
+>
 
-      {/* Composer */}
-      <View style={styles.composer}>
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          placeholder="Share a quick tip… (e.g., 'BPlate power bowl remix for $5')"
-          placeholderTextColor="#99A3AD"
-          style={styles.input}
-          multiline
-        />
-        <View style={styles.composerRow}>
-          <View style={styles.tagsRow}>
-            {TAGS.slice(0, 4).map(t => (
-              <Pressable key={t} onPress={() => setTag(t)} style={[styles.tag, tag === t && styles.tagOn]}>
-                <Text style={[styles.tagText, tag === t && { color: "#fff" }]}>{t}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Pressable onPress={submit} style={({ pressed }) => [styles.postBtn, pressed && { opacity: 0.9 }]}>
-            <Ionicons name="send" size={16} color="#fff" />
-            <Text style={styles.postBtnText}>Post</Text>
-          </Pressable>
-        </View>
-      </View>
+    {/* Intro banner */}
+    <View style={styles.banner}>
+      <Ionicons name="megaphone" size={18} color={colors.uclaBlue} />
+      <Text style={styles.bannerText}>
+        Share a $5 meal, happy hour, or dorm-kitchen hack with other Bruins.
+      </Text>
+    </View>
 
-      {/* Feed */}
-      <FlatList
+    {/* Composer (only this is inside KeyboardAvoidingView) */}
+   
+      
+
+    {/* Feed — this MUST be outside KeyboardAvoidingView */}
+          <FlatList
+        
+        style={{ flex: 1 }}
+
         data={posts}
         keyExtractor={item => item.id}
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
@@ -100,7 +162,9 @@ export default function CommunityScreen() {
               </View>
               <Text style={styles.author}>{item.author}</Text>
               <Text style={styles.dot}>•</Text>
-              <Text style={styles.time}>{item.time}</Text>
+              <Text style={styles.time}>
+                {item.createdAt ? `${formatDistanceToNow(new Date(item.createdAt))} ago` : item.time}
+              </Text>
               <View style={{ flex: 1 }} />
               <View style={[styles.pill, { borderColor: colors.uclaBlue }]}>
                 <Text style={[styles.pillText, { color: colors.uclaBlue }]}>{item.tag}</Text>
@@ -109,23 +173,105 @@ export default function CommunityScreen() {
 
             <Text style={styles.body}>{item.text}</Text>
 
+            {/* Post actions */}
             <View style={styles.actions}>
               <Pressable onPress={() => upvote(item.id)} style={styles.voteBtn} hitSlop={8}>
                 <Ionicons name="thumbs-up" size={16} color={colors.uclaBlue} />
                 <Text style={styles.voteText}>{item.votes}</Text>
               </Pressable>
-              <Pressable style={styles.replyBtn} hitSlop={8}>
+              <Pressable onPress={() => toggleReplyInput(item.id)} style={styles.replyBtn} hitSlop={8}>
                 <Ionicons name="chatbubble-ellipses" size={16} color="#5F6C7B" />
                 <Text style={styles.replyText}>Reply</Text>
               </Pressable>
+              {item.author === "You" && (
+                <Pressable onPress={() => deletePost(item.id)} style={styles.replyBtn} hitSlop={8}>
+                  <Ionicons name="trash-bin" size={16} color="#E11D48" /> 
+                </Pressable>
+              )}
             </View>
+
+            {/* Replies */}
+            {item.replies && item.replies.length > 0 && (
+              <View style={{ marginTop: 8, paddingLeft: 16 }}>
+                {item.replies.map(reply => (
+                  <Text key={reply._id} style={{ fontSize: 13, color: "#5F6C7B", marginBottom: 4 }}>
+                    <Text style={{ fontWeight: "700" }}>{reply.author}: </Text>
+                    {reply.text}
+                  </Text>
+                ))}
+              </View>
+            )}
+
+            {/* Reply input */}
+            {showReplyInput === item.id && (
+              <View style={{ flexDirection: "row", marginTop: 6 }}>
+                <TextInput
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: "#ccc",
+                    borderRadius: 8,
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    fontSize: 13,
+                  }}
+                  placeholder="Write a reply..."
+                  value={replyText}
+                  onChangeText={setReplyText}
+                />
+                <Pressable
+                  onPress={() => submitReply(item.id)}
+                  style={{ marginLeft: 6, justifyContent: "center", paddingHorizontal: 8 }}
+                >
+                  <Ionicons name="send" size={16} color={colors.uclaBlue} />
+                </Pressable>
+              </View>
+            )}
           </View>
         )}
       />
-    </KeyboardAvoidingView>
-  );
+
+
+
+    <View style={styles.composer}>
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          placeholder="Share a quick tip… (e.g., 'BPlate power bowl remix for $5')"
+          placeholderTextColor="#99A3AD"
+          style={styles.input}
+          multiline
+        />
+        <View style={styles.composerRow}>
+          <View style={styles.tagsRow}>
+            {TAGS.slice(0, 4).map(t => (
+              <Pressable
+                key={t}
+                onPress={() => setTag(t)}
+                style={[styles.tag, tag === t && styles.tagOn]}
+              >
+                <Text style={[styles.tagText, tag === t && { color: "#fff" }]}>{t}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Pressable onPress={submit} style={({ pressed }) => [styles.postBtn, pressed && { opacity: 0.9 }]}>
+            <Ionicons name="send" size={16} color="#fff" />
+            <Text style={styles.postBtnText}>Post</Text>
+          </Pressable>
+        </View>
+      </View>
+
+  </KeyboardAvoidingView>
+);
+
+
+
 }
 
+
+
+
+// STYLES (no changes needed)
 const styles = StyleSheet.create({
   banner: {
     margin: 16,
@@ -139,7 +285,16 @@ const styles = StyleSheet.create({
     alignItems: "flex-start"
   },
   bannerText: { flex: 1, color: "#334155" },
-
+  postBtn: {
+    backgroundColor: colors.uclaBlue,
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 999,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6
+  },
+  postBtnText: { color: "#fff", fontWeight: "700" },
   composer: {
     marginHorizontal: 16,
     marginBottom: 8,
@@ -201,7 +356,7 @@ const styles = StyleSheet.create({
   pill: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   pillText: { fontSize: 12, fontWeight: "700" },
 
-  actions: { flexDirection: "row", alignItems: "center", gap: 14 },
+  actions: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 4 },
   voteBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 6 },
   voteText: { fontWeight: "800", color: colors.uclaBlue },
   replyBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 6 },

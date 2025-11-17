@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { Marker, Callout } from "react-native-maps";
+import { Marker, Callout } from "../../../utils/maps";
 import { colors } from "../../../theme/colors";
 
 const RestaurantMarkers = ({
