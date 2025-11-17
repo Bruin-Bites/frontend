@@ -142,7 +142,7 @@ const RestaurantDetail = ({
         style={styles.primaryButton}
         activeOpacity={0.85}
       >
-        <Ionicons name="navigate-outline" size={18} color="#FFFFFF" />
+        <Ionicons name="paper-plane-outline" size={18} color="#FFFFFF" />
         <Text style={styles.primaryButtonText}>Get Directions</Text>
       </TouchableOpacity>
 
@@ -163,7 +163,7 @@ const RestaurantDetail = ({
       </ScrollView>
 
       <View style={styles.scheduleRow}>
-        <Ionicons name="calendar-outline" size={18} color="#475467" />
+        <Ionicons name="calendar-outline" size={18} color="#000000" />
         <View style={{ flex: 1 }}>
           <Text style={styles.scheduleText}>{DEFAULT_META.schedule}</Text>
           <Text style={styles.hostText}>{DEFAULT_META.host}</Text>
@@ -180,13 +180,26 @@ const RestaurantDetail = ({
         ))}
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Address</Text>
-        {addressLines.map((line, index) => (
-          <Text key={index} style={styles.addressLine}>
-            {line}
-          </Text>
-        ))}
+      <View style={styles.locationSection}>
+        <View style={styles.mapContainer}>
+          <View style={styles.mapPlaceholder}>
+            <Ionicons name="map-outline" size={32} color="#8C8C8C" />
+          </View>
+          <TouchableOpacity style={styles.mapExpandButton}>
+            <Ionicons name="expand-outline" size={18} color="#000000" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.addressRow}>
+          <Ionicons name="location-outline" size={18} color="#000000" />
+          <View style={{ flex: 1 }}>
+            {addressLines.map((line, index) => (
+              <Text key={index} style={styles.addressLine}>
+                {line}
+              </Text>
+            ))}
+          </View>
+          <Text style={styles.distanceText}>0.5 mi</Text>
+        </View>
       </View>
 
       <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.85}>
@@ -217,21 +230,25 @@ const RestaurantDetail = ({
             .filter(Boolean)
             .map((entry, index) => (
               <View key={entry.title || `menu-${index}`} style={styles.menuCard}>
+                <View style={styles.menuImagePlaceholder}>
+                  <Ionicons name="image-outline" size={24} color="#8C8C8C" />
+                </View>
                 <Text style={styles.menuTitle}>
                   {entry.title || `Option ${index + 1}`}
                 </Text>
-                {Array.isArray(entry.items) && entry.items.length > 0 ? (
-                  entry.items.map((item) => (
-                    <Text key={item} style={styles.menuItem}>
-                      • {item}
-                    </Text>
-                  ))
-                ) : (
-                  <Text style={styles.menuItem}>Details coming soon.</Text>
-                )}
               </View>
             ))}
         </ScrollView>
+        <View style={styles.menuList}>
+          {menuItems
+            .filter(Boolean)
+            .flatMap((entry) => entry.items || [])
+            .map((item, index) => (
+              <Text key={`${item}-${index}`} style={styles.menuItem}>
+                • {item}
+              </Text>
+            ))}
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -239,10 +256,24 @@ const RestaurantDetail = ({
         <View style={styles.allergyGrid}>
           {DEFAULT_META.allergies.map((label) => (
             <View key={label} style={styles.allergyPill}>
-              <View style={styles.allergyDot} />
+              <View style={styles.allergyCheckbox} />
               <Text style={styles.allergyText}>{label}</Text>
             </View>
           ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Accessibility</Text>
+        <View style={styles.allergyGrid}>
+          <View style={styles.allergyPill}>
+            <View style={[styles.allergyCheckbox, styles.allergyCheckboxFilled]} />
+            <Text style={styles.allergyText}>Wheelchair accessible</Text>
+          </View>
+          <View style={styles.allergyPill}>
+            <View style={[styles.allergyCheckbox, styles.allergyCheckboxFilled]} />
+            <Text style={styles.allergyText}>Accessible parking near entrance</Text>
+          </View>
         </View>
       </View>
     </ScrollView>
@@ -255,13 +286,13 @@ const IconCircleButton = ({ name, active, onPress }) => (
     hitSlop={12}
     style={[
       styles.iconCircle,
-      active && { backgroundColor: "rgba(21, 94, 239, 0.12)" },
+      active && { backgroundColor: "rgba(138, 182, 68, 0.12)" },
     ]}
   >
     <Ionicons
       name={name}
       size={16}
-      color={active ? colors.uclaBlue : "#475467"}
+      color={active ? "#F65952" : "#000000"}
     />
   </Pressable>
 );
@@ -285,7 +316,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: "800",
-    color: "#101828",
+    color: "#000000",
   },
   titleIcons: {
     flexDirection: "row",
@@ -296,7 +327,7 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.35)",
+    borderColor: "rgba(140,140,140,0.3)",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFFFFF",
@@ -308,7 +339,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     borderRadius: 16,
-    backgroundColor: colors.uclaBlue,
+    backgroundColor: "#8AB644",
     shadowColor: "#0F172A",
     shadowOpacity: 0.12,
     shadowRadius: 10,
@@ -345,18 +376,18 @@ const styles = StyleSheet.create({
   },
   scheduleText: {
     fontSize: 14,
-    fontWeight: "700",
-    color: "#1D2939",
+    fontWeight: "400",
+    color: "#000000",
   },
   hostText: {
     fontSize: 12,
-    color: "#475467",
+    color: "#000000",
     marginTop: 2,
   },
   description: {
     fontSize: 14,
     lineHeight: 20,
-    color: "#344054",
+    color: "#000000",
   },
   tagRow: {
     flexDirection: "row",
@@ -367,12 +398,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#8AB644",
   },
   tagChipText: {
     fontSize: 12,
     fontWeight: "600",
-    color: colors.uclaBlue,
+    color: "#8AB644",
   },
   section: {
     gap: 8,
@@ -380,24 +413,66 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#101828",
+    color: "#000000",
+  },
+  locationSection: {
+    gap: 12,
+  },
+  mapContainer: {
+    position: "relative",
+    width: "100%",
+    height: 180,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  mapPlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mapExpandButton: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000000",
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
   },
   addressLine: {
     fontSize: 13,
-    color: "#475467",
+    color: "#000000",
+  },
+  distanceText: {
+    fontSize: 13,
+    color: "#8C8C8C",
   },
   secondaryButton: {
     width: "100%",
     paddingVertical: 14,
     borderRadius: 16,
-    backgroundColor: "#E4E7EC",
+    backgroundColor: "#8AB644",
     alignItems: "center",
     justifyContent: "center",
   },
   secondaryButtonText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#344054",
+    color: "#FFFFFF",
+    textTransform: "uppercase",
   },
   hostCard: {
     flexDirection: "row",
@@ -454,26 +529,35 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   menuCard: {
-    width: 220,
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: "#FFFFFF",
+    width: 120,
+    borderRadius: 12,
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(15,23,42,0.06)",
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    gap: 6,
+    borderColor: "#FFFFFF",
+    gap: 8,
+  },
+  menuImagePlaceholder: {
+    width: "100%",
+    height: 100,
+    backgroundColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
   },
   menuTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#1F2937",
+    fontSize: 12,
+    fontWeight: "400",
+    color: "#000000",
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    textAlign: "center",
+  },
+  menuList: {
+    marginTop: 12,
+    gap: 4,
   },
   menuItem: {
     fontSize: 12,
-    color: "#475467",
+    color: "#000000",
   },
   allergyGrid: {
     flexDirection: "row",
@@ -487,20 +571,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.35)",
+    borderColor: "rgba(140,140,140,0.3)",
   },
-  allergyDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.uclaGold,
+  allergyCheckbox: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "#8AB644",
+    backgroundColor: "#FFFFFF",
+  },
+  allergyCheckboxFilled: {
+    backgroundColor: "#8AB644",
   },
   allergyText: {
     fontSize: 12,
-    fontWeight: "600",
-    color: "#475467",
+    fontWeight: "400",
+    color: "#000000",
   },
 });
 

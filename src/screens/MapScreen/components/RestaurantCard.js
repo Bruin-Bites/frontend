@@ -57,64 +57,71 @@ const RestaurantCard = ({
       style={[styles.card, selected && styles.cardSelected]}
       onPress={onPress}
     >
-      <View style={styles.cardHeader}>
-        <Pressable
-          onPress={(event) => {
-            event.stopPropagation();
-            onToggleFavorite?.();
-          }}
-          style={[
-            styles.favoriteBadge,
-            favorite && styles.favoriteBadgeOn,
-          ]}
-          hitSlop={10}
-        >
-          <Ionicons
-            name={favorite ? "heart" : "heart-outline"}
-            size={16}
-            color={favorite ? "#FFFFFF" : "#D92D20"}
-          />
-        </Pressable>
-        <View style={styles.freePill}>
-          <Text style={styles.freeText}>FREE</Text>
+      <View style={styles.imageContainer}>
+        <View style={styles.imagePlaceholder}>
+          <Ionicons name="image-outline" size={28} color="#94A3B8" />
+        </View>
+        <View style={styles.imageOverlay}>
+          <Pressable
+            onPress={(event) => {
+              event.stopPropagation();
+              onToggleFavorite?.();
+            }}
+            style={[
+              styles.favoriteBadge,
+              favorite && styles.favoriteBadgeOn,
+            ]}
+            hitSlop={10}
+          >
+            <Ionicons
+              name={favorite ? "heart" : "heart-outline"}
+              size={16}
+              color={favorite ? "#FFFFFF" : "#8C8C8C"}
+            />
+          </Pressable>
+          <View style={styles.freePill}>
+            <Text style={styles.freeText}>FREE</Text>
+          </View>
         </View>
       </View>
 
-      <View style={styles.imagePlaceholder}>
-        <Ionicons name="image-outline" size={28} color="#94A3B8" />
-      </View>
-
-      <View style={styles.nameRow}>
-        <Text style={styles.name} numberOfLines={1}>
-          {item?.name || "Unnamed place"}
+      <Text style={styles.name} numberOfLines={2}>
+        {item?.name || "Unnamed place"}
+      </Text>
+      
+      <View style={styles.metaRow}>
+        <Text style={styles.dateText}>
+          {item?.date || "Available now"}
         </Text>
         {distanceLabel ? (
           <Text style={styles.distance}>{distanceLabel}</Text>
         ) : null}
       </View>
 
-      {displayTags.length > 0 && (
-        <View style={styles.tagsRow}>
-          {displayTags.map((tag) => (
-            <View key={tag} style={styles.tagChip}>
-              <Text style={styles.tagText}>{tag}</Text>
-            </View>
-          ))}
-        </View>
-      )}
 
-      <View style={styles.socialRow}>
-        <View style={styles.socialItem}>
-          <Ionicons name="thumbs-up-outline" size={15} color="#475467" />
-          <Text style={styles.socialText}>13</Text>
-        </View>
-        <View style={styles.socialItem}>
-          <Ionicons
-            name="chatbubble-ellipses-outline"
-            size={15}
-            color="#475467"
-          />
-          <Text style={styles.socialText}>3</Text>
+      <View style={styles.bottomRow}>
+        {displayTags.length > 0 && (
+          <View style={styles.tagsRow}>
+            {displayTags.map((tag) => (
+              <View key={tag} style={styles.tagChip}>
+                <Text style={styles.tagText}>{tag}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+        <View style={styles.socialRow}>
+          <View style={styles.socialItem}>
+            <Ionicons name="thumbs-up-outline" size={15} color="#8C8C8C" />
+            <Text style={styles.socialText}>13</Text>
+          </View>
+          <View style={styles.socialItem}>
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={15}
+              color="#8C8C8C"
+            />
+            <Text style={styles.socialText}>3</Text>
+          </View>
         </View>
       </View>
     </Pressable>
@@ -125,7 +132,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 22,
-    padding: 16,
+    padding: 0,
     borderWidth: 1,
     borderColor: "rgba(15,23,42,0.06)",
     shadowColor: "#0F172A",
@@ -133,83 +140,114 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
-    gap: 14,
+    overflow: "hidden",
+    gap: 0,
   },
   cardSelected: {
     borderColor: colors.uclaGold,
     shadowOpacity: 0.18,
   },
-  cardHeader: {
-    flexDirection: "row",
+  imageContainer: {
+    position: "relative",
+    width: "100%",
+  },
+  imagePlaceholder: {
+    height: 180,
+    width: "100%",
+    backgroundColor: "#E2E8F0",
     alignItems: "center",
+    justifyContent: "center",
+  },
+  imageOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "flex-start",
     justifyContent: "space-between",
+    padding: 12,
   },
   favoriteBadge: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "rgba(217,45,32,0.12)",
+    backgroundColor: "rgba(255,255,255,0.9)",
     alignItems: "center",
     justifyContent: "center",
   },
   favoriteBadgeOn: {
-    backgroundColor: "#D92D20",
+    backgroundColor: "#F65952",
   },
   freePill: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: "#F2F4F7",
+    backgroundColor: "#8AB644",
   },
   freeText: {
     fontSize: 11,
     fontWeight: "800",
-    letterSpacing: 0.8,
-    color: "#1D2939",
-  },
-  imagePlaceholder: {
-    height: 110,
-    borderRadius: 18,
-    backgroundColor: "#E2E8F0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  nameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+    letterSpacing: 0.5,
+    color: "#FFFFFF",
   },
   name: {
-    flex: 1,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "800",
-    color: "#101828",
+    color: "#000000",
+    marginTop: 14,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  dateText: {
+    fontSize: 13,
+    fontWeight: "400",
+    color: "#8C8C8C",
+    flex: 1,
   },
   distance: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#475467",
+    fontSize: 13,
+    fontWeight: "400",
+    color: "#8C8C8C",
+    marginLeft: 8,
+  },
+  bottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginBottom: 16,
+    marginTop: 4,
   },
   tagsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
+    flex: 1,
   },
   tagChip: {
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: "#8AB644",
   },
   tagText: {
     fontSize: 11,
     fontWeight: "600",
-    color: colors.uclaBlue,
+    color: "#FFFFFF",
   },
   socialRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
+    marginLeft: 12,
   },
   socialItem: {
     flexDirection: "row",
@@ -219,7 +257,7 @@ const styles = StyleSheet.create({
   socialText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#475467",
+    color: "#8C8C8C",
   },
 });
 

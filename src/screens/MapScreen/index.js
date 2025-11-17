@@ -592,14 +592,14 @@ const MapScreen = () => {
                     hitSlop={12}
                     style={styles.detailHeaderButton}
                   >
-                    <Ionicons name="chevron-back" size={20} color="#475467" />
+                    <Ionicons name="chevron-back" size={20} color="#000000" />
                   </TouchableOpacity>
                   <Text style={styles.detailHeaderTitle} numberOfLines={1}>
                     {selectedRestaurant?.name || "Details"}
                   </Text>
                 </View>
                 <TouchableOpacity onPress={handleCollapseSheet} hitSlop={12}>
-                  <Ionicons name="close" size={20} color="#475467" />
+                  <Ionicons name="close" size={20} color="#000000" />
                 </TouchableOpacity>
               </View>
               {selectedRestaurant ? (
@@ -614,14 +614,9 @@ const MapScreen = () => {
           ) : (
             <>
               <View style={styles.sheetHeader} {...panResponder.panHandlers}>
-                <View>
-                  <Text style={styles.sheetTitle}>Search Results</Text>
-                  <Text style={styles.sheetSubtitle}>
-                    {filtered.length} place{filtered.length === 1 ? "" : "s"} nearby
-                  </Text>
-                </View>
+                <Text style={styles.sheetTitle}>Search Results</Text>
                 <TouchableOpacity onPress={handleCollapseSheet} hitSlop={12}>
-                  <Ionicons name="close" size={20} color="#475467" />
+                  <Ionicons name="close" size={20} color="#000000" />
                 </TouchableOpacity>
               </View>
 
@@ -657,12 +652,12 @@ const MapScreen = () => {
         onLayout={handleTopLayout}
       >
         <View style={styles.searchField}>
-          <Ionicons name="search" size={18} color="#475467" />
+          <Ionicons name="search" size={18} color="#000000" />
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Find deals, discounts, offers"
-            placeholderTextColor="#98A2B3"
+            placeholder="Find deals"
+            placeholderTextColor="#8C8C8C"
             style={styles.searchInput}
             returnKeyType="search"
           />
@@ -671,7 +666,7 @@ const MapScreen = () => {
               onPress={() => setQuery("")}
               hitSlop={{ top: 10, left: 10, bottom: 10, right: 10 }}
             >
-              <Ionicons name="close-circle" size={18} color="#98A2B3" />
+              <Ionicons name="close-circle" size={18} color="#8C8C8C" />
             </TouchableOpacity>
           )}
           <View style={styles.filterDivider} />
@@ -680,7 +675,7 @@ const MapScreen = () => {
             onPress={() => setFiltersVisible(true)}
             hitSlop={{ top: 12, left: 12, bottom: 12, right: 12 }}
           >
-            <Ionicons name="options-outline" size={20} color="#1D2939" />
+            <Ionicons name="options-outline" size={20} color="#8AB644" />
           </TouchableOpacity>
         </View>
 
@@ -747,33 +742,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    borderRadius: 18,
+    borderRadius: 24,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     gap: 12,
-    elevation: 3,
+    elevation: 2,
     shadowColor: "#0F172A",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    borderWidth: 1,
-    borderColor: "rgba(226,232,240,0.8)",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    borderWidth: 0,
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: "#1F2937",
+    color: "#000000",
   },
   filterDivider: {
     width: 1,
     height: 20,
-    backgroundColor: "rgba(226,232,240,0.8)",
+    backgroundColor: "#8C8C8C",
   },
   filterButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: "#EEF2FF",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: "#8AB644",
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -794,38 +790,38 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     overflow: "hidden",
     shadowColor: "#0F172A",
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: -8 },
     elevation: 16,
   },
   sheetHandleArea: {
     paddingTop: 12,
-    paddingBottom: 4,
+    paddingBottom: 8,
     alignItems: "center",
   },
   sheetHandle: {
     width: 48,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "#D0D5DD",
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#8C8C8C",
   },
   sheetHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 16,
   },
   sheetTitle: {
     fontSize: 18,
-    fontWeight: "800",
-    color: "#1F2937",
+    fontWeight: "700",
+    color: "#000000",
   },
   detailHeaderRow: {
     flexDirection: "row",
@@ -837,7 +833,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -845,17 +841,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: "700",
-    color: "#1F2937",
-  },
-  sheetSubtitle: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 2,
+    color: "#000000",
   },
   resultsContent: {
     paddingHorizontal: 20,
     paddingBottom: 32,
-    paddingTop: 8,
+    paddingTop: 4,
   },
   cardSpacer: {
     height: 12,
