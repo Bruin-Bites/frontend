@@ -10,6 +10,8 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  Image,
+  ScrollView,
   Linking,
   Platform,
   Alert,
@@ -55,17 +57,113 @@ const DEFAULT_FILTERS = {
   date: [],
 };
 
+const CONTRIBUTIONS = [
+  {
+    id: "contrib-1",
+    title: "Saturday Brunch",
+    time: "October 17, 2025 • 12:00 PM – 1:30 PM",
+    distance: "0.5 mi",
+    tags: ["On Campus", "FCFS", "Lunch", "Vegan"],
+    host: "Student Media",
+    latitude: 34.0689,
+    longitude: -118.4452,
+    mapPreview:
+      "https://maps.gstatic.com/tactile/pane/default_geocode-2x.png",
+    image:
+      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1481931098730-318b6f776db0?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1504674900247-0831cf36e7c2?auto=format&fit=crop&w=900&q=80",
+      "https://images.unsplash.com/photo-1525385133512-88c3c4021d39?auto=format&fit=crop&w=900&q=80",
+    ],
+    address: "106 Strathmore Pl, Los Angeles, CA 90095",
+    description:
+      "Join us for a Saturday Brunch hosted by Student Media at UCLA. Listen to speakers and the first 40 attendees will get FREE food!",
+    allergies: ["Vegan", "Contains Soy", "Contains Wheat", "Low-Carbon-Footprint", "Contains Gluten", "Contains Egg"],
+    accessibility: ["Wheelchair accessible", "Accessible parking near entrance"],
+    menu: [
+      { title: "Chicken Sandwich", items: ["Chicken Sandwich", "Chips"] },
+      { title: "Vegan Sandwich", items: ["Vegan Sandwich", "Salad"] },
+      { title: "Dessert", items: ["Chocolate Cookies", "Fruit"] },
+    ],
+  },
+  {
+    id: "contrib-2",
+    title: "Free Matcha",
+    time: "October 17, 2025 • 1:00 PM – 1:30 PM",
+    distance: "0.5 mi",
+    tags: ["Free", "Drinks"],
+    host: "Campus Coffee Club",
+    latitude: 34.0705,
+    longitude: -118.4465,
+    mapPreview:
+      "https://maps.gstatic.com/tactile/pane/default_geocode-2x.png",
+    image:
+      "https://images.unsplash.com/photo-1525385133512-88c3c4021d39?auto=format&fit=crop&w=1200&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1525385133512-88c3c4021d39?auto=format&fit=crop&w=900&q=80",
+    ],
+    address: "Kerckhoff Patio, UCLA",
+    description: "Grab a free matcha latte on campus while supplies last!",
+    allergies: ["Contains Soy"],
+    accessibility: ["Ramp access"],
+    menu: [{ title: "Matcha Latte", items: ["Iced Matcha", "Hot Matcha"] }],
+  },
+  {
+    id: "contrib-3",
+    title: "$5 Poke Bowls",
+    time: "October 17, 2025 • 6:00 PM – 7:00 PM",
+    distance: "0.8 mi",
+    tags: ["Deal", "Poke"],
+    host: "Bruin Eats",
+    latitude: 34.059,
+    longitude: -118.4435,
+    mapPreview:
+      "https://maps.gstatic.com/tactile/pane/default_geocode-2x.png",
+    image:
+      "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=1200&q=80",
+    images: [
+      "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=900&q=80",
+    ],
+    address: "Westwood Blvd, Los Angeles, CA",
+    description: "Discounted poke bowls from a local partner for one night only.",
+    allergies: ["Contains Gluten", "Contains Soy"],
+    accessibility: ["Elevator access"],
+    menu: [{ title: "Poke Bowl", items: ["Salmon", "Tuna", "Tofu"] }],
+  },
+];
+
 const MapScreen = () => {
   const [query, setQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState(DEFAULT_FILTERS);
   const [mapMode, setMapMode] = useState("native");
   const [selectedId, setSelectedId] = useState(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [selectedContribution, setSelectedContribution] = useState(null);
   const [viewMode, setViewMode] = useState("list");
   const [transientError, setTransientError] = useState(null);
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [topBarHeight, setTopBarHeight] = useState(0);
   const [favoriteIds, setFavoriteIds] = useState(() => new Set());
+  const [activeTab, setActiveTab] = useState("restaurants");
+  const [rsvpVisible, setRsvpVisible] = useState(false);
+  const [rsvpThankYou, setRsvpThankYou] = useState(false);
+  const [rsvpForm, setRsvpForm] = useState({ first: "", last: "", email: "" });
+
+  const contributionsWithCoordinates = useMemo(
+    () =>
+      CONTRIBUTIONS.map((c) => ({
+        ...c,
+        geometry: c.geometry || {
+          location: {
+            lat: c.latitude ?? 34.0689,
+            lng: c.longitude ?? -118.4452,
+          },
+        },
+      })),
+    []
+  );
   const mapRef = useRef(null);
   const lastFitSignatureRef = useRef(null);
   const { height: windowHeight } = useWindowDimensions();
@@ -86,6 +184,10 @@ const MapScreen = () => {
   const onApply = () => {
     setFiltersVisible(false);
   };
+
+  useEffect(() => {
+    resetSelection();
+  }, [activeTab]);
 
   const onReset = () => {
     setActiveFilters(DEFAULT_FILTERS);
@@ -114,6 +216,56 @@ const MapScreen = () => {
     query,
     active: activeFilters,
   });
+
+  const normalizeTag = useCallback((value) => {
+    return typeof value === "string"
+      ? value.toLowerCase().replace(/[^a-z0-9]/g, "")
+      : "";
+  }, []);
+
+  const contributionsFiltered = useMemo(() => {
+    const tagsSelected = {
+      location: (activeFilters.location || []).map(normalizeTag),
+      deals: (activeFilters.deals || []).map(normalizeTag),
+      dietary: (activeFilters.dietary || []).map(normalizeTag),
+      foodType: (activeFilters.foodType || []).map(normalizeTag),
+      date: Array.isArray(activeFilters.date)
+        ? activeFilters.date.map(normalizeTag)
+        : activeFilters.date
+        ? [normalizeTag(activeFilters.date)]
+        : [],
+    };
+
+    const hasSelections = Object.values(tagsSelected).some(
+      (arr) => Array.isArray(arr) && arr.length > 0
+    );
+
+    const matchAny = (contributionTags = [], selectedList = []) => {
+      if (!selectedList.length) return true;
+      const tagSet = contributionTags.map(normalizeTag);
+      return selectedList.some((sel) => tagSet.includes(sel));
+    };
+
+    return contributionsWithCoordinates.filter((c) => {
+      if (!hasSelections) return true;
+      const tags = Array.isArray(c.tags) ? c.tags : [];
+      return (
+        matchAny(tags, tagsSelected.location) &&
+        matchAny(tags, tagsSelected.deals) &&
+        matchAny(tags, tagsSelected.dietary) &&
+        matchAny(tags, tagsSelected.foodType) &&
+        matchAny(tags, tagsSelected.date)
+      );
+    });
+  }, [activeFilters, contributionsWithCoordinates, normalizeTag]);
+
+  const mapItems = useMemo(
+    () =>
+      activeTab === "restaurants"
+        ? restaurantsWithCoordinates
+        : contributionsFiltered,
+    [activeTab, restaurantsWithCoordinates, contributionsFiltered]
+  );
 
   const mapProvider = useMemo(
     () =>
@@ -154,11 +306,11 @@ const MapScreen = () => {
   }, [maxTranslate, sheetTranslate]);
 
   const fitSignature = useMemo(() => {
-    if (!restaurantsWithCoordinates.length) {
+    if (!mapItems.length) {
       return null;
     }
 
-    return restaurantsWithCoordinates
+    return mapItems
       .map((item) => {
         const id = item._id || item.id || item.place_id || item.name;
         const lat = item?.geometry?.location?.lat;
@@ -166,7 +318,7 @@ const MapScreen = () => {
         return `${id ?? "unknown"}:${lat ?? "?"},${lng ?? "?"}`;
       })
       .join("|");
-  }, [restaurantsWithCoordinates]);
+  }, [mapItems]);
 
   useEffect(() => {
     if (fitSignature === null || !mapRef.current) {
@@ -177,7 +329,7 @@ const MapScreen = () => {
       return;
     }
 
-    const coordinates = restaurantsWithCoordinates
+    const coordinates = mapItems
       .map((item) => ({
         latitude: item?.geometry?.location?.lat,
         longitude: item?.geometry?.location?.lng,
@@ -209,7 +361,7 @@ const MapScreen = () => {
       animated: true,
     });
     lastFitSignatureRef.current = fitSignature;
-  }, [fitSignature, restaurantsWithCoordinates, mapMode, mapEdgePadding]);
+  }, [fitSignature, mapItems, mapMode, mapEdgePadding]);
 
   useEffect(() => {
     lastFitSignatureRef.current = null;
@@ -281,6 +433,7 @@ const MapScreen = () => {
   const resetSelection = useCallback(() => {
     setViewMode("list");
     setSelectedRestaurant(null);
+    setSelectedContribution(null);
     setSelectedId(null);
   }, [setSelectedId, setSelectedRestaurant, setViewMode]);
 
@@ -292,6 +445,7 @@ const MapScreen = () => {
   const handleReturnToList = useCallback(() => {
     setViewMode("list");
     setSelectedRestaurant(null);
+    setSelectedContribution(null);
     const target = Math.max(maxTranslate - 180, 0);
     animateSheetTo(target);
   }, [animateSheetTo, maxTranslate, setSelectedRestaurant, setViewMode]);
@@ -526,6 +680,20 @@ const MapScreen = () => {
 
   const renderItem = useCallback(
     ({ item }) => {
+      if (activeTab === "contributions") {
+        return (
+          <ContributionCard
+            item={item}
+            onPress={() => {
+              setSelectedId(item.id || item._id || item.name);
+              setSelectedContribution(item);
+              setViewMode("contribution-detail");
+              animateSheetTo(0);
+            }}
+          />
+        );
+      }
+
       const id = item._id || item.id || item.place_id || item.name;
       return (
         <RestaurantCard
@@ -537,7 +705,7 @@ const MapScreen = () => {
         />
       );
     },
-    [favoriteIds, handleSelectRestaurant, selectedId, toggleFavorite]
+    [activeTab, favoriteIds, handleSelectRestaurant, selectedId, toggleFavorite, animateSheetTo]
   );
 
   if (loading) {
@@ -566,12 +734,19 @@ const MapScreen = () => {
           showsCompass
         >
           <RestaurantMarkers
-            restaurants={restaurantsWithCoordinates}
+            restaurants={mapItems}
             selectedId={selectedId}
-            onSelect={(item) =>
-              handleSelectRestaurant(item, { openDetail: true })
-            }
-            onNavigate={confirmNavigate}
+            onSelect={(item) => {
+              if (activeTab === "restaurants") {
+                handleSelectRestaurant(item, { openDetail: true });
+              } else {
+                setSelectedContribution(item);
+                setSelectedId(item.id || item._id || item.name);
+                setViewMode("contribution-detail");
+                animateSheetTo(0);
+              }
+            }}
+            onNavigate={activeTab === "restaurants" ? confirmNavigate : undefined}
           />
         </MapView>
 
@@ -618,14 +793,47 @@ const MapScreen = () => {
                 />
               ) : null}
             </>
+          ) : viewMode === "contribution-detail" && selectedContribution ? (
+            <>
+              <View style={styles.sheetHeader} {...panResponder.panHandlers}>
+                <View style={styles.detailHeaderRow}>
+                  <TouchableOpacity
+                    onPress={handleReturnToList}
+                    hitSlop={12}
+                    style={styles.detailHeaderButton}
+                  >
+                    <Ionicons name="chevron-back" size={20} color="#000000" />
+                  </TouchableOpacity>
+                  <Text style={styles.detailHeaderTitle} numberOfLines={1}>
+                    {selectedContribution?.title || "Details"}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={handleCollapseSheet} hitSlop={12}>
+                  <Ionicons name="close" size={20} color="#000000" />
+                </TouchableOpacity>
+              </View>
+              <ContributionDetail
+                item={selectedContribution}
+                related={CONTRIBUTIONS.filter((c) => c.id !== selectedContribution.id)}
+                contributions={contributionsWithCoordinates}
+                onPressRSVP={() => setRsvpVisible(true)}
+                onSelectContribution={(next) => {
+                  setSelectedContribution(next);
+                  setSelectedId(next.id || next._id || next.name);
+                  setViewMode("contribution-detail");
+                  animateSheetTo(0);
+                }}
+              />
+            </>
           ) : (
             <>
               <View style={styles.sheetHeader} {...panResponder.panHandlers}>
                 <View>
                   <Text style={styles.sheetTitle}>Search Results</Text>
                   <Text style={styles.sheetSubtitle}>
-                    {filtered.length} place{filtered.length === 1 ? "" : "s"}{" "}
-                    nearby
+                    {activeTab === "restaurants"
+                      ? `${filtered.length} place${filtered.length === 1 ? "" : "s"} nearby`
+                      : `${contributionsFiltered.length} contribution${contributionsFiltered.length === 1 ? "" : "s"}`}
                   </Text>
                 </View>
                 <TouchableOpacity onPress={handleCollapseSheet} hitSlop={12}>
@@ -633,12 +841,49 @@ const MapScreen = () => {
                 </TouchableOpacity>
               </View>
 
+              <View style={styles.tabRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.tabButton,
+                    activeTab === "restaurants" && styles.tabButtonActive,
+                  ]}
+                  onPress={() => setActiveTab("restaurants")}
+                >
+                  <Text
+                    style={[
+                      styles.tabText,
+                      activeTab === "restaurants" && styles.tabTextActive,
+                    ]}
+                  >
+                    Restaurants
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.tabButton,
+                    activeTab === "contributions" && styles.tabButtonActive,
+                  ]}
+                  onPress={() => setActiveTab("contributions")}
+                >
+                  <Text
+                    style={[
+                      styles.tabText,
+                      activeTab === "contributions" && styles.tabTextActive,
+                    ]}
+                  >
+                    Contributions
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               <FlatList
-                data={filtered}
+                data={activeTab === "restaurants" ? filtered : contributionsFiltered}
                 keyExtractor={(item) =>
-                  item._id || item.id || item.place_id || item.name
+                  activeTab === "restaurants"
+                    ? item._id || item.id || item.place_id || item.name
+                    : item.id
                 }
-                extraData={favoriteIds}
+                extraData={activeTab === "restaurants" ? favoriteIds : undefined}
                 contentContainerStyle={styles.resultsContent}
                 ItemSeparatorComponent={() => (
                   <View style={styles.cardSpacer} />
@@ -647,7 +892,9 @@ const MapScreen = () => {
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                   <Text style={styles.emptyText}>
-                    We could not find any places that match your filters yet.
+                    {activeTab === "restaurants"
+                      ? "We could not find any places that match your filters yet."
+                      : "No contributions match your filters right now."}
                   </Text>
                 }
               />
@@ -724,7 +971,289 @@ const MapScreen = () => {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        transparent
+        animationType="slide"
+        visible={rsvpVisible}
+        onRequestClose={() => setRsvpVisible(false)}
+      >
+        <View style={styles.rsvpOverlay}>
+          <View style={styles.rsvpCard}>
+            <View style={styles.rsvpHeader}>
+              <View>
+                <Text style={styles.rsvpTitle}>{selectedContribution?.title}</Text>
+                <Text style={styles.rsvpSub}>{selectedContribution?.time}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setRsvpVisible(false)} hitSlop={12}>
+                <Ionicons name="close" size={22} color="#000000" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.rsvpBox}>
+              <Text style={styles.rsvpBoxText}>Free Admission</Text>
+            </View>
+
+            <Text style={styles.rsvpSectionLabel}>Contact Information</Text>
+            <View style={styles.rsvpInputsRow}>
+              <TextInput
+                style={[styles.rsvpInput, { marginRight: 8 }]}
+                placeholder="First name*"
+                value={rsvpForm.first}
+                onChangeText={(t) => setRsvpForm((p) => ({ ...p, first: t }))}
+              />
+              <TextInput
+                style={[styles.rsvpInput, { marginLeft: 8 }]}
+                placeholder="Last name*"
+                value={rsvpForm.last}
+                onChangeText={(t) => setRsvpForm((p) => ({ ...p, last: t }))}
+              />
+            </View>
+            <TextInput
+              style={[styles.rsvpInput, styles.rsvpInputFull]}
+              placeholder="Email address*"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={rsvpForm.email}
+              onChangeText={(t) => setRsvpForm((p) => ({ ...p, email: t }))}
+            />
+
+            <TouchableOpacity
+              style={[styles.primaryButton, { marginTop: 12 }]}
+              activeOpacity={0.9}
+              onPress={() => {
+                setRsvpVisible(false);
+                setRsvpThankYou(true);
+                animateSheetTo(maxTranslate);
+                setViewMode("list");
+              }}
+            >
+              <Text style={styles.primaryButtonText}>RSVP</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        transparent
+        animationType="fade"
+        visible={rsvpThankYou}
+        onRequestClose={() => setRsvpThankYou(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setRsvpThankYou(false)}>
+          <View style={styles.thankOverlay}>
+            <View style={styles.thankCard}>
+              <TouchableOpacity
+                style={styles.thankClose}
+                onPress={() => setRsvpThankYou(false)}
+                hitSlop={12}
+              >
+                <Ionicons name="close" size={18} color="#000000" />
+              </TouchableOpacity>
+              <Image
+                source={{
+                  uri: "https://images.unsplash.com/photo-1589985270826-4c08f2f3c4d8?auto=format&fit=crop&w=300&q=80",
+                }}
+                style={styles.thankImage}
+              />
+              <Text style={styles.thankText}>Thank you for reserving!</Text>
+              <Text style={styles.thankSub}>We’ll notify you soon with more details.</Text>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
+  );
+};
+
+const ContributionCard = ({ item, onPress }) => (
+  <Pressable style={styles.contributionCard} onPress={onPress}>
+    <View style={styles.contributionImageWrap}>
+      {item.image ? (
+        <Image source={{ uri: item.image }} style={styles.contributionImage} />
+      ) : (
+        <View style={styles.contributionImagePlaceholder}>
+          <Ionicons name="image-outline" size={24} color="#94A3B8" />
+        </View>
+      )}
+      {item.image ? (
+        <View style={styles.contributionImageOverlay}>
+          <Text style={styles.contributionTag}>{item.tags?.[0] || "Deal"}</Text>
+        </View>
+      ) : null}
+    </View>
+    <View style={styles.contributionBody}>
+      <Text style={styles.contributionTitle} numberOfLines={2}>
+        {item.title}
+      </Text>
+      <Text style={styles.contributionMeta}>{item.time}</Text>
+      <Text style={styles.contributionMeta}>{item.distance}</Text>
+      <View style={styles.contributionTagsRow}>
+        {(item.tags || []).map((tag) => (
+          <View key={tag} style={styles.contributionTagPill}>
+            <Text style={styles.contributionTagText}>{tag}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  </Pressable>
+);
+
+const ContributionDetail = ({
+  item,
+  related,
+  contributions,
+  onPressRSVP,
+  onSelectContribution,
+}) => {
+  const gallery = Array.isArray(item?.images) && item.images.length > 0
+    ? item.images
+    : item.image
+    ? [item.image]
+    : [];
+
+  const moreForYou = useMemo(() => {
+    const list = Array.isArray(contributions) && contributions.length > 0
+      ? contributions
+      : related || [];
+
+    if (!list.length) return [];
+
+    const idx = list.findIndex((c) => c.id === item.id);
+    const nextIndex = idx >= 0 ? idx + 1 : 0;
+    const wrappedIndex = nextIndex < list.length ? nextIndex : 0;
+    const candidate = list[wrappedIndex];
+    return candidate ? [candidate] : [];
+  }, [contributions, related, item]);
+
+  return (
+    <ScrollView
+      style={styles.detailScroll}
+      contentContainerStyle={styles.detailContent}
+      showsVerticalScrollIndicator={false}
+    >
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        style={styles.contribHero}
+      >
+        {gallery.length === 0 ? (
+          <View style={[styles.contribHero, styles.contributionImagePlaceholder]}>
+            <Ionicons name="image-outline" size={28} color="#94A3B8" />
+          </View>
+        ) : (
+          gallery.map((uri, idx) => (
+            <Image
+              key={`${uri}-${idx}`}
+              source={{ uri }}
+              style={styles.contribHeroImage}
+            />
+          ))
+        )}
+      </ScrollView>
+
+      <Text style={styles.contribTitle}>{item?.title}</Text>
+      <Text style={styles.contribMeta}>{item?.time}</Text>
+      {item?.host ? (
+        <Text style={styles.contribMeta}>Host by {item.host}</Text>
+      ) : null}
+      <View style={styles.contribTagsRow}>
+        {(item?.tags || []).map((tag) => (
+          <View key={tag} style={styles.contribTagPill}>
+            <Text style={styles.contribTagText}>{tag}</Text>
+          </View>
+        ))}
+      </View>
+
+      {item?.address ? (
+        <View style={styles.contribMapBlock}>
+          <Image
+            source={{
+              uri:
+                item.mapPreview ||
+                "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=1200&q=80",
+            }}
+            style={styles.contribMapImage}
+          />
+          <View style={styles.contribAddressRow}>
+            <Ionicons name="location-outline" size={18} color="#000000" />
+            <Text style={styles.contribAddress}>{item.address}</Text>
+            {item.distance ? (
+              <Text style={styles.contribDistance}>{item.distance}</Text>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+
+      {item?.description ? (
+        <Text style={styles.contribDescription}>{item.description}</Text>
+      ) : null}
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Menu</Text>
+        {Array.isArray(item?.menu) && item.menu.length > 0 ? (
+          <View style={styles.menuList}>
+            {item.menu.map((entry, idx) => (
+              <View key={entry.title || `menu-${idx}`} style={styles.menuListBlock}>
+                <Text style={styles.menuTitle}>{entry.title}</Text>
+                {(entry.items || []).map((m, i2) => (
+                  <Text key={`${m}-${i2}`} style={styles.menuItem}>• {m}</Text>
+                ))}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.menuItem}>Menu not available.</Text>
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Allergies</Text>
+        <View style={styles.contribPillGrid}>
+          {(item?.allergies || ["Vegan", "Contains Soy", "Contains Wheat"]).map(
+            (label) => (
+              <View key={label} style={styles.contribPill}>
+                <View style={styles.contribBullet} />
+                <Text style={styles.contribPillText}>{label}</Text>
+              </View>
+            )
+          )}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Accessibility</Text>
+        <View style={styles.contribPillGrid}>
+          {(item?.accessibility || ["Wheelchair accessible", "Accessible parking near entrance"]).map(
+            (label) => (
+              <View key={label} style={styles.contribPill}>
+                <View style={[styles.contribBullet, { backgroundColor: "#8AB644" }]} />
+                <Text style={styles.contribPillText}>{label}</Text>
+              </View>
+            )
+          )}
+        </View>
+      </View>
+
+      {moreForYou.length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>More for You</Text>
+          <ContributionCard
+            item={moreForYou[0]}
+            onPress={() => onSelectContribution?.(moreForYou[0])}
+          />
+        </View>
+      ) : null}
+
+      <TouchableOpacity
+        style={[styles.primaryButton, { marginTop: 8 }]}
+        activeOpacity={0.9}
+        onPress={onPressRSVP}
+      >
+        <Text style={styles.primaryButtonText}>RSVP</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 };
 
@@ -738,6 +1267,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F5F7FB",
+  },
+  primaryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: "#8AB644",
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  primaryButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
   overlayTop: {
     position: "absolute",
@@ -865,6 +1412,317 @@ const styles = StyleSheet.create({
   },
   cardSpacer: {
     height: 12,
+  },
+  tabRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: "#F2F4F7",
+    alignItems: "center",
+  },
+  tabButtonActive: {
+    backgroundColor: "#8AB644",
+  },
+  tabText: {
+    fontWeight: "700",
+    color: "#475569",
+  },
+  tabTextActive: {
+    color: "#FFFFFF",
+  },
+  contributionCard: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(15,23,42,0.06)",
+    overflow: "hidden",
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  contributionImageWrap: {
+    width: 110,
+    height: 120,
+  },
+  contributionImage: {
+    width: "100%",
+    height: "100%",
+  },
+  contributionImagePlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#E2E8F0",
+  },
+  contributionImageOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    padding: 6,
+    alignItems: "flex-start",
+  },
+  contributionImageSpacer: {
+    flex: 1,
+  },
+  contributionTag: {
+    backgroundColor: "rgba(0,0,0,0.6)",
+    color: "#FFFFFF",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  contributionBody: {
+    flex: 1,
+    padding: 12,
+    gap: 4,
+  },
+  contributionTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  contributionMeta: {
+    fontSize: 12,
+    color: "#475569",
+  },
+  contributionTagsRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 6,
+  },
+  contributionTagPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: "#E2F3D8",
+    borderRadius: 999,
+  },
+  contributionTagText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#4A7C10",
+  },
+  contribMapBlock: {
+    marginTop: 12,
+    gap: 10,
+  },
+  contribMapPlaceholder: {
+    width: "100%",
+    height: 180,
+    borderRadius: 16,
+    backgroundColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  contribMapImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: 16,
+  },
+  contribHero: {
+    width: "100%",
+    height: 220,
+  },
+  contribHeroImage: {
+    width: 320,
+    height: 220,
+    resizeMode: "cover",
+  },
+  contribTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginTop: 12,
+  },
+  contribMeta: {
+    fontSize: 13,
+    color: "#475569",
+    marginTop: 4,
+  },
+  contribTagsRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+    marginTop: 10,
+  },
+  contribTagPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: "#E2F3D8",
+    borderRadius: 999,
+  },
+  contribTagText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#4A7C10",
+  },
+  contribAddressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 12,
+  },
+  contribAddress: {
+    flex: 1,
+    fontSize: 13,
+    color: "#0F172A",
+  },
+  contribDistance: {
+    fontSize: 12,
+    color: "#475569",
+  },
+  contribDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#0F172A",
+    marginTop: 12,
+  },
+  menuListBlock: {
+    marginBottom: 8,
+  },
+  contribPillGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  contribPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12,
+  },
+  contribBullet: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#0EA5E9",
+  },
+  contribPillText: {
+    fontSize: 13,
+    color: "#0F172A",
+  },
+  rsvpOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.6)",
+    justifyContent: "center",
+    padding: 16,
+  },
+  rsvpCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
+  },
+  rsvpHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  rsvpTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  rsvpSub: {
+    fontSize: 13,
+    color: "#475569",
+    marginTop: 2,
+  },
+  rsvpBox: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 12,
+    backgroundColor: "#F8FAFC",
+  },
+  rsvpBoxText: {
+    fontSize: 14,
+    color: "#0F172A",
+    fontWeight: "600",
+  },
+  rsvpSectionLabel: {
+    fontSize: 13,
+    color: "#475569",
+    marginTop: 4,
+  },
+  rsvpInputsRow: {
+    flexDirection: "row",
+    marginTop: 8,
+  },
+  rsvpInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 8,
+    fontSize: 14,
+    backgroundColor: "#FFFFFF",
+  },
+  rsvpInputFull: {
+    width: "100%",
+    flex: undefined,
+  },
+  thankOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  thankCard: {
+    width: 260,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+    position: "relative",
+    gap: 8,
+  },
+  thankClose: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+  },
+  thankImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#FFE4E6",
+  },
+  thankText: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0F172A",
+    textAlign: "center",
+  },
+  thankSub: {
+    fontSize: 13,
+    color: "#475569",
+    textAlign: "center",
+  },
+  detailScroll: {
+    flex: 1,
+  },
+  detailContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    gap: 12,
   },
   emptyText: {
     textAlign: "center",

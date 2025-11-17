@@ -23,8 +23,10 @@ const deriveBaseUrl = () => {
   return "http://localhost:5050/api";
 };
 
+export const API_BASE_URL = deriveBaseUrl();
+
 const api = axios.create({
-  baseURL: deriveBaseUrl(),
+  baseURL: API_BASE_URL,
   timeout: 10000,
 });
 
