@@ -9,9 +9,10 @@ import {
   Platform,
   Pressable,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { generateRecipe } from '../services/recipeService';
+import { generateRecipe, saveRecipe } from '../services/recipeService';
 
 export default function AIRecipeBotScreen({ navigation }) {
   const [messages, setMessages] = useState([
@@ -24,7 +25,7 @@ export default function AIRecipeBotScreen({ navigation }) {
   ]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [generatedRecipe, setGeneratedRecipe] = useState(null);
+  const [savingRecipeId, setSavingRecipeId] = useState(null);
 
   const handleSend = async () => {
     if (!inputText.trim() || loading) return;
@@ -58,7 +59,6 @@ export default function AIRecipeBotScreen({ navigation }) {
       };
 
       setMessages(prev => [...prev, botMessage]);
-      setGeneratedRecipe({ recipe: result.reply, pricing: result.pricing });
     } catch (error) {
       const errorMessage = {
         id: (Date.now() + 1).toString(),
@@ -74,6 +74,40 @@ export default function AIRecipeBotScreen({ navigation }) {
 
   const handleRecipePress = (recipe, pricing) => {
     navigation.navigate('RecipeDetail', { recipe, pricing });
+  };
+
+  const handleSaveRecipe = async (recipe, pricing, messageId) => {
+    try {
+      setSavingRecipeId(messageId);
+      console.log('Saving recipe:', recipe.name);
+      await saveRecipe({
+        name: recipe.name,
+        servings: recipe.servings,
+        ingredients: recipe.ingredients,
+        instructions: recipe.instructions,
+        tips: [],
+        pricing: {
+          ingredients: pricing.ingredients || [],
+          totalCost: pricing.totalCost || 0,
+          costPerServing: pricing.costPerServing || 0,
+        },
+        prepTime: '15 minutes',
+        difficulty: 2,
+        budget: `$${pricing.totalCost?.toFixed(2) || '0'}`,
+        tags: [],
+        isPublic: false,
+        isCooked: false,
+        likes: 0,
+        comments: 0,
+        description: recipe.instructions?.[0] || '',
+      });
+      setSavingRecipeId(null);
+      Alert.alert('✓ Saved!', 'Recipe saved to your collection!');
+    } catch (error) {
+      console.error('Error saving recipe:', error);
+      setSavingRecipeId(null);
+      Alert.alert('Error', `Failed to save recipe: ${error.message}`);
+    }
   };
 
   return (
@@ -131,8 +165,33 @@ export default function AIRecipeBotScreen({ navigation }) {
                   onPress={() => handleRecipePress(message.recipe, message.pricing)}
                 >
                   <View style={styles.recipeHeader}>
-                    <Ionicons name="create-outline" size={16} color="#666" />
-                    <Text style={styles.recipeLabel}>Recipe</Text>
+                    <View style={styles.recipeHeaderLeft}>
+                      <Ionicons name="create-outline" size={16} color="#666" />
+                      <Text style={styles.recipeLabel}>Recipe</Text>
+                    </View>
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleSaveRecipe(message.recipe, message.pricing, message.id);
+                      }}
+                      style={[
+                        styles.saveButton,
+                        savingRecipeId === message.id && styles.saveButtonLoading
+                      ]}
+                      disabled={savingRecipeId === message.id}
+                    >
+                      {savingRecipeId === message.id ? (
+                        <>
+                          <ActivityIndicator size="small" color="#666" />
+                          <Text style={styles.saveButtonText}>Saving...</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Ionicons name="heart-outline" size={20} color="#666" />
+                          <Text style={styles.saveButtonText}>Save</Text>
+                        </>
+                      )}
+                    </Pressable>
                   </View>
 
                   <Text style={styles.recipeName}>{message.recipe.name}</Text>
@@ -173,8 +232,7 @@ export default function AIRecipeBotScreen({ navigation }) {
 
                   <View style={styles.ingredientsPreview}>
                     <Text style={styles.ingredientsTitle}>
-                      • {message.recipe.ingredients?.length || 5} Cups cooked rice
-                      (preferably cold, leftover works best)
+                      • {message.recipe.ingredients?.length || 5} ingredients
                     </Text>
                   </View>
                 </Pressable>
@@ -313,8 +371,29 @@ const styles = StyleSheet.create({
   recipeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
     marginBottom: 8,
+  },
+  recipeHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 4,
+  },
+  saveButtonText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  saveButtonLoading: {
+    opacity: 0.6,
   },
   recipeLabel: {
     fontSize: 12,

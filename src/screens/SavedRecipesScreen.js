@@ -3,71 +3,75 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   ScrollView,
   Pressable,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-// Mock data matching lofi
-const MOCK_RECIPES = [
-  {
-    id: '1',
-    name: 'Spicy Garlic Tofu Stir-Fry',
-    prepTime: '25 minutes',
-    difficulty: 3,
-    budget: '$5-10',
-    tags: ['Mexican', 'Vegetarian'],
-    isCooked: true,
-    likes: 34,
-    comments: 6,
-    description: 'A quick plant-based stir-fry featuring crispy tofu, garlic, and a spicy soy glaze.',
-  },
-  {
-    id: '2',
-    name: 'Creamy Mushroom Pasta',
-    prepTime: '30 minutes',
-    difficulty: 2,
-    budget: '$8-12',
-    tags: ['Italian', 'Vegetarian', 'Family-Friendly'],
-    isCooked: false,
-    likes: 26,
-    comments: 8,
-    description: 'Creamy pasta with mushrooms and herbs.',
-  },
-  {
-    id: '3',
-    name: 'Grilled Chicken Tacos with Lime Crema',
-    prepTime: '25 minutes',
-    difficulty: 3,
-    budget: '$8-13',
-    tags: ['Mexican', 'High Protein'],
-    isCooked: false,
-    likes: 42,
-    comments: 12,
-    description: 'Juicy grilled chicken tucked into warm tortillas.',
-  },
-  {
-    id: '4',
-    name: 'Quinoa & Roasted Veggie Bowl',
-    prepTime: '20 minutes',
-    difficulty: 2,
-    budget: '$7-11',
-    tags: ['Mediterranean', 'Vegan'],
-    isCooked: false,
-    likes: 31,
-    comments: 5,
-    description: 'Healthy grain bowl with roasted vegetables.',
-  },
-];
+import { getSavedRecipes, updateRecipe, deleteRecipe } from '../services/recipeService';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function SavedRecipesScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('recipe');
-  const [recipes, setRecipes] = useState(MOCK_RECIPES);
+  const [recipes, setRecipes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const publicRecipes = recipes.filter(r => ['1', '2'].includes(r.id));
-  const privateRecipes = recipes.filter(r => ['3', '4'].includes(r.id));
+  // Fetch recipes when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchRecipes();
+    }, [])
+  );
+
+  const fetchRecipes = async () => {
+    try {
+      setLoading(true);
+      const response = await getSavedRecipes();
+      setRecipes(response.recipes || []);
+    } catch (error) {
+      console.error('Error fetching recipes:', error);
+      Alert.alert('Error', 'Failed to load recipes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleCooked = async (recipe) => {
+    try {
+      await updateRecipe(recipe._id, { isCooked: !recipe.isCooked });
+      fetchRecipes(); // Refresh the list
+    } catch (error) {
+      console.error('Error updating recipe:', error);
+      Alert.alert('Error', 'Failed to update recipe');
+    }
+  };
+
+  const handleDeleteRecipe = async (recipeId) => {
+    Alert.alert(
+      'Delete Recipe',
+      'Are you sure you want to delete this recipe?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteRecipe(recipeId);
+              fetchRecipes(); // Refresh the list
+            } catch (error) {
+              console.error('Error deleting recipe:', error);
+              Alert.alert('Error', 'Failed to delete recipe');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const publicRecipes = recipes.filter(r => r.isPublic);
+  const privateRecipes = recipes.filter(r => !r.isPublic);
 
   const renderRecipeCard = ({ item }) => (
     <Pressable
@@ -75,14 +79,26 @@ export default function SavedRecipesScreen({ navigation }) {
       onPress={() => navigation.navigate('RecipeDetail', { recipe: item })}
     >
       {/* Heart Icon */}
-      <Pressable style={styles.heartIcon} onPress={() => {}}>
-        <Ionicons name="heart-outline" size={20} color="#666" />
+      <Pressable
+        style={styles.heartIcon}
+        onPress={(e) => {
+          e.stopPropagation();
+          handleDeleteRecipe(item._id);
+        }}
+      >
+        <Ionicons name="heart" size={20} color="#ff0000" />
       </Pressable>
 
       {/* Cooked/Uncooked Badge */}
-      <View style={[styles.badge, item.isCooked ? styles.badgeCooked : styles.badgeUncooked]}>
+      <Pressable
+        style={[styles.badge, item.isCooked ? styles.badgeCooked : styles.badgeUncooked]}
+        onPress={(e) => {
+          e.stopPropagation();
+          handleToggleCooked(item);
+        }}
+      >
         <Text style={styles.badgeText}>{item.isCooked ? 'Cooked' : 'Uncooked'}</Text>
-      </View>
+      </Pressable>
 
       {/* Image Placeholder */}
       <View style={styles.imagePlaceholder}>
@@ -153,25 +169,48 @@ export default function SavedRecipesScreen({ navigation }) {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        {/* Public Recipe Section */}
-        <Text style={styles.sectionTitle}>Public Recipe</Text>
-        <View style={styles.recipeGrid}>
-          {publicRecipes.map((recipe) => (
-            <View key={recipe.id} style={styles.gridItem}>
-              {renderRecipeCard({ item: recipe })}
-            </View>
-          ))}
-        </View>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#000" />
+            <Text style={styles.loadingText}>Loading recipes...</Text>
+          </View>
+        ) : recipes.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="restaurant-outline" size={60} color="#ccc" />
+            <Text style={styles.emptyText}>No saved recipes yet</Text>
+            <Text style={styles.emptySubtext}>Try generating a recipe with the AI Recipe Bot!</Text>
+          </View>
+        ) : (
+          <View>
+            {/* Public Recipe Section */}
+            {publicRecipes.length > 0 && (
+              <View>
+                <Text style={styles.sectionTitle}>Public Recipe</Text>
+                <View style={styles.recipeGrid}>
+                  {publicRecipes.map((recipe) => (
+                    <View key={recipe._id} style={styles.gridItem}>
+                      {renderRecipeCard({ item: recipe })}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
 
-        {/* Private Recipe Section */}
-        <Text style={styles.sectionTitle}>Private Recipe</Text>
-        <View style={styles.recipeGrid}>
-          {privateRecipes.map((recipe) => (
-            <View key={recipe.id} style={styles.gridItem}>
-              {renderRecipeCard({ item: recipe })}
-            </View>
-          ))}
-        </View>
+            {/* Private Recipe Section */}
+            {privateRecipes.length > 0 && (
+              <View>
+                <Text style={styles.sectionTitle}>Private Recipe</Text>
+                <View style={styles.recipeGrid}>
+                  {privateRecipes.map((recipe) => (
+                    <View key={recipe._id} style={styles.gridItem}>
+                      {renderRecipeCard({ item: recipe })}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -334,5 +373,34 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 12,
     color: '#666',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 100,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 100,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  emptySubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
 });

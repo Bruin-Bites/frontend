@@ -34,9 +34,13 @@ const MOCK_INSTRUCTIONS = [
 ];
 
 export default function RecipeDetailScreen({ route, navigation }) {
-  const { recipe } = route.params;
+  const { recipe, pricing } = route.params;
   const [checkedIngredients, setCheckedIngredients] = useState([]);
   const [isSaved, setIsSaved] = useState(false);
+
+  // Use actual recipe data or fall back to mock
+  const ingredients = recipe.ingredients || MOCK_INGREDIENTS.map(ing => ({ item: ing, amount: '' }));
+  const instructions = recipe.instructions || MOCK_INSTRUCTIONS.map(inst => inst.text);
 
   const toggleIngredient = (index) => {
     if (checkedIngredients.includes(index)) {
@@ -140,7 +144,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
         {/* Ingredients Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ingredients</Text>
-          {MOCK_INGREDIENTS.map((ingredient, index) => (
+          {ingredients.map((ingredient, index) => (
             <Pressable
               key={index}
               style={styles.ingredientRow}
@@ -158,7 +162,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
                 styles.ingredientText,
                 checkedIngredients.includes(index) && styles.ingredientTextChecked
               ]}>
-                {ingredient}
+                {typeof ingredient === 'string' ? ingredient : `${ingredient.amount} ${ingredient.item}`}
               </Text>
             </Pressable>
           ))}
@@ -187,10 +191,10 @@ export default function RecipeDetailScreen({ route, navigation }) {
         {/* Instructions Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Instructions</Text>
-          {MOCK_INSTRUCTIONS.map((instruction, index) => (
+          {instructions.map((instruction, index) => (
             <View key={index} style={styles.instructionRow}>
-              <Text style={styles.stepNumber}>Step {instruction.step} /{MOCK_INSTRUCTIONS.length}</Text>
-              <Text style={styles.instructionText}>{instruction.text}</Text>
+              <Text style={styles.stepNumber}>Step {index + 1} /{instructions.length}</Text>
+              <Text style={styles.instructionText}>{typeof instruction === 'string' ? instruction : instruction.text}</Text>
             </View>
           ))}
         </View>
