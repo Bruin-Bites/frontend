@@ -26,6 +26,7 @@ export default function AIRecipeBotScreen({ navigation }) {
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [savingRecipeId, setSavingRecipeId] = useState(null);
+  const [savedRecipeIds, setSavedRecipeIds] = useState(new Set());
 
   const handleSend = async () => {
     if (!inputText.trim() || loading) return;
@@ -77,6 +78,11 @@ export default function AIRecipeBotScreen({ navigation }) {
   };
 
   const handleSaveRecipe = async (recipe, pricing, messageId) => {
+    // Check if already saved
+    if (savedRecipeIds.has(messageId)) {
+      return;
+    }
+
     try {
       setSavingRecipeId(messageId);
       console.log('Saving recipe:', recipe.name);
@@ -101,6 +107,9 @@ export default function AIRecipeBotScreen({ navigation }) {
         comments: 0,
         description: recipe.instructions?.[0] || '',
       });
+
+      // Mark recipe as saved
+      setSavedRecipeIds(prev => new Set([...prev, messageId]));
       setSavingRecipeId(null);
       Alert.alert('✓ Saved!', 'Recipe saved to your collection!');
     } catch (error) {
@@ -176,14 +185,20 @@ export default function AIRecipeBotScreen({ navigation }) {
                       }}
                       style={[
                         styles.saveButton,
-                        savingRecipeId === message.id && styles.saveButtonLoading
+                        savingRecipeId === message.id && styles.saveButtonLoading,
+                        savedRecipeIds.has(message.id) && styles.saveButtonSaved
                       ]}
-                      disabled={savingRecipeId === message.id}
+                      disabled={savingRecipeId === message.id || savedRecipeIds.has(message.id)}
                     >
                       {savingRecipeId === message.id ? (
                         <>
                           <ActivityIndicator size="small" color="#666" />
                           <Text style={styles.saveButtonText}>Saving...</Text>
+                        </>
+                      ) : savedRecipeIds.has(message.id) ? (
+                        <>
+                          <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+                          <Text style={[styles.saveButtonText, styles.savedButtonText]}>Saved</Text>
                         </>
                       ) : (
                         <>
@@ -394,6 +409,13 @@ const styles = StyleSheet.create({
   },
   saveButtonLoading: {
     opacity: 0.6,
+  },
+  saveButtonSaved: {
+    backgroundColor: '#E8F5E9',
+  },
+  savedButtonText: {
+    color: '#4CAF50',
+    fontWeight: '600',
   },
   recipeLabel: {
     fontSize: 12,
