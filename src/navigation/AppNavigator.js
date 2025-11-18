@@ -13,6 +13,7 @@ import CommunityScreen from "../screens/CommunityScreen";
 import LoginScreen from "../screens/LoginScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import CreateAccountScreen from "../screens/CreateAccountScreen";
+import AddContributionScreen from "../screens/AddContributionScreen";
 import { colors } from "../theme/colors";
 
 const Stack = createNativeStackNavigator();
@@ -79,6 +80,18 @@ export default function AppNavigator() {
           options={{ 
             headerShown: false,
           }} 
+        />
+
+        <Stack.Screen 
+          name="AddContribution" 
+          component={AddContributionScreen}
+          options={({ navigation }) => ({ // Copied style from your image
+            title: "Add contribution",
+            headerStyle: { backgroundColor: 'white' },
+            headerTintColor: 'black',
+            headerTitleStyle: { color: "black", fontWeight: "700" },
+            headerShadowVisible: false, // Removes the shadow
+          })} 
         />
 
         <Stack.Screen name="Home" component={HomeScreen} />
