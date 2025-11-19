@@ -9,10 +9,15 @@ import {
   TextInput,
   Image,
   SafeAreaView,
+  Keyboard,
+  Pressable,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import FilterModal from '../components/FilterModal';
+import { useNavigation } from '@react-navigation/native';
 
-// --- Colors from your design ---
+// --- Colors ---
 const BRAND_GREEN = '#A8B84C';
 const LIGHT_YELLOW = '#FEF9E6';
 const DARK_GRAY = '#333333';
@@ -20,7 +25,7 @@ const MEDIUM_GRAY = '#666666';
 const LIGHT_GRAY = '#F0F0F0';
 const BORDER_GRAY = '#E8E8E8';
 
-// --- Mock Data (to make the screen look right) ---
+// --- Mock Data ---
 const MOCK_RECOMMENDATIONS = [
   {
     id: 'rec1',
@@ -39,7 +44,7 @@ const MOCK_RECOMMENDATIONS = [
     title: 'Taco Tuesday',
     date: 'October 21, 2025',
     time: '5:00PM - 9:00PM',
-    distance: '1.2 mi',
+    distance: '4.2 mi',
     tags: ['Deal type', 'Food type'],
     likes: 42,
     comments: 7,
@@ -54,7 +59,7 @@ const MOCK_EVENTS = [
     title: 'Free Matcha',
     date: 'October 17, 2025',
     time: '12:00PM - 1:30PM',
-    distance: '0.5 mi',
+    distance: '0.8 mi',
     tags: ['Deal type', 'Food type', 'Location type'],
     likes: 13,
     comments: 3,
@@ -69,12 +74,12 @@ const MOCK_TRENDING = [
     title: '$5 Poke Bowls',
     date: 'October 17, 2025',
     time: '12:00PM - 1:30PM',
-    distance: '0.5 mi',
-    tags: ['Deal type', 'Food type', 'Location type'],
+    distance: '6.0 mi',
+    tags: ['Deal type', 'Food type', 'Contains fish'],
     likes: 13,
     comments: 3,
     image: 'https://placehold.co/600x400/FADBD8/884EA0?text=Poke',
-    tagType: 'FREE',
+    tagType: '$5',
   },
 ];
 
@@ -84,25 +89,35 @@ const MOCK_CLOSEST_TO_YOU = [
     title: '10% Off Smoothies',
     date: 'October 17, 2025',
     time: '12:00PM - 1:30PM',
-    distance: '0.5 mi',
+    distance: '0.2 mi',
     tags: ['Deal type', 'Food type', 'Location type'],
     likes: 13,
     comments: 3,
     image: 'https://placehold.co/600x400/D7BDE2/5B2C6F?text=Smoothies',
-    tagType: 'FREE',
+    tagType: '10% OFF',
   },
 ];
-// ------------------------------------
 
-// --- Reusable Post Card Component ---
-// --- Re-usable Post Card Component ---
+// --- Search Mock Data ---
+const RECENT_SEARCHES = [
+  { id: 'r1', text: 'Acai bowls' },
+  { id: 'r2', text: 'Coffee' },
+  { id: 'r3', text: 'Sandwiches' },
+];
+
+const TRENDING_SEARCHES = [
+  { id: 't1', text: '$5 Sandwich at Kerckoff' },
+  { id: 't2', text: 'BOGO Malatang Deal' },
+  { id: 't3', text: 'Sharetea' },
+];
+
+// --- Post Card Component (Standard Horizontal) ---
 const PostCard = ({ item }) => {
-  // 1. Add state for the like button
+  const navigation = useNavigation();
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(item.likes);
 
   const toggleLike = () => {
-    // 2. Toggle the state and update count
     if (isLiked) {
       setIsLiked(false);
       setLikeCount(likeCount - 1);
@@ -113,27 +128,43 @@ const PostCard = ({ item }) => {
   };
 
   return (
-    <View style={styles.cardContainer}>
+    <Pressable
+      onPress={() => navigation.navigate('EventDetails', { item })}
+      style={({ pressed }) => [
+        styles.cardContainer,
+        { opacity: pressed ? 0.9 : 1 },
+        Platform.OS === 'web' && { cursor: 'pointer' } // Adds the hand cursor on desktop
+      ]}
+    >
       <View style={styles.cardImageContainer}>
         <Image source={{ uri: item.image }} style={styles.cardImage} />
         <View style={[styles.cardTag, { backgroundColor: BRAND_GREEN }]}>
           <Text style={styles.cardTagText}>{item.tagType || 'DEAL'}</Text>
         </View>
-        {/* 3. Update the heart button */}
-        <TouchableOpacity style={styles.cardHeart} onPress={toggleLike}>
+        
+        {/* Heart Button */}
+        <Pressable 
+          style={styles.cardHeart} 
+          onPress={(e) => {
+            // e.stopPropagation() helps prevent clicking the card when clicking the heart
+            if (Platform.OS === 'web') e.stopPropagation(); 
+            toggleLike();
+          }}
+        >
           <Ionicons
             name={isLiked ? 'heart' : 'heart-outline'}
             size={24}
             color={isLiked ? '#FF4500' : 'white'}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
+
       <View style={styles.cardContent}>
         <Text style={styles.cardTitle}>{item.title}</Text>
         <Text style={styles.cardInfo}>
           {item.date} | {item.time}
         </Text>
-
+        
         <View style={styles.cardTagsContainer}>
           {item.tags?.slice(0, 3).map((tag, index) => (
             <View key={index} style={styles.cardTagPill}>
@@ -145,7 +176,6 @@ const PostCard = ({ item }) => {
         <View style={styles.cardFooter}>
           <Text style={styles.cardDistance}>{item.distance}</Text>
           <View style={styles.cardStats}>
-            {/* 4. Update the like count and icon */}
             <Ionicons
               name={isLiked ? 'thumbs-up' : 'thumbs-up-outline'}
               size={16}
@@ -159,68 +189,156 @@ const PostCard = ({ item }) => {
           </View>
         </View>
       </View>
+    </Pressable>
+  );
+};
+
+// --- Wide Post Card (For Search Results) ---
+const WidePostCard = ({ item }) => {
+  return (
+    <View style={styles.wideCardContainer}>
+      <View style={styles.wideCardImageContainer}>
+        <Image source={{ uri: item.image }} style={styles.cardImage} />
+        <View style={[styles.cardTag, { backgroundColor: BRAND_GREEN }]}>
+          <Text style={styles.cardTagText}>{item.tagType || 'DEAL'}</Text>
+        </View>
+        <TouchableOpacity style={styles.cardHeart}>
+          <Ionicons name="heart-outline" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTitle}>{item.title}</Text>
+        <Text style={styles.cardInfo}>
+          {item.date} | {item.time}
+        </Text>
+        
+        <View style={styles.cardTagsContainer}>
+          {item.tags?.slice(0, 3).map((tag, index) => (
+            <View key={index} style={styles.cardTagPill}>
+              <Text style={styles.cardTagPillText}>{tag}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.cardFooter}>
+          <Text style={styles.cardDistance}>{item.distance}</Text>
+          <View style={styles.cardStats}>
+            <Ionicons name="thumbs-up-outline" size={16} color={MEDIUM_GRAY} />
+            <Text style={styles.cardStatsText}>{item.likes}</Text>
+            <Ionicons name="chatbubble-outline" size={16} color={MEDIUM_GRAY} />
+            <Text style={styles.cardStatsText}>{item.comments}</Text>
+          </View>
+        </View>
+      </View>
     </View>
   );
 };
-// ------------------------------------
 
 export default function CommunityScreen({ navigation, route }) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  
   const [recommendations, setRecommendations] = useState(MOCK_RECOMMENDATIONS);
   const [events, setEvents] = useState(MOCK_EVENTS);
-
-  // ... after const [events, setEvents] ...
   const [trending, setTrending] = useState(MOCK_TRENDING);
   const [closest, setClosest] = useState(MOCK_CLOSEST_TO_YOU);
 
-  // This hook listens for the 'newPost' param from AddContributionScreen
+  const [displayRecs, setDisplayRecs] = useState(MOCK_RECOMMENDATIONS);
+  const [displayEvents, setDisplayEvents] = useState(MOCK_EVENTS);
+  const [displayTrending, setDisplayTrending] = useState(MOCK_TRENDING);
+  const [displayClosest, setDisplayClosest] = useState(MOCK_CLOSEST_TO_YOU);
+
+  const [isFilterVisible, setIsFilterVisible] = useState(false);
+
   useEffect(() => {
     if (route.params?.newPost) {
       const newPost = route.params.newPost;
-      
-      // Create a card-compatible object from the post data
       const newPostCard = {
         id: newPost.id || Date.now().toString(),
         title: newPost.title,
         date: newPost.date,
         time: newPost.time,
-        distance: newPost.location ? '0.1 mi' : 'N/A', // Add mock distance
+        distance: '0.1 mi',
         tags: newPost.tags?.slice(0, 3) || ['New Post'],
         likes: 0,
         comments: 0,
         image: newPost.coverImage || 'https://placehold.co/600x400/cccccc/333333?text=New+Post',
         tagType: newPost.tags?.includes('Free item') ? 'FREE' : 'DEAL',
       };
-
-      // Add the new post to the top of the 'Recommendations' list
-      setRecommendations([newPostCard, ...recommendations]);
-
-      // Clear the param so it doesn't re-add on screen focus
+      const updatedRecs = [newPostCard, ...recommendations];
+      setRecommendations(updatedRecs);
+      setDisplayRecs(updatedRecs);
       navigation.setParams({ newPost: null });
     }
   }, [route.params?.newPost, navigation]);
 
+  const applyFilters = (filters) => {
+    const filterList = (list) => {
+      return list.filter(item => {
+        const itemDist = parseFloat(item.distance.split(' ')[0]);
+        if (itemDist < filters.minDist || itemDist > filters.maxDist) return false;
+        if (filters.dietary.length > 0) {
+          const hasDietaryMatch = item.tags.some(tag => filters.dietary.includes(tag));
+          if (!hasDietaryMatch) return false;
+        }
+        return true;
+      });
+    };
+    setDisplayRecs(filterList(recommendations));
+    setDisplayEvents(filterList(events));
+    setDisplayTrending(filterList(trending));
+    setDisplayClosest(filterList(closest));
+  };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* --- Header & Search Bar --- */}
-      <View style={styles.headerContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color={MEDIUM_GRAY} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Find deals"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-        <TouchableOpacity style={styles.filterButton}>
-          <Ionicons name="options-outline" size={24} color={DARK_GRAY} />
-        </TouchableOpacity>
+  const handleBackSearch = () => {
+    setIsSearchFocused(false);
+    setSearchQuery('');
+    Keyboard.dismiss();
+  };
+
+  // --- RENDER: Search Mode Content ---
+  const renderSearchContent = () => (
+    <View style={styles.searchContentContainer}>
+      {/* Recent Section */}
+      <Text style={styles.searchSectionHeader}>Recent</Text>
+      <View style={styles.searchList}>
+        {RECENT_SEARCHES.map((item) => (
+          <TouchableOpacity key={item.id} style={styles.searchRow}>
+            <View style={styles.searchRowLeft}>
+              <Ionicons name="time-outline" size={22} color={DARK_GRAY} style={{ marginRight: 12 }} />
+              <Text style={styles.searchRowText}>{item.text}</Text>
+            </View>
+            <TouchableOpacity>
+              <Ionicons name="close" size={20} color={DARK_GRAY} />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* --- Top Cards --- */}
+      {/* Trending Section */}
+      <Text style={styles.searchSectionHeader}>Trending</Text>
+      <View style={styles.searchList}>
+        {TRENDING_SEARCHES.map((item) => (
+          <TouchableOpacity key={item.id} style={styles.searchRow}>
+            <View style={styles.searchRowLeft}>
+              <Ionicons name="search-outline" size={22} color={DARK_GRAY} style={{ marginRight: 12 }} />
+              <Text style={styles.searchRowText}>{item.text}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Recommended Section */}
+      <Text style={styles.searchSectionHeader}>Recommended</Text>
+      <View style={{ paddingHorizontal: 20 }}>
+        <WidePostCard item={MOCK_RECOMMENDATIONS[0]} />
+      </View>
+    </View>
+  );
+
+  // --- RENDER: Main Feed Content ---
+  const renderMainFeed = () => (
+    <>
       <TouchableOpacity
         style={styles.contributeButton}
         onPress={() => navigation.navigate('AddContribution')}
@@ -232,177 +350,139 @@ export default function CommunityScreen({ navigation, route }) {
         </View>
       </TouchableOpacity>
 
-        {/* --- Recommendations Section --- */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Recommendations</Text>
-          <FlatList
-            data={recommendations}
-            renderItem={({ item }) => <PostCard item={item} />}
-            keyExtractor={(item) => item.id}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingLeft: 20, paddingRight: 10 }}
-          />
-        </View>
-
-        {/* --- Events Today Section --- */}
       <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Events Today</Text>
-        {/* Changed to a FlatList for consistency */}
+        <Text style={styles.sectionTitle}>Recommendations</Text>
         <FlatList
-          data={events}
+          data={displayRecs}
           renderItem={({ item }) => <PostCard item={item} />}
           keyExtractor={(item) => item.id}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingLeft: 20, paddingRight: 10 }}
+          ListEmptyComponent={<Text style={{marginLeft: 20, color: '#999'}}>No matches found.</Text>}
         />
       </View>
 
-      {/* --- Trending Section --- */}
+      <View style={styles.sectionContainer}>
+        <Text style={styles.sectionTitle}>Events Today</Text>
+        <FlatList
+          data={displayEvents}
+          renderItem={({ item }) => <PostCard item={item} />}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingLeft: 20, paddingRight: 10 }}
+          ListEmptyComponent={<Text style={{marginLeft: 20, color: '#999'}}>No matches found.</Text>}
+        />
+      </View>
+
       <View style={styles.sectionContainer}>
         <Text style={styles.sectionTitle}>Trending</Text>
         <FlatList
-          data={trending}
+          data={displayTrending}
           renderItem={({ item }) => <PostCard item={item} />}
           keyExtractor={(item) => item.id}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingLeft: 20, paddingRight: 10 }}
+          ListEmptyComponent={<Text style={{marginLeft: 20, color: '#999'}}>No matches found.</Text>}
         />
       </View>
 
-      {/* --- Closest To You Section --- */}
       <View style={styles.sectionContainer}>
         <Text style={styles.sectionTitle}>Closest To You</Text>
         <FlatList
-          data={closest}
+          data={displayClosest}
           renderItem={({ item }) => <PostCard item={item} />}
           keyExtractor={(item) => item.id}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingLeft: 20, paddingRight: 10 }}
+          ListEmptyComponent={<Text style={{marginLeft: 20, color: '#999'}}>No matches found.</Text>}
         />
       </View>
-    </ScrollView>
+    </>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header & Search Bar */}
+      <View style={styles.headerContainer}>
+        <View style={styles.searchBar}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            <Ionicons name="search" size={20} color={MEDIUM_GRAY} style={{ marginRight: 8 }} />
+            
+            {/* Back arrow shows only when focused */}
+            {isSearchFocused && (
+              <TouchableOpacity onPress={handleBackSearch}>
+                <Ionicons name="chevron-back" size={24} color={MEDIUM_GRAY} style={{ marginRight: 8 }} />
+              </TouchableOpacity>
+            )}
+
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Find deals"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onFocus={() => setIsSearchFocused(true)}
+              // This fixes the yellow bar issue by setting cursor/selection color
+              selectionColor={BRAND_GREEN} 
+            />
+          </View>
+
+          {/* Filter Icon stays inside the bar container */}
+           <TouchableOpacity 
+            onPress={() => setIsFilterVisible(true)}
+            style={{ marginLeft: 10 }}
+          >
+            <Ionicons name="options-outline" size={24} color={DARK_GRAY} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {isSearchFocused ? renderSearchContent() : renderMainFeed()}
+      </ScrollView>
+
+      <FilterModal 
+        visible={isFilterVisible} 
+        onClose={() => setIsFilterVisible(false)}
+        onApply={applyFilters}
+      />
+
     </SafeAreaView>
   );
 }
 
-// --- New Stylesheet ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
   headerContainer: {
-    flexDirection: 'row',
     padding: 20,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER_GRAY,
+    backgroundColor: '#fff', // Ensure white background covers any leaks
+    zIndex: 1,
   },
   searchBar: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: LIGHT_GRAY,
+    backgroundColor: 'white', // Ensure white background
+    borderWidth: 1,
+    borderColor: '#CCC', // Thin gray border
     borderRadius: 30,
     paddingHorizontal: 15,
     height: 44,
+    justifyContent: 'space-between',
   },
   searchInput: {
     flex: 1,
-    marginLeft: 10,
     fontSize: 16,
-  },
-  filterButton: {
-    marginLeft: 15,
-    backgroundColor: LIGHT_GRAY,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+    color: DARK_GRAY,
+    backgroundColor: 'transparent', // No background on input itself
   },
   scrollContainer: {
     paddingBottom: 40,
-  },
-  topCardContainer: {
-    flexDirection: 'row',
-    padding: 20,
-    justifyContent: 'space-between',
-  },
-  topCard: {
-    borderRadius: 16,
-    padding: 15,
-    width: '48%',
-    height: 160,
-  },
-  contributeCard: {
-    backgroundColor: LIGHT_YELLOW,
-    borderWidth: 1,
-    borderColor: '#F0E68C',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  topCardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: DARK_GRAY,
-  },
-  addPill: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: BORDER_GRAY,
-  },
-  addPillText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  promoCard: {
-    backgroundColor: LIGHT_GRAY,
-    flexDirection: 'row',
-    padding: 0,
-    overflow: 'hidden',
-  },
-  promoImage: {
-    width: '50%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  promoContent: {
-    flex: 1,
-    padding: 10,
-    justifyContent: 'space-between',
-  },
-  promoTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: DARK_GRAY,
-  },
-  learnMoreButton: {
-    backgroundColor: BRAND_GREEN,
-    borderRadius: 20,
-    paddingVertical: 8,
-  },
-  learnMoreText: {
-    color: 'white',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  sectionContainer: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: DARK_GRAY,
-    paddingHorizontal: 20,
-    marginBottom: 15,
   },
   contributeButton: {
     flexDirection: 'row',
@@ -412,7 +492,7 @@ const styles = StyleSheet.create({
     padding: 15,
     marginHorizontal: 20,
     marginTop: 10,
-    marginBottom: 10, // Adds space before Recommendations
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#F0E68C',
     shadowColor: '#000',
@@ -422,7 +502,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   contributeButtonTitle: {
-    flex: 1, // Makes the text take up available space
+    flex: 1,
     fontSize: 16,
     fontWeight: 'bold',
     color: DARK_GRAY,
@@ -440,6 +520,51 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  sectionContainer: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: DARK_GRAY,
+    paddingHorizontal: 20,
+    marginBottom: 15,
+  },
+  
+  // --- Search Mode Styles ---
+  searchContentContainer: {
+    marginTop: 10,
+  },
+  searchSectionHeader: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: DARK_GRAY,
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    marginTop: 10,
+  },
+  searchList: {
+    marginBottom: 20,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: LIGHT_GRAY, // Light gray background for list items
+    marginBottom: 2,
+  },
+  searchRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchRowText: {
+    fontSize: 16,
+    color: DARK_GRAY,
+  },
+
+  // --- Card Styles ---
   cardContainer: {
     width: 280,
     backgroundColor: 'white',
@@ -453,8 +578,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: BORDER_GRAY,
   },
+  // Wide card for Search Recommended
+  wideCardContainer: {
+    width: '100%', // Full width
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: BORDER_GRAY,
+  },
   cardImageContainer: {
     height: 150,
+  },
+  wideCardImageContainer: {
+    height: 180, // Slightly taller for wide card
   },
   cardImage: {
     width: '100%',

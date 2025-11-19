@@ -172,6 +172,40 @@ const Accordion = ({ title, options, selectedTags, onSelect }) => {
   );
 };
 
+// --- Error Modal Component ---
+const ErrorModal = ({ visible, onClose, errors }) => {
+    if (!visible) return null;
+  
+    return (
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={visible}
+        onRequestClose={onClose}
+      >
+        <TouchableOpacity
+          style={styles.errorModalBackdrop}
+          activeOpacity={1}
+          onPressOut={onClose}
+        >
+          <View style={styles.errorModalContainer}>
+            {errors.map((error, index) => (
+              <View key={index} style={styles.errorCard}>
+                <View style={styles.errorIconCircle}>
+                  <Text style={styles.errorIconText}>{error.icon || '!'}</Text>
+                </View>
+                <View style={styles.errorTextContent}>
+                  <Text style={styles.errorTitle}>{error.title}</Text>
+                  {error.details && <Text style={styles.errorDetails}>{error.details}</Text>}
+                </View>
+              </View>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
+
 export default function AddContributionScreen({ navigation }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -182,6 +216,8 @@ export default function AddContributionScreen({ navigation }) {
   const [isCalendarVisible, setIsCalendarVisible] = useState(false);
 
   const [time, setTime] = useState('');
+
+  const [coverImage, setCoverImage] = useState(null);
 
   // Tag State
   const [tags, setTags] = useState([
@@ -201,8 +237,80 @@ export default function AddContributionScreen({ navigation }) {
   const [newItemImage, setNewItemImage] = useState(null);
   const [modalError, setModalError] = useState('');
 
+  const [validationErrors, setValidationErrors] = useState([]); 
+  const [showErrorModal, setShowErrorModal] = useState(false);
+
   // NEW: form errors (for required fields + time)
   const [errors, setErrors] = useState({});
+
+  const validateForm = () => {
+    const errors = [];
+
+    if (!title.trim()) {
+      errors.push({
+        title: "You're missing something!",
+        details: 'Missing: Title',
+        icon: '!'
+      });
+    }
+    if (!description.trim()) {
+      errors.push({
+        title: "You're missing something!",
+        details: 'Missing: Description',
+        icon: '!'
+      });
+    }
+    if (!location.trim()) {
+      errors.push({
+        title: "You're missing something!",
+        details: 'Missing: Location',
+        icon: '!'
+      });
+    }
+    if (!date.trim()) {
+      errors.push({
+        title: "You're missing something!",
+        details: 'Missing: Date',
+        icon: '!'
+      });
+    }
+
+    // Time Validation (Format: "HH:MM AM/PM - HH:MM AM/PM")
+    // Simple check: needs to look like a time range
+    if (time.trim()) { 
+        if (!time.includes('-')) {
+           errors.push({
+            title: 'Error: Invalid time format.',
+            details: 'Expected format: 1:00 PM - 2:00 PM',
+            icon: '!'
+          });
+        }
+      }
+
+    // Check for specific tag requirement
+    const dealTypeTags = tags.filter(tag =>
+      TAG_CATEGORIES['Deal type'].some(dealTag => dealTag.name === tag)
+    );
+    if (dealTypeTags.length === 0) {
+      errors.push({
+        title: "You're missing something!",
+        details: 'Missing: Deal type tag',
+        icon: '!'
+      });
+    }
+
+    if (tags.length > 30) {
+      errors.push({
+        title: "You can't add too many tags!",
+        details: 'Limit: 30',
+        icon: '!'
+      });
+    }
+
+    setValidationErrors(errors);
+    setShowErrorModal(errors.length > 0);
+    return errors.length === 0;
+  };
 
   const handlePost = () => {
     // 1. Run validation
@@ -214,7 +322,7 @@ export default function AddContributionScreen({ navigation }) {
         description: description,
         location: location,
         date: date,
-        time: time,
+        time: time.trim() ? time : 'All Day' ,
         menuItems: menuItems,
         tags: tags,
         coverImage: coverImage,
@@ -694,6 +802,12 @@ export default function AddContributionScreen({ navigation }) {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      <ErrorModal
+        visible={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        errors={validationErrors}
+      />
     </SafeAreaView>
   );
 }

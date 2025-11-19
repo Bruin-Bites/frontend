@@ -14,6 +14,7 @@ import LoginScreen from "../screens/LoginScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
 import CreateAccountScreen from "../screens/CreateAccountScreen";
 import AddContributionScreen from "../screens/AddContributionScreen";
+import EventDetailsScreen from '../screens/EventDetailsScreen'; // <--- Import this
 import { colors } from "../theme/colors";
 
 const Stack = createNativeStackNavigator();
@@ -94,6 +95,7 @@ export default function AppNavigator() {
           })} 
         />
 
+        <Stack.Screen name="EventDetails" component={EventDetailsScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Map" component={MapScreen} options={{ title: "Cheap Eats Map" }} />
         <Stack.Screen name="Recipes" component={RecipesScreen} options={{ title: "Budget Recipes" }} />
