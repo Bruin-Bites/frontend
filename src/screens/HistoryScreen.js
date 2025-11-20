@@ -1,11 +1,5 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-} from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
@@ -39,21 +33,29 @@ export default function HistoryScreen({ navigation }) {
           {/* Archived Button */}
           <Pressable
             style={styles.tabButton}
-            onPress={() => setSelectedTab("archived")}
+            onPress={() => navigation.navigate("Archived")}
           >
-            <Ionicons name="trash-outline" size={24} color={colors.uclaBlue} />
+            <Ionicons name="trash-outline" size={24} color={colors.textLight} />
             <Text style={styles.tabButtonText}>Archived</Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.uclaBlue} />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textLight}
+            />
           </Pressable>
 
           {/* Liked Button */}
           <Pressable
             style={styles.tabButton}
-            onPress={() => setSelectedTab("liked")}
+            onPress={() => navigation.navigate("Liked")}
           >
-            <Ionicons name="heart-outline" size={24} color={colors.uclaBlue} />
+            <Ionicons name="heart-outline" size={24} color={colors.textLight} />
             <Text style={styles.tabButtonText}>Liked</Text>
-            <Ionicons name="chevron-forward" size={20} color={colors.uclaBlue} />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={colors.textLight}
+            />
           </Pressable>
         </ScrollView>
         <BottomNavigation />

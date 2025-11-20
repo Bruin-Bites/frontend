@@ -1,202 +1,120 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Switch,
-  ActivityIndicator,
-  Pressable,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, Pressable, SafeAreaView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import BottomNavigation from "../components/BottomNavigation";
 
+// Small custom Toggle to match attached styles (gray off / green on)
+function Toggle({ value, onChange }) {
+  return (
+    <Pressable
+      onPress={() => onChange(!value)}
+      style={[
+        styles.toggleOuter,
+        value ? styles.toggleOuterOn : styles.toggleOuterOff,
+      ]}
+      hitSlop={8}
+    >
+      <View
+        style={[
+          styles.toggleInner,
+          value ? styles.toggleInnerOn : styles.toggleInnerOff,
+        ]}
+      />
+    </Pressable>
+  );
+}
+
 export default function NotificationsScreen({ navigation }) {
-  const [settings, setSettings] = useState({
+  const initial = {
     newContributions: { email: false, push: false },
     myContributionActivity: { email: false, push: false },
     myCommentActivity: { email: false, push: false },
     followingActivity: { email: false, push: false },
-    followersActivity: { email: false, push: false },
-  });
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    // Load settings locally - no network call
-    setLoading(false);
-  }, []);
-
-  const updateSetting = (key, type, value) => {
-    const newSettings = {
-      ...settings,
-      [key]: { ...settings[key], [type]: value },
-    };
-    setSettings(newSettings);
   };
+  const [settings, setSettings] = useState(initial);
+
+  const toggle = (key, type) => {
+    setSettings((s) => ({ ...s, [key]: { ...s[key], [type]: !s[key][type] } }));
+  };
+
+  const rows = [
+    {
+      key: "newContributions",
+      title: "New contributions",
+      desc: "Get notified for new, nearby, or limited time deals.",
+    },
+    {
+      key: "myContributionActivity",
+      title: "My contribution activity",
+      desc: "Likes, comments, saves, and shares from your contributions.",
+    },
+    {
+      key: "myCommentActivity",
+      title: "My comment activity",
+      desc: "Likes, replies, saves, and shares from your comments.",
+    },
+    {
+      key: "followingActivity",
+      title: "Following activity",
+      desc: "Contributions, likes, and comments of users you are following.",
+    },
+  ];
 
   return (
     <View style={styles.container}>
       <SafeAreaView style={{ flex: 1 }} edges={[]}>
-        {/* Header */}
         <View style={styles.header}>
           <Pressable
             onPress={() => navigation.goBack()}
-            style={styles.backButton}
-            hitSlop={10}
+            style={styles.backBtn}
+            hitSlop={8}
           >
-            <Ionicons name="chevron-back" size={24} color={colors.ink} />
+            <Ionicons name="chevron-back" size={22} color={colors.ink} />
           </Pressable>
           <Text style={styles.headerTitle}>Notifications</Text>
-          <View style={styles.headerRightPlaceholder} />
         </View>
+
         <View style={styles.separator} />
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          bounces={true}
-        >
-          {/* Contributions Section */}
-          <View style={styles.section}>
+        <View style={styles.contentWrapper}>
+          <View style={styles.content}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Contributions</Text>
-              <View style={styles.columnHeaders}>
-                <Text style={styles.columnHeader}>Email</Text>
-                <Text style={styles.columnHeader}>Push</Text>
+              <Text style={styles.sectionTitle}>Activity</Text>
+              <View style={styles.columnsRight}>
+                <Text style={styles.columnLabel}>Email</Text>
+                <Text style={[styles.columnLabel, { marginLeft: 32 }]}>
+                  Push
+                </Text>
               </View>
             </View>
 
-            <View style={styles.notificationItem}>
-              <View style={styles.notificationContent}>
-                <Text style={styles.notificationItemTitle}>New contributions</Text>
-                <Text style={styles.notificationDescription}>
-                  Get notified for new, nearby, or limited time deals.
-                </Text>
-              </View>
-              <View style={styles.togglesContainer}>
-                <Switch
-                  value={settings.newContributions.email}
-                  onValueChange={(value) => updateSetting("newContributions", "email", value)}
-                  trackColor={{ false: colors.lightGray, true: colors.uclaBlue }}
-                  thumbColor="#fff"
-                />
-                <Switch
-                  value={settings.newContributions.push}
-                  onValueChange={(value) => updateSetting("newContributions", "push", value)}
-                  trackColor={{ false: colors.lightGray, true: colors.uclaBlue }}
-                  thumbColor="#fff"
-                />
-              </View>
-            </View>
+            {rows.map((r, idx) => (
+              <View key={r.key}>
+                <View style={styles.row}>
+                  <View style={styles.rowLeft}>
+                    <Text style={styles.rowTitle}>{r.title}</Text>
+                    <Text style={styles.rowDesc}>{r.desc}</Text>
+                  </View>
 
-            <View style={styles.notificationItem}>
-              <View style={styles.notificationContent}>
-                <Text style={styles.notificationItemTitle}>My contribution activity</Text>
-                <Text style={styles.notificationDescription}>
-                  Likes, comments, saves, and shares from your contributions.
-                </Text>
-              </View>
-              <View style={styles.togglesContainer}>
-                <Switch
-                  value={settings.myContributionActivity.email}
-                  onValueChange={(value) => updateSetting("myContributionActivity", "email", value)}
-                  trackColor={{ false: colors.lightGray, true: colors.uclaBlue }}
-                  thumbColor="#fff"
-                />
-                <Switch
-                  value={settings.myContributionActivity.push}
-                  onValueChange={(value) => updateSetting("myContributionActivity", "push", value)}
-                  trackColor={{ false: colors.lightGray, true: colors.uclaBlue }}
-                  thumbColor="#fff"
-                />
-              </View>
-            </View>
+                  <View style={styles.rowToggles}>
+                    <Toggle
+                      value={settings[r.key].email}
+                      onChange={() => toggle(r.key, "email")}
+                    />
+                    <View style={{ width: 20 }} />
+                    <Toggle
+                      value={settings[r.key].push}
+                      onChange={() => toggle(r.key, "push")}
+                    />
+                  </View>
+                </View>
 
-            <View style={styles.notificationItem}>
-              <View style={styles.notificationContent}>
-                <Text style={styles.notificationItemTitle}>My comment activity</Text>
-                <Text style={styles.notificationDescription}>
-                  Likes, replies, saves, and shares from your comments.
-                </Text>
+                {idx < rows.length - 1 && <View style={styles.rowDivider} />}
               </View>
-              <View style={styles.togglesContainer}>
-                <Switch
-                  value={settings.myCommentActivity.email}
-                  onValueChange={(value) => updateSetting("myCommentActivity", "email", value)}
-                  trackColor={{ false: colors.lightGray, true: colors.uclaBlue }}
-                  thumbColor="#fff"
-                />
-                <Switch
-                  value={settings.myCommentActivity.push}
-                  onValueChange={(value) => updateSetting("myCommentActivity", "push", value)}
-                  trackColor={{ false: colors.lightGray, true: colors.uclaBlue }}
-                  thumbColor="#fff"
-                />
-              </View>
-            </View>
+            ))}
           </View>
-
-          <View style={styles.sectionDivider} />
-
-          {/* Following and followers Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Following and followers</Text>
-              <View style={styles.columnHeaders}>
-                <Text style={styles.columnHeader}>Email</Text>
-                <Text style={styles.columnHeader}>Push</Text>
-              </View>
-            </View>
-
-            <View style={styles.notificationItem}>
-              <View style={styles.notificationContent}>
-                <Text style={styles.notificationItemTitle}>Following activity</Text>
-                <Text style={styles.notificationDescription}>
-                  Posts, likes, and comments of users you are following.
-                </Text>
-              </View>
-              <View style={styles.togglesContainer}>
-                <Switch
-                  value={settings.followingActivity.email}
-                  onValueChange={(value) => updateSetting("followingActivity", "email", value)}
-                  trackColor={{ false: colors.lightGray, true: colors.uclaBlue }}
-                  thumbColor="#fff"
-                />
-                <Switch
-                  value={settings.followingActivity.push}
-                  onValueChange={(value) => updateSetting("followingActivity", "push", value)}
-                  trackColor={{ false: colors.lightGray, true: colors.uclaBlue }}
-                  thumbColor="#fff"
-                />
-              </View>
-            </View>
-
-            <View style={styles.notificationItem}>
-              <View style={styles.notificationContent}>
-                <Text style={styles.notificationItemTitle}>Followers activity</Text>
-                <Text style={styles.notificationDescription}>
-                  Requests, posts, likes, and comments from your followers.
-                </Text>
-              </View>
-              <View style={styles.togglesContainer}>
-                <Switch
-                  value={settings.followersActivity.email}
-                  onValueChange={(value) => updateSetting("followersActivity", "email", value)}
-                  trackColor={{ false: colors.lightGray, true: colors.uclaBlue }}
-                  thumbColor="#fff"
-                />
-                <Switch
-                  value={settings.followersActivity.push}
-                  onValueChange={(value) => updateSetting("followersActivity", "push", value)}
-                  trackColor={{ false: colors.lightGray, true: colors.uclaBlue }}
-                  thumbColor="#fff"
-                />
-              </View>
-            </View>
-          </View>
-        </ScrollView>
+        </View>
         <BottomNavigation />
       </SafeAreaView>
     </View>
@@ -204,104 +122,78 @@ export default function NotificationsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg0,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: colors.bg0,
-  },
+  container: { flex: 1, backgroundColor: "#fff" },
   header: {
+    height: 56,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 8,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    position: "relative",
     backgroundColor: "#fff",
+    paddingHorizontal: 12,
   },
-  backButton: {
-    position: "absolute",
-    left: 16,
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.ink,
-  },
-  headerRightPlaceholder: {
-    position: "absolute",
-    right: 16,
-    width: 32,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  scrollContent: {
-    paddingBottom: 100,
-    flexGrow: 1,
-  },
-  section: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-  },
+  backBtn: { position: "absolute", left: 12, padding: 6 },
+  headerTitle: { fontSize: 18, fontWeight: "700", color: colors.ink },
+  separator: { height: 1, backgroundColor: colors.border },
+  contentWrapper: { flex: 1 },
+  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 24 },
+
   sectionHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.ink,
-  },
-  columnHeaders: {
-    flexDirection: "row",
-    gap: 40,
-  },
-  columnHeader: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: colors.ink,
-  },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 16,
-    marginHorizontal: 20,
-  },
-  notificationItem: {
-    flexDirection: "row",
     justifyContent: "space-between",
+    marginBottom: 18,
+  },
+  sectionTitle: { fontSize: 18, fontWeight: "700", color: colors.ink },
+  columnsRight: { flexDirection: "row", alignItems: "center" },
+  columnLabel: { fontSize: 14, fontWeight: "600", color: colors.ink },
+
+  row: {
+    flexDirection: "row",
     alignItems: "flex-start",
-    marginBottom: 28,
-    paddingRight: 4,
+    paddingVertical: 18,
   },
-  notificationContent: {
-    flex: 1,
-    paddingRight: 16,
-  },
-  notificationItemTitle: {
+  rowLeft: { flex: 1, paddingRight: 12 },
+  rowTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: colors.ink,
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  notificationDescription: {
-    fontSize: 13,
-    color: colors.text,
-    lineHeight: 18,
-  },
-  togglesContainer: {
+  rowDesc: { fontSize: 13, color: colors.text, lineHeight: 18 },
+
+  rowToggles: {
+    width: 140,
     flexDirection: "row",
-    gap: 40,
+    justifyContent: "flex-end",
     alignItems: "center",
   },
+  rowDivider: { height: 1, backgroundColor: colors.border },
+
+  // Toggle styles
+  toggleOuter: {
+    width: 44,
+    height: 28,
+    borderRadius: 16,
+    padding: 3,
+    justifyContent: "center",
+  },
+  toggleOuterOff: {
+    backgroundColor: "#e6e6e6",
+  },
+  toggleOuterOn: {
+    backgroundColor: colors.loginPrimaryGreen,
+  },
+  toggleInner: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  toggleInnerOff: { alignSelf: "flex-start" },
+  toggleInnerOn: { alignSelf: "flex-end" },
 });

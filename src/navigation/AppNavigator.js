@@ -41,6 +41,8 @@ import FollowingScreen from "../screens/FollowingScreen";
 import HistoryScreen from "../screens/HistoryScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import AccountScreen from "../screens/AccountScreen";
+import ArchivedScreen from "../screens/ArchivedScreen";
+import LikedScreen from "../screens/LikedScreen";
 import { colors } from "../theme/colors";
 
 const Stack = createNativeStackNavigator();
@@ -75,46 +77,91 @@ export default function AppNavigator() {
                 <Ionicons name="home" size={20} color="#fff" />
               </Pressable>
             );
-          }
+          },
         })}
       >
-        <Stack.Screen 
-          name="Login" 
-          component={LoginScreen} 
-          options={{ 
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{
             headerShown: false,
-            title: "Sign In" 
-          }} 
+            title: "Sign In",
+          }}
         />
-        <Stack.Screen 
-          name="ForgotPassword" 
-          component={ForgotPasswordScreen} 
-          options={{ 
+        <Stack.Screen
+          name="ForgotPassword"
+          component={ForgotPasswordScreen}
+          options={{
             headerShown: false,
-            title: "Forgot Password" 
-          }} 
+            title: "Forgot Password",
+          }}
         />
-        <Stack.Screen 
-          name="CreateAccount" 
-          component={CreateAccountScreen} 
-          options={{ 
+        <Stack.Screen
+          name="CreateAccount"
+          component={CreateAccountScreen}
+          options={{
             headerShown: false,
-            title: "Create Account" 
-          }} 
+            title: "Create Account",
+          }}
         />
         <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="Map" component={MapScreen} options={{ title: "Cheap Eats Map" }} />
-        <Stack.Screen name="Recipes" component={RecipesScreen} options={{ title: "Budget Recipes" }} />
+        <Stack.Screen
+          name="Map"
+          component={MapScreen}
+          options={{ title: "Cheap Eats Map" }}
+        />
+        <Stack.Screen
+          name="Recipes"
+          component={RecipesScreen}
+          options={{ title: "Budget Recipes" }}
+        />
         <Stack.Screen name="Community" component={CommunityScreen} />
-        <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: "My account", headerShown: false }} />
-        <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: "Edit Profile", headerShown: false }} />
-        <Stack.Screen name="Contributions" component={ContributionsScreen} options={{ title: "Contributions", headerShown: false }} />
-        <Stack.Screen name="Following" component={FollowingScreen} options={{ title: "Following", headerShown: false }} />
-        <Stack.Screen name="History" component={HistoryScreen} options={{ title: "History", headerShown: false }} />
-        <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: "Notifications", headerShown: false }} />
-        <Stack.Screen name="Account" component={AccountScreen} options={{ title: "Account", headerShown: false }} />
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{ title: "My account", headerShown: false }}
+        />
+        <Stack.Screen
+          name="EditProfile"
+          component={EditProfileScreen}
+          options={{ title: "Edit Profile", headerShown: false }}
+        />
+        <Stack.Screen
+          name="Contributions"
+          component={ContributionsScreen}
+          options={{ title: "Contributions", headerShown: false }}
+        />
+        <Stack.Screen
+          name="Following"
+          component={FollowingScreen}
+          options={{ title: "Following", headerShown: false }}
+        />
+        <Stack.Screen
+          name="History"
+          component={HistoryScreen}
+          options={{ title: "History", headerShown: false }}
+        />
+        <Stack.Screen
+          name="Archived"
+          component={ArchivedScreen}
+          options={{ title: "Archived", headerShown: false }}
+        />
+        <Stack.Screen
+          name="Liked"
+          component={LikedScreen}
+          options={{ title: "Liked", headerShown: false }}
+        />
+        <Stack.Screen
+          name="Notifications"
+          component={NotificationsScreen}
+          options={{ title: "Notifications", headerShown: false }}
+        />
+        <Stack.Screen
+          name="Account"
+          component={AccountScreen}
+          options={{ title: "Account", headerShown: false }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
-

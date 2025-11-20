@@ -2,15 +2,18 @@ import React from "react";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { UserProvider } from "./src/contexts/UserContext";
+import { LikesProvider } from "./src/contexts/LikesContext";
 
 export default function App() {
   return (
     <UserProvider>
-      <SafeAreaProvider>
-        <SafeAreaView style={{ flex: 1 }}>
-          <AppNavigator />
-        </SafeAreaView>
-      </SafeAreaProvider>
+      <LikesProvider>
+        <SafeAreaProvider>
+          <SafeAreaView style={{ flex: 1 }}>
+            <AppNavigator />
+          </SafeAreaView>
+        </SafeAreaProvider>
+      </LikesProvider>
     </UserProvider>
   );
 }

@@ -3,6 +3,7 @@ import {
   View,
   Text,
   Pressable,
+  Image,
   StyleSheet,
   ScrollView,
   ActivityIndicator,
@@ -27,24 +28,20 @@ export default function ProfileScreen({ navigation }) {
   }, [user]);
 
   const handleLogout = () => {
-    Alert.alert(
-      "Log Out",
-      "Are you sure you want to log out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Log Out",
-          style: "destructive",
-          onPress: async () => {
-            await logout();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "Login" }],
-            });
-          },
+    Alert.alert("Log Out", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log Out",
+        style: "destructive",
+        onPress: async () => {
+          await logout();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Login" }],
+          });
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const getInitials = (username) => {
@@ -114,15 +111,21 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.profileSection}>
             <View style={styles.avatarWrapper}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {user?.avatar ? "" : getInitials(username || "User")}
-                </Text>
+                <View style={styles.avatarInner}>
+                  <Text style={styles.avatarText}>
+                    {user?.avatar ? "" : getInitials(username || "User")}
+                  </Text>
+                </View>
               </View>
               <Pressable
                 style={styles.editAvatarBadge}
                 onPress={() => navigation.navigate("EditProfile")}
               >
-                <Ionicons name="create-outline" size={14} color="#fff" />
+                <Image
+                  source={require("../../assets/Edit Icon.png")}
+                  style={{ width: 14, height: 14, tintColor: "#fff" }}
+                  resizeMode="contain"
+                />
               </Pressable>
             </View>
 
@@ -140,12 +143,27 @@ export default function ProfileScreen({ navigation }) {
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
-                <Pressable onPress={handleUsernameEdit} style={styles.usernameEditButton}>
-                  <Ionicons
-                    name={editingUsername ? "checkmark" : "create-outline"}
-                    size={18}
-                    color={colors.uclaBlue}
-                  />
+                <Pressable
+                  onPress={handleUsernameEdit}
+                  style={styles.usernameEditButton}
+                >
+                  {editingUsername ? (
+                    <Ionicons
+                      name="checkmark"
+                      size={18}
+                      color={colors.textLight}
+                    />
+                  ) : (
+                    <Image
+                      source={require("../../assets/Edit Icon.png")}
+                      style={{
+                        width: 18,
+                        height: 18,
+                        tintColor: colors.textLight,
+                      }}
+                      resizeMode="contain"
+                    />
+                  )}
                 </Pressable>
               </View>
             </View>
@@ -158,10 +176,18 @@ export default function ProfileScreen({ navigation }) {
               onPress={() => navigation.navigate("Contributions")}
             >
               <View style={styles.menuIconContainer}>
-                <Ionicons name="document-text-outline" size={24} color={colors.uclaBlue} />
+                <Ionicons
+                  name="document-text-outline"
+                  size={24}
+                  color={colors.textLight}
+                />
               </View>
               <Text style={styles.menuButtonText}>Contributions</Text>
-              <Ionicons name="chevron-forward" size={20} color={colors.uclaBlue} />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.textLight}
+              />
             </Pressable>
 
             <Pressable
@@ -169,10 +195,18 @@ export default function ProfileScreen({ navigation }) {
               onPress={() => navigation.navigate("Following")}
             >
               <View style={styles.menuIconContainer}>
-                <Ionicons name="people-outline" size={24} color={colors.uclaBlue} />
+                <Ionicons
+                  name="people-outline"
+                  size={24}
+                  color={colors.textLight}
+                />
               </View>
               <Text style={styles.menuButtonText}>Following</Text>
-              <Ionicons name="chevron-forward" size={20} color={colors.uclaBlue} />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.textLight}
+              />
             </Pressable>
 
             <Pressable
@@ -180,10 +214,18 @@ export default function ProfileScreen({ navigation }) {
               onPress={() => navigation.navigate("Notifications")}
             >
               <View style={styles.menuIconContainer}>
-                <Ionicons name="notifications-outline" size={24} color={colors.uclaBlue} />
+                <Ionicons
+                  name="notifications-outline"
+                  size={24}
+                  color={colors.textLight}
+                />
               </View>
               <Text style={styles.menuButtonText}>Notifications</Text>
-              <Ionicons name="chevron-forward" size={20} color={colors.uclaBlue} />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.textLight}
+              />
             </Pressable>
 
             <Pressable
@@ -191,10 +233,18 @@ export default function ProfileScreen({ navigation }) {
               onPress={() => navigation.navigate("Account")}
             >
               <View style={styles.menuIconContainer}>
-                <Ionicons name="settings-outline" size={24} color={colors.uclaBlue} />
+                <Ionicons
+                  name="settings-outline"
+                  size={24}
+                  color={colors.textLight}
+                />
               </View>
               <Text style={styles.menuButtonText}>Account</Text>
-              <Ionicons name="chevron-forward" size={20} color={colors.uclaBlue} />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.textLight}
+              />
             </Pressable>
 
             <Pressable
@@ -202,10 +252,18 @@ export default function ProfileScreen({ navigation }) {
               onPress={() => navigation.navigate("History")}
             >
               <View style={styles.menuIconContainer}>
-                <Ionicons name="time-outline" size={24} color={colors.uclaBlue} />
+                <Ionicons
+                  name="time-outline"
+                  size={24}
+                  color={colors.textLight}
+                />
               </View>
               <Text style={styles.menuButtonText}>History</Text>
-              <Ionicons name="chevron-forward" size={20} color={colors.uclaBlue} />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.textLight}
+              />
             </Pressable>
           </View>
 
@@ -279,28 +337,36 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.uclaGold,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#eaf6ea",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.uclaBlue,
+    borderWidth: 0,
+  },
+  avatarInner: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "#7fbf65",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 0,
   },
   avatarText: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "700",
-    color: colors.uclaBlue,
+    color: "#ffffff",
   },
   editAvatarBadge: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: colors.uclaBlue,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    backgroundColor: "#7fbf65",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
@@ -318,11 +384,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderColor: "#e6e6e6",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
   usernameInput: {
     flex: 1,
@@ -337,30 +408,31 @@ const styles = StyleSheet.create({
   // Navigation Menu
   menuSection: {
     paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 20,
-    marginTop: 12,
+    gap: 14,
+    marginBottom: 24,
+    marginTop: 18,
   },
   menuButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     gap: 12,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "#f0f0f0",
     shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   menuIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: colors.uclaBlue + "15",
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -375,19 +447,20 @@ const styles = StyleSheet.create({
   logoutButton: {
     marginHorizontal: 20,
     backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.error + "30",
+    borderWidth: 2,
+    borderColor: colors.error,
     shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   logoutButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
     color: colors.error,
   },

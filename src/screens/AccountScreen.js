@@ -9,12 +9,34 @@ import {
   Alert,
   ActivityIndicator,
   Switch,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import { useUser } from "../contexts/UserContext";
 import BottomNavigation from "../components/BottomNavigation";
+
+// Reusable Toggle matching hi-fi (gray off / green on)
+function Toggle({ value, onChange }) {
+  return (
+    <Pressable
+      onPress={() => onChange(!value)}
+      style={[
+        accountStyles.toggleOuter,
+        value ? accountStyles.toggleOuterOn : accountStyles.toggleOuterOff,
+      ]}
+      hitSlop={8}
+    >
+      <View
+        style={[
+          accountStyles.toggleInner,
+          value ? accountStyles.toggleInnerOn : accountStyles.toggleInnerOff,
+        ]}
+      />
+    </Pressable>
+  );
+}
 
 export default function AccountScreen({ navigation }) {
   const { user, updateUser } = useUser();
@@ -112,14 +134,25 @@ export default function AccountScreen({ navigation }) {
                 <TextInput
                   style={styles.input}
                   value={accountData.school}
-                  onChangeText={(text) => setAccountData({ ...accountData, school: text })}
+                  onChangeText={(text) =>
+                    setAccountData({ ...accountData, school: text })
+                  }
                   editable={editingField === "school"}
-                  onBlur={() => editingField === "school" && handleSave("school")}
+                  onBlur={() =>
+                    editingField === "school" && handleSave("school")
+                  }
                 />
                 <Pressable
-                  onPress={() => editingField === "school" ? handleSave("school") : handleEdit("school")}
+                  onPress={() =>
+                    editingField === "school"
+                      ? handleSave("school")
+                      : handleEdit("school")
+                  }
                 >
-                  <Ionicons name="create-outline" size={20} color={colors.uclaBlue} />
+                  <Image
+                    source={require("../../assets/Edit Icon.png")}
+                    style={styles.editIcon}
+                  />
                 </Pressable>
               </View>
             </View>
@@ -130,15 +163,27 @@ export default function AccountScreen({ navigation }) {
                 <TextInput
                   style={styles.input}
                   value={accountData.graduatingYear}
-                  onChangeText={(text) => setAccountData({ ...accountData, graduatingYear: text })}
+                  onChangeText={(text) =>
+                    setAccountData({ ...accountData, graduatingYear: text })
+                  }
                   editable={editingField === "graduatingYear"}
                   keyboardType="numeric"
-                  onBlur={() => editingField === "graduatingYear" && handleSave("graduatingYear")}
+                  onBlur={() =>
+                    editingField === "graduatingYear" &&
+                    handleSave("graduatingYear")
+                  }
                 />
                 <Pressable
-                  onPress={() => editingField === "graduatingYear" ? handleSave("graduatingYear") : handleEdit("graduatingYear")}
+                  onPress={() =>
+                    editingField === "graduatingYear"
+                      ? handleSave("graduatingYear")
+                      : handleEdit("graduatingYear")
+                  }
                 >
-                  <Ionicons name="create-outline" size={20} color={colors.uclaBlue} />
+                  <Image
+                    source={require("../../assets/Edit Icon.png")}
+                    style={styles.editIcon}
+                  />
                 </Pressable>
               </View>
             </View>
@@ -154,15 +199,24 @@ export default function AccountScreen({ navigation }) {
                 <TextInput
                   style={styles.input}
                   value={accountData.email}
-                  onChangeText={(text) => setAccountData({ ...accountData, email: text })}
+                  onChangeText={(text) =>
+                    setAccountData({ ...accountData, email: text })
+                  }
                   editable={editingField === "email"}
                   keyboardType="email-address"
                   onBlur={() => editingField === "email" && handleSave("email")}
                 />
                 <Pressable
-                  onPress={() => editingField === "email" ? handleSave("email") : handleEdit("email")}
+                  onPress={() =>
+                    editingField === "email"
+                      ? handleSave("email")
+                      : handleEdit("email")
+                  }
                 >
-                  <Ionicons name="create-outline" size={20} color={colors.uclaBlue} />
+                  <Image
+                    source={require("../../assets/Edit Icon.png")}
+                    style={styles.editIcon}
+                  />
                 </Pressable>
               </View>
             </View>
@@ -173,15 +227,24 @@ export default function AccountScreen({ navigation }) {
                 <TextInput
                   style={styles.input}
                   value={accountData.phone}
-                  onChangeText={(text) => setAccountData({ ...accountData, phone: text })}
+                  onChangeText={(text) =>
+                    setAccountData({ ...accountData, phone: text })
+                  }
                   editable={editingField === "phone"}
                   keyboardType="phone-pad"
                   onBlur={() => editingField === "phone" && handleSave("phone")}
                 />
                 <Pressable
-                  onPress={() => editingField === "phone" ? handleSave("phone") : handleEdit("phone")}
+                  onPress={() =>
+                    editingField === "phone"
+                      ? handleSave("phone")
+                      : handleEdit("phone")
+                  }
                 >
-                  <Ionicons name="create-outline" size={20} color={colors.uclaBlue} />
+                  <Image
+                    source={require("../../assets/Edit Icon.png")}
+                    style={styles.editIcon}
+                  />
                 </Pressable>
               </View>
             </View>
@@ -190,8 +253,13 @@ export default function AccountScreen({ navigation }) {
               <Text style={styles.fieldLabel}>Password</Text>
               <View style={styles.inputRow}>
                 <Text style={styles.passwordText}>••••••••••••</Text>
-                <Pressable onPress={() => navigation.navigate("ChangePassword")}>
-                  <Ionicons name="create-outline" size={20} color={colors.uclaBlue} />
+                <Pressable
+                  onPress={() => navigation.navigate("ChangePassword")}
+                >
+                  <Image
+                    source={require("../../assets/Edit Icon.png")}
+                    style={styles.editIcon}
+                  />
                 </Pressable>
               </View>
             </View>
@@ -201,11 +269,11 @@ export default function AccountScreen({ navigation }) {
           <View style={styles.section}>
             <View style={styles.twoFactorRow}>
               <Text style={styles.fieldLabel}>Two-factor authentication</Text>
-              <Switch
+              <Toggle
                 value={accountData.twoFactorEnabled}
-                onValueChange={(value) => setAccountData({ ...accountData, twoFactorEnabled: value })}
-                trackColor={{ false: colors.lightGray, true: colors.uclaBlue }}
-                thumbColor="#fff"
+                onChange={(v) =>
+                  setAccountData({ ...accountData, twoFactorEnabled: v })
+                }
               />
             </View>
           </View>
@@ -276,7 +344,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: colors.uclaBlue,
+    color: colors.ink,
     marginBottom: 20,
   },
   fieldContainer: {
@@ -293,10 +361,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    borderRadius: 12,
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: colors.bg0,
+    backgroundColor: "#fff",
   },
   input: {
     flex: 1,
@@ -316,19 +384,14 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     marginHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 16,
-    padding: 16,
+    marginTop: 24,
+    marginBottom: 24,
+    paddingVertical: 14,
     backgroundColor: "#fff",
-    borderRadius: 12,
+    borderRadius: 28,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.error + "30",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderWidth: 2,
+    borderColor: colors.error,
   },
   deleteButtonText: {
     fontSize: 16,
@@ -336,3 +399,42 @@ const styles = StyleSheet.create({
     color: colors.error,
   },
 });
+
+// Toggle-specific styles (kept separate to avoid name clash)
+const accountStyles = StyleSheet.create({
+  toggleOuter: {
+    width: 44,
+    height: 28,
+    borderRadius: 16,
+    padding: 3,
+    justifyContent: "center",
+  },
+  toggleOuterOff: { backgroundColor: "#e6e6e6" },
+  toggleOuterOn: { backgroundColor: colors.loginPrimaryGreen },
+  toggleInner: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  toggleInnerOff: { alignSelf: "flex-start" },
+  toggleInnerOn: { alignSelf: "flex-end" },
+});
+
+// Image edit icon style
+const editStyles = StyleSheet.create({
+  editIcon: {
+    width: 18,
+    height: 18,
+    resizeMode: "contain",
+    tintColor: colors.uclaBlue,
+  },
+});
+
+// Merge editStyles into styles object so component uses `styles.editIcon`
+Object.assign(styles, editStyles);
