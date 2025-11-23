@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,10 @@ import {
   ScrollView,
   Pressable,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getSavedRecipes, saveRecipe, deleteRecipe } from '../services/recipeService';
 
 // Mock ingredients for demo
 const MOCK_INGREDIENTS = [
@@ -37,16 +39,122 @@ export default function RecipeDetailScreen({ route, navigation }) {
   const { recipe, pricing } = route.params;
   const [checkedIngredients, setCheckedIngredients] = useState([]);
   const [isSaved, setIsSaved] = useState(false);
+  const [savedRecipeId, setSavedRecipeId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // Use actual recipe data or fall back to mock
   const ingredients = recipe.ingredients || MOCK_INGREDIENTS.map(ing => ({ item: ing, amount: '' }));
   const instructions = recipe.instructions || MOCK_INSTRUCTIONS.map(inst => inst.text);
+
+  // Check if recipe is already saved on mount
+  useEffect(() => {
+    checkIfSaved();
+  }, []);
+
+  const checkIfSaved = async () => {
+    try {
+      const response = await getSavedRecipes();
+      const saved = response.recipes?.find(r => r.name === recipe.name);
+      if (saved) {
+        setIsSaved(true);
+        setSavedRecipeId(saved._id);
+      }
+    } catch (error) {
+      console.error('Error checking if recipe is saved:', error);
+    }
+  };
 
   const toggleIngredient = (index) => {
     if (checkedIngredients.includes(index)) {
       setCheckedIngredients(checkedIngredients.filter(i => i !== index));
     } else {
       setCheckedIngredients([...checkedIngredients, index]);
+    }
+  };
+
+  const handleToggleSave = async () => {
+    if (loading) return;
+
+    if (isSaved && savedRecipeId) {
+      // Delete recipe
+      const confirmDelete = () => {
+        return new Promise((resolve) => {
+          if (Platform.OS === 'web') {
+            resolve(window.confirm('Remove this recipe from your saved collection?'));
+          } else {
+            Alert.alert(
+              'Remove Recipe',
+              'Remove this recipe from your saved collection?',
+              [
+                { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+                { text: 'Remove', style: 'destructive', onPress: () => resolve(true) },
+              ]
+            );
+          }
+        });
+      };
+
+      const confirmed = await confirmDelete();
+      if (!confirmed) return;
+
+      try {
+        setLoading(true);
+        await deleteRecipe(savedRecipeId);
+        setIsSaved(false);
+        setSavedRecipeId(null);
+      } catch (error) {
+        console.error('Error deleting recipe:', error);
+        if (Platform.OS === 'web') {
+          window.alert('Failed to remove recipe');
+        } else {
+          Alert.alert('Error', 'Failed to remove recipe');
+        }
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Save recipe
+      try {
+        setLoading(true);
+        const response = await saveRecipe({
+          name: recipe.name,
+          servings: recipe.servings,
+          ingredients: recipe.ingredients,
+          instructions: recipe.instructions,
+          tips: recipe.tips || [],
+          pricing: {
+            ingredients: pricing?.ingredients || [],
+            totalCost: pricing?.totalCost || 0,
+            costPerServing: pricing?.costPerServing || 0,
+          },
+          prepTime: recipe.prepTime || '15 minutes',
+          difficulty: recipe.difficulty || 2,
+          budget: recipe.budget || `$${pricing?.totalCost?.toFixed(2) || '0'}`,
+          tags: recipe.tags || [],
+          isPublic: false,
+          isCooked: false,
+          likes: recipe.likes || 0,
+          comments: recipe.comments || 0,
+          description: recipe.description || recipe.instructions?.[0] || '',
+        });
+        setIsSaved(true);
+        setSavedRecipeId(response.recipe._id);
+
+        if (Platform.OS === 'web') {
+          window.alert('Recipe saved to your collection!');
+        } else {
+          Alert.alert('Saved!', 'Recipe saved to your collection!');
+        }
+      } catch (error) {
+        console.error('Error saving recipe:', error);
+        if (Platform.OS === 'web') {
+          window.alert('Failed to save recipe');
+        } else {
+          Alert.alert('Error', 'Failed to save recipe');
+        }
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -64,7 +172,8 @@ export default function RecipeDetailScreen({ route, navigation }) {
           </Pressable>
           <Pressable
             style={styles.iconButton}
-            onPress={() => setIsSaved(!isSaved)}
+            onPress={handleToggleSave}
+            disabled={loading}
           >
             <Ionicons
               name={isSaved ? "heart" : "heart-outline"}

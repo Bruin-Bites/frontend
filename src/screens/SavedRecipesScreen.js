@@ -7,6 +7,7 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getSavedRecipes, updateRecipe, deleteRecipe } from '../services/recipeService';
@@ -48,26 +49,37 @@ export default function SavedRecipesScreen({ navigation }) {
   };
 
   const handleDeleteRecipe = async (recipeId) => {
-    Alert.alert(
-      'Delete Recipe',
-      'Are you sure you want to delete this recipe?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteRecipe(recipeId);
-              fetchRecipes(); // Refresh the list
-            } catch (error) {
-              console.error('Error deleting recipe:', error);
-              Alert.alert('Error', 'Failed to delete recipe');
-            }
-          },
-        },
-      ]
-    );
+    const confirmDelete = () => {
+      return new Promise((resolve) => {
+        if (Platform.OS === 'web') {
+          resolve(window.confirm('Are you sure you want to delete this recipe?'));
+        } else {
+          Alert.alert(
+            'Delete Recipe',
+            'Are you sure you want to delete this recipe?',
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+            ]
+          );
+        }
+      });
+    };
+
+    const confirmed = await confirmDelete();
+    if (!confirmed) return;
+
+    try {
+      await deleteRecipe(recipeId);
+      fetchRecipes(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting recipe:', error);
+      if (Platform.OS === 'web') {
+        window.alert('Failed to delete recipe');
+      } else {
+        Alert.alert('Error', 'Failed to delete recipe');
+      }
+    }
   };
 
   const publicRecipes = recipes.filter(r => r.isPublic);
