@@ -1,7 +1,8 @@
 import React, { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../../theme/colors";
+import { API_BASE_URL } from "../../../services/api";
 
 const IGNORED_TYPES = new Set([
   "establishment",
@@ -28,6 +29,45 @@ const RestaurantCard = ({
   onPress,
   onToggleFavorite,
 }) => {
+  const buildPhotoUri = useMemo(() => {
+    const base = API_BASE_URL.replace(/\/$/, "");
+    const root = base.endsWith("/api") ? base.slice(0, -4) : base;
+
+    return (photoReference, maxWidth = 600) => {
+      if (!photoReference) return null;
+      return `${root}/api/photos/${encodeURIComponent(photoReference)}?maxwidth=${maxWidth}`;
+    };
+  }, []);
+
+  const heroImage = useMemo(() => {
+    if (Array.isArray(item?.photos) && item.photos.length > 0) {
+      const primary = item.photos[0];
+      const inlineUri =
+        typeof primary === "object" && typeof primary?.uri === "string"
+          ? primary.uri
+          : null;
+      const inlineUriSafe = inlineUri && inlineUri.includes("key=") ? null : inlineUri;
+
+      const proxyUri =
+        typeof primary === "object" && primary?.photo_reference
+          ? buildPhotoUri(primary.photo_reference)
+          : null;
+
+      const resolved =
+        inlineUriSafe && inlineUriSafe.startsWith("http")
+          ? inlineUriSafe
+          : proxyUri || inlineUriSafe;
+
+      if (resolved) return resolved;
+    }
+
+    if (Array.isArray(item?.images) && item.images.length > 0) {
+      const fallback = item.images.find((img) => typeof img === "string");
+      if (fallback) return fallback;
+    }
+
+    return null;
+  }, [item, buildPhotoUri]);
   const distanceLabel =
     item?.userDistanceText?.trim() ||
     item?.distance_text ||
@@ -58,9 +98,13 @@ const RestaurantCard = ({
       onPress={onPress}
     >
       <View style={styles.imageContainer}>
-        <View style={styles.imagePlaceholder}>
-          <Ionicons name="image-outline" size={28} color="#94A3B8" />
-        </View>
+        {heroImage ? (
+          <Image source={{ uri: heroImage }} style={styles.heroImage} />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Ionicons name="image-outline" size={28} color="#94A3B8" />
+          </View>
+        )}
         <View style={styles.imageOverlay}>
           <Pressable
             onPress={(event) => {
@@ -150,6 +194,12 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: "relative",
     width: "100%",
+  },
+  heroImage: {
+    height: 180,
+    width: "100%",
+    resizeMode: "cover",
+    backgroundColor: "#E2E8F0",
   },
   imagePlaceholder: {
     height: 180,

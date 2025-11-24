@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Image,
   ScrollView,
@@ -7,43 +7,22 @@ import {
   TouchableOpacity,
   Pressable,
   View,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../../theme/colors";
+import { API_BASE_URL } from "../../../services/api";
+// import IconCircleButton from "../../../components/IconCircleButton";
 
 const DEFAULT_META = {
-  schedule: "October 17, 2025 • 12:00 PM – 1:30 PM",
-  host: "Hosted by UCLA Career Center with WESCOM Financial",
-  description:
-    "Are you ready to take control of your financial future? Join us for a financial literacy event hosted by UCLA Campus Life and Recreation. The first 40 attendees will get FREE food!",
-  tags: ["On Campus", "FCFS", "Lunch", "Vegan"],
   gallery: [
     { id: "placeholder-1" },
     { id: "placeholder-2" },
     { id: "placeholder-3" },
+    { id: "placeholder-4" },
+    { id: "placeholder-5" },
   ],
-  menu: [
-    {
-      title: "Chicken Sandwich",
-      items: ["Chicken Sandwich", "Vegan Sandwich", "Chips"],
-    },
-    {
-      title: "Vegan Sandwich",
-      items: ["Salad", "Chocolate Cookies", "Water"],
-    },
-    {
-      title: "Salad Bar",
-      items: ["Fresh Greens", "Seasonal Veggies", "House Dressing"],
-    },
-  ],
-  allergies: [
-    "Vegan",
-    "Contains Soy",
-    "Contains Wheat",
-    "Low-Carbon-Footprint",
-    "Contains Gluten",
-    "Contains Egg",
-  ],
+  menu: [],
 };
 
 const RestaurantDetail = ({
@@ -52,6 +31,7 @@ const RestaurantDetail = ({
   favorite,
   onToggleFavorite,
 }) => {
+  const [showAllPhotos, setShowAllPhotos] = useState(false);
   const name = restaurant?.name || "Unnamed place";
   const addressSource =
     restaurant?.address ||
@@ -66,55 +46,69 @@ const RestaurantDetail = ({
     return addressSource.split(",").map((line) => line.trim());
   }, [addressSource]);
 
-  const galleryItems = useMemo(() => {
+  const buildPhotoUri = useMemo(() => {
+    const base = API_BASE_URL.replace(/\/$/, "");
+    const root = base.endsWith("/api") ? base.slice(0, -4) : base;
+
+    return (photoReference, maxWidth = 800) => {
+      if (!photoReference) return null;
+      return `${root}/api/photos/${encodeURIComponent(
+        photoReference
+      )}?maxwidth=${maxWidth}`;
+    };
+  }, []);
+
+  const normalizedPhotos = useMemo(() => {
     if (Array.isArray(restaurant?.photos) && restaurant.photos.length > 0) {
-      return restaurant.photos.slice(0, 6).map((photo, index) => ({
-        id:
-          photo?.photo_reference ||
-          photo?.id ||
-          (typeof photo === "string" ? photo : `photo-${index}`),
-        uri: typeof photo === "string" ? photo : photo?.uri || null,
-      }));
+      const seen = new Set();
+      return restaurant.photos.map((photo, index) => {
+        const proxyUri =
+          typeof photo === "object" && photo?.photo_reference
+            ? buildPhotoUri(photo.photo_reference)
+            : null;
+
+        const inlineUri =
+          typeof photo === "object" && typeof photo?.uri === "string"
+            ? photo.uri
+            : null;
+        const inlineUriSafe =
+          inlineUri && inlineUri.includes("key=") ? null : inlineUri;
+        const resolvedUri =
+          inlineUriSafe && inlineUriSafe.startsWith("http")
+            ? inlineUriSafe
+            : proxyUri || inlineUriSafe;
+
+        const key =
+          photo?.photo_reference || resolvedUri || inlineUriSafe || `idx-${index}`;
+        if (seen.has(key)) {
+          return null;
+        }
+        seen.add(key);
+
+        return {
+          id:
+            photo?.photo_reference ||
+            photo?.id ||
+            (typeof photo === "string" ? photo : `photo-${index}`),
+          uri: typeof photo === "string" ? photo : resolvedUri || null,
+        };
+      }).filter(Boolean);
     }
     if (Array.isArray(restaurant?.images) && restaurant.images.length > 0) {
-      return restaurant.images.slice(0, 6).map((uri, index) => ({
+      return restaurant.images.map((uri, index) => ({
         id: `image-${index}`,
         uri: typeof uri === "string" ? uri : null,
       }));
     }
     return DEFAULT_META.gallery;
-  }, [restaurant]);
+  }, [restaurant, buildPhotoUri]);
 
-  const menuItems = useMemo(() => {
-    if (Array.isArray(restaurant?.menu) && restaurant.menu.length > 0) {
-      const normalized = restaurant.menu.map((entry, index) => {
-        if (typeof entry === "string") {
-          return {
-            title: `Option ${index + 1}`,
-            items: [entry],
-          };
-        }
-        if (entry && typeof entry === "object") {
-          const title =
-            entry.title ||
-            entry.name ||
-            entry.category ||
-            `Option ${index + 1}`;
-          const items = Array.isArray(entry.items)
-            ? entry.items
-            : entry.description
-            ? [entry.description]
-            : [];
-          return { title, items };
-        }
-        return null;
-      });
-
-      const filtered = normalized.filter(Boolean);
-      return filtered.length > 0 ? filtered : DEFAULT_META.menu;
-    }
-    return DEFAULT_META.menu;
-  }, [restaurant]);
+  const galleryItems = useMemo(() => {
+    const photos = normalizedPhotos;
+    const MAX_VISIBLE = 5;
+    if (showAllPhotos) return photos;
+    return photos.slice(0, MAX_VISIBLE);
+  }, [normalizedPhotos, showAllPhotos]);
 
   return (
     <ScrollView
@@ -162,33 +156,21 @@ const RestaurantDetail = ({
         ))}
       </ScrollView>
 
-      <View style={styles.scheduleRow}>
-        <Ionicons name="calendar-outline" size={18} color="#000000" />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.scheduleText}>{DEFAULT_META.schedule}</Text>
-          <Text style={styles.hostText}>{DEFAULT_META.host}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.description}>{DEFAULT_META.description}</Text>
-
-      <View style={styles.tagRow}>
-        {DEFAULT_META.tags.map((tag) => (
-          <View key={tag} style={styles.tagChip}>
-            <Text style={styles.tagChipText}>{tag}</Text>
-          </View>
-        ))}
-      </View>
+      {Array.isArray(normalizedPhotos) && normalizedPhotos.length > 5 && (
+        <TouchableOpacity
+          style={styles.viewAllButton}
+          activeOpacity={0.85}
+          onPress={() => setShowAllPhotos((prev) => !prev)}
+        >
+          <Text style={styles.viewAllText}>
+            {showAllPhotos
+              ? "Show fewer photos"
+              : `View all photos (${normalizedPhotos.length})`}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.locationSection}>
-        <View style={styles.mapContainer}>
-          <View style={styles.mapPlaceholder}>
-            <Ionicons name="map-outline" size={32} color="#8C8C8C" />
-          </View>
-          <TouchableOpacity style={styles.mapExpandButton}>
-            <Ionicons name="expand-outline" size={18} color="#000000" />
-          </TouchableOpacity>
-        </View>
         <View style={styles.addressRow}>
           <Ionicons name="location-outline" size={18} color="#000000" />
           <View style={{ flex: 1 }}>
@@ -198,84 +180,25 @@ const RestaurantDetail = ({
               </Text>
             ))}
           </View>
-          <Text style={styles.distanceText}>0.5 mi</Text>
         </View>
       </View>
 
-      <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.85}>
-        <Text style={styles.secondaryButtonText}>RSVP</Text>
-      </TouchableOpacity>
-
-      <View style={styles.hostCard}>
-        <View style={styles.hostAvatar}>
-          <Text style={styles.hostAvatarText}>{name?.charAt(0) ?? "R"}</Text>
+      {restaurant?.place_id ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Menu</Text>
+          <TouchableOpacity
+            onPress={() =>
+              Linking.openURL(
+                `https://www.google.com/maps/place/?q=place_id:${restaurant.place_id}`
+              )
+            }
+            style={styles.secondaryButton}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.secondaryButtonText}>View Menu</Text>
+          </TouchableOpacity>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.hostName}>UCLA Career Center</Text>
-          <Text style={styles.hostMeta}>23 Contributions</Text>
-        </View>
-        <TouchableOpacity style={styles.followButton} activeOpacity={0.9}>
-          <Text style={styles.followButtonText}>Follow</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Menu</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.menuScrollContent}
-        >
-          {menuItems
-            .filter(Boolean)
-            .map((entry, index) => (
-              <View key={entry.title || `menu-${index}`} style={styles.menuCard}>
-                <View style={styles.menuImagePlaceholder}>
-                  <Ionicons name="image-outline" size={24} color="#8C8C8C" />
-                </View>
-                <Text style={styles.menuTitle}>
-                  {entry.title || `Option ${index + 1}`}
-                </Text>
-              </View>
-            ))}
-        </ScrollView>
-        <View style={styles.menuList}>
-          {menuItems
-            .filter(Boolean)
-            .flatMap((entry) => entry.items || [])
-            .map((item, index) => (
-              <Text key={`${item}-${index}`} style={styles.menuItem}>
-                • {item}
-              </Text>
-            ))}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Allergies</Text>
-        <View style={styles.allergyGrid}>
-          {DEFAULT_META.allergies.map((label) => (
-            <View key={label} style={styles.allergyPill}>
-              <View style={styles.allergyCheckbox} />
-              <Text style={styles.allergyText}>{label}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Accessibility</Text>
-        <View style={styles.allergyGrid}>
-          <View style={styles.allergyPill}>
-            <View style={[styles.allergyCheckbox, styles.allergyCheckboxFilled]} />
-            <Text style={styles.allergyText}>Wheelchair accessible</Text>
-          </View>
-          <View style={styles.allergyPill}>
-            <View style={[styles.allergyCheckbox, styles.allergyCheckboxFilled]} />
-            <Text style={styles.allergyText}>Accessible parking near entrance</Text>
-          </View>
-        </View>
-      </View>
+      ) : null}
     </ScrollView>
   );
 };
@@ -289,11 +212,7 @@ const IconCircleButton = ({ name, active, onPress }) => (
       active && { backgroundColor: "rgba(138, 182, 68, 0.12)" },
     ]}
   >
-    <Ionicons
-      name={name}
-      size={16}
-      color={active ? "#F65952" : "#000000"}
-    />
+    <Ionicons name={name} size={16} color={active ? "#F65952" : "#000000"} />
   </Pressable>
 );
 
@@ -369,43 +288,14 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 16,
   },
-  scheduleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+  viewAllButton: {
+    alignSelf: "flex-start",
+    marginTop: 8,
+    marginLeft: 2,
   },
-  scheduleText: {
-    fontSize: 14,
-    fontWeight: "400",
-    color: "#000000",
-  },
-  hostText: {
-    fontSize: 12,
-    color: "#000000",
-    marginTop: 2,
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: "#000000",
-  },
-  tagRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  tagChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#8AB644",
-  },
-  tagChipText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#8AB644",
+  viewAllText: {
+    color: colors.uclaBlue,
+    fontWeight: "700",
   },
   section: {
     gap: 8,
@@ -522,42 +412,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: colors.uclaBlue,
-  },
-  menuScrollContent: {
-    flexDirection: "row",
-    gap: 12,
-    paddingRight: 4,
-  },
-  menuCard: {
-    width: 120,
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#FFFFFF",
-    gap: 8,
-  },
-  menuImagePlaceholder: {
-    width: "100%",
-    height: 100,
-    backgroundColor: "#E2E8F0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  menuTitle: {
-    fontSize: 12,
-    fontWeight: "400",
-    color: "#000000",
-    paddingHorizontal: 8,
-    paddingBottom: 8,
-    textAlign: "center",
-  },
-  menuList: {
-    marginTop: 12,
-    gap: 4,
-  },
-  menuItem: {
-    fontSize: 12,
-    color: "#000000",
   },
   allergyGrid: {
     flexDirection: "row",
