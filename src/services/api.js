@@ -25,9 +25,10 @@ const deriveBaseUrl = () => {
 
 export const API_BASE_URL = deriveBaseUrl();
 
+// Some endpoints (uploads / large datasets) can take longer than 10s, so give a larger window.
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60000, // 60 seconds - increased to handle multiple Google Maps API calls
+  timeout: 30000,
 });
 
 export default api;

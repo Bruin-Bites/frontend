@@ -28,14 +28,17 @@ import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import MapControls from "./components/MapControls";
 import RestaurantCard from "./components/RestaurantCard";
 import RestaurantDetail from "./components/RestaurantDetail";
 import RestaurantMarkers from "./components/RestaurantMarkers";
 import Filter from "./components/Filter";
+import api from "../../services/api";
 import useRestaurantList from "../../hooks/useRestaurantList";
 import useUserLocation from "./hooks/useUserLocation";
 import useRestaurantResults from "./hooks/useRestaurantResults";
+import { calculateDistanceMeters, formatDistanceText } from "../../utils/geo";
 
 const FILTER_OPTIONS = {
   price: ["$", "$$", "$$$", "$$$$"],
@@ -55,6 +58,7 @@ const DEFAULT_FILTERS = {
   location: [],
   foodType: [],
   date: [],
+  favoritesOnly: false,
 };
 
 const CONTRIBUTIONS = [
@@ -145,24 +149,52 @@ const MapScreen = () => {
   const [transientError, setTransientError] = useState(null);
   const [filtersVisible, setFiltersVisible] = useState(false);
   const [topBarHeight, setTopBarHeight] = useState(0);
-  const [favoriteIds, setFavoriteIds] = useState(() => new Set());
+  const [favoriteRestaurantIds, setFavoriteRestaurantIds] = useState(() => new Set());
+  const [favoriteContributionIds, setFavoriteContributionIds] = useState(
+    () => new Set()
+  );
   const [activeTab, setActiveTab] = useState("restaurants");
   const [rsvpVisible, setRsvpVisible] = useState(false);
   const [rsvpThankYou, setRsvpThankYou] = useState(false);
   const [rsvpForm, setRsvpForm] = useState({ first: "", last: "", email: "" });
+  const [contributions, setContributions] = useState(CONTRIBUTIONS);
+  const [contributionError, setContributionError] = useState(null);
+  const [contributionsLoaded, setContributionsLoaded] = useState(false);
 
   const contributionsWithCoordinates = useMemo(
     () =>
-      CONTRIBUTIONS.map((c) => ({
-        ...c,
-        geometry: c.geometry || {
-          location: {
-            lat: c.latitude ?? 34.0689,
-            lng: c.longitude ?? -118.4452,
+      contributions.map((c) => {
+        const id =
+          (c._id && c._id.toString ? c._id.toString() : c._id) ||
+          c.id ||
+          c.name;
+        const lat =
+          c?.geometry?.location?.lat ??
+          c?.geometry?.location?.latitude ??
+          c.latitude;
+        const lng =
+          c?.geometry?.location?.lng ??
+          c?.geometry?.location?.longitude ??
+          c.longitude;
+        const hasCoords = typeof lat === "number" && typeof lng === "number";
+        const distanceMeters =
+          hasCoords && userLocation
+            ? calculateDistanceMeters(userLocation, { latitude: lat, longitude: lng })
+            : null;
+        return {
+          ...c,
+          id,
+          geometry: c.geometry || {
+            location: {
+              lat: lat ?? 34.0689,
+              lng: lng ?? -118.4452,
+            },
           },
-        },
-      })),
-    []
+          distance_value: distanceMeters ?? c.distance_value,
+          distance_text: distanceMeters ? formatDistanceText(distanceMeters) : c.distance_text,
+        };
+      }),
+    [contributions, userLocation]
   );
   const mapRef = useRef(null);
   const lastFitSignatureRef = useRef(null);
@@ -210,12 +242,88 @@ const MapScreen = () => {
   const { restaurants, loading, error: listError } = useRestaurantList();
   const { userLocation, locationError } = useUserLocation();
 
-  const { filtered, restaurantsWithCoordinates } = useRestaurantResults({
+  const { filtered } = useRestaurantResults({
     restaurants,
     userLocation,
     query,
     active: activeFilters,
   });
+
+  const loadFavorites = useCallback(async () => {
+    try {
+      const res = await api.get("/auth/me/favorites");
+      const restaurantList = Array.isArray(res.data?.favoriteRestaurants)
+        ? res.data.favoriteRestaurants
+        : [];
+      const contributionList = Array.isArray(res.data?.favoriteContributions)
+        ? res.data.favoriteContributions
+        : [];
+
+      setFavoriteRestaurantIds(
+        new Set(restaurantList.map((fav) => fav.place_id).filter(Boolean))
+      );
+      setFavoriteContributionIds(
+        new Set(
+          contributionList
+            .map((fav) =>
+              typeof fav === "string"
+                ? fav
+                : fav?._id?.toString?.() || fav?.id || null
+            )
+            .filter(Boolean)
+        )
+      );
+    } catch (error) {
+      if (error.response?.status !== 401) {
+        console.error("Error fetching favorites:", error.message);
+      }
+      setFavoriteRestaurantIds(new Set());
+      setFavoriteContributionIds(new Set());
+    }
+  }, []);
+
+  const loadContributions = useCallback(async () => {
+    try {
+      const res = await api.get("/contributions");
+      const fromApi = Array.isArray(res.data?.contributions)
+        ? res.data.contributions
+        : [];
+      const normalized = fromApi.map((c) => ({
+        ...c,
+        image: c.image || c.coverImage || (Array.isArray(c.images) ? c.images[0] : undefined),
+        comments: Array.isArray(c.replies) ? c.replies.length : c.comments,
+        votes: typeof c.votes === "number" ? c.votes : 0,
+      }));
+      setContributions(normalized);
+      setContributionError(null);
+    } catch (error) {
+      const message =
+        error.response?.data?.error ||
+        error.message ||
+        "Unable to load contributions.";
+      console.error("Error fetching contributions:", message);
+      setContributionError(message);
+      setContributions(CONTRIBUTIONS);
+    } finally {
+      setContributionsLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFavorites();
+  }, [loadFavorites, loadContributions]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadFavorites();
+    }, [loadFavorites, loadContributions])
+  );
+
+  useEffect(() => {
+    if (activeTab === "contributions" && !contributionsLoaded) {
+      loadContributions();
+    }
+  }, [activeTab, contributionsLoaded, loadContributions]);
 
   const normalizeTag = useCallback((value) => {
     return typeof value === "string"
@@ -247,6 +355,12 @@ const MapScreen = () => {
     };
 
     return contributionsWithCoordinates.filter((c) => {
+      const id =
+        (c._id && c._id.toString ? c._id.toString() : c._id) || c.id;
+      if (activeFilters.favoritesOnly && (!id || !favoriteContributionIds.has(id))) {
+        return false;
+      }
+
       if (!hasSelections) return true;
       const tags = Array.isArray(c.tags) ? c.tags : [];
       return (
@@ -257,14 +371,45 @@ const MapScreen = () => {
         matchAny(tags, tagsSelected.date)
       );
     });
-  }, [activeFilters, contributionsWithCoordinates, normalizeTag]);
+  }, [activeFilters, contributionsWithCoordinates, favoriteContributionIds, normalizeTag]);
+
+  const restaurantsFiltered = useMemo(() => {
+    if (!activeFilters.favoritesOnly) {
+      return filtered;
+    }
+    return filtered.filter((item) => {
+      const placeId = item.place_id || item.id || item.name;
+      return placeId && favoriteRestaurantIds.has(placeId);
+    });
+  }, [activeFilters.favoritesOnly, favoriteRestaurantIds, filtered]);
 
   const mapItems = useMemo(
     () =>
       activeTab === "restaurants"
-        ? restaurantsWithCoordinates
-        : contributionsFiltered,
-    [activeTab, restaurantsWithCoordinates, contributionsFiltered]
+        ? restaurantsFiltered.filter((r) => {
+            const hasLat =
+              r?.geometry?.location?.lat !== undefined ||
+              r?.geometry?.location?.latitude !== undefined;
+            const hasLng =
+              r?.geometry?.location?.lng !== undefined ||
+              r?.geometry?.location?.longitude !== undefined;
+            return hasLat && hasLng;
+          })
+        : contributionsFiltered.filter((c) => {
+            if (!activeFilters.favoritesOnly) return true;
+            const cid =
+              (c._id && c._id.toString ? c._id.toString() : c._id) ||
+              c.id ||
+              c.name;
+            return cid && favoriteContributionIds.has(cid);
+          }),
+    [
+      activeTab,
+      restaurantsFiltered,
+      contributionsFiltered,
+      activeFilters.favoritesOnly,
+      favoriteContributionIds,
+    ]
   );
 
   const mapProvider = useMemo(
@@ -447,27 +592,100 @@ const MapScreen = () => {
     setSelectedRestaurant(null);
     setSelectedContribution(null);
     const target = Math.max(maxTranslate - 180, 0);
-    animateSheetTo(target);
+      animateSheetTo(target);
   }, [animateSheetTo, maxTranslate, setSelectedRestaurant, setViewMode]);
 
-  const toggleFavorite = useCallback((item) => {
-    if (!item) {
-      return;
-    }
-    const id = item._id || item.id || item.place_id || item.name;
-    if (!id) {
-      return;
-    }
-    setFavoriteIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+  const toggleFavoritesFilter = useCallback(() => {
+    setActiveFilters((prev) => ({
+      ...prev,
+      favoritesOnly: !prev.favoritesOnly,
+    }));
+    setViewMode("list");
   }, []);
+
+  const toggleFavorite = useCallback(
+    async (item) => {
+      if (!item) return;
+      if (!api.defaults.headers.common.Authorization) {
+        Alert.alert("Login required", "Please log in to save favorites.");
+        return;
+      }
+
+      const isRestaurant =
+        item.place_id || item.geometry || item.distance_value !== undefined;
+      const id =
+        (item._id && item._id.toString ? item._id.toString() : item._id) ||
+        item.id ||
+        item.place_id ||
+        item.name;
+      if (!id) return;
+
+      if (isRestaurant) {
+        const placeId = item.place_id || item.id || item.name || id;
+        const prev = new Set(favoriteRestaurantIds);
+        const isFav = prev.has(placeId);
+
+        setFavoriteRestaurantIds((current) => {
+          const next = new Set(current);
+          if (next.has(placeId)) {
+            next.delete(placeId);
+          } else {
+            next.add(placeId);
+          }
+          return next;
+        });
+
+        // update restaurant list vote display if needed (no-op currently)
+
+        try {
+          if (isFav) {
+            await api.delete(
+              `/auth/me/favorites/${encodeURIComponent(placeId)}`
+            );
+          } else {
+            await api.post("/auth/me/favorites", {
+              place_id: placeId,
+              name: item.name,
+              address: item.address,
+              rating: item.rating,
+            });
+          }
+        } catch (error) {
+          console.error("Error toggling restaurant favorite:", error.message);
+          setFavoriteRestaurantIds(prev);
+        }
+      } else {
+        const prev = new Set(favoriteContributionIds);
+        const isFav = prev.has(id);
+
+        setFavoriteContributionIds((current) => {
+          const next = new Set(current);
+          if (next.has(id)) {
+            next.delete(id);
+          } else {
+            next.add(id);
+          }
+          return next;
+        });
+
+        try {
+          if (isFav) {
+            await api.delete(
+              `/auth/me/favorites/contributions/${encodeURIComponent(id)}`
+            );
+          } else {
+            await api.post(
+              `/auth/me/favorites/contributions/${encodeURIComponent(id)}`
+            );
+          }
+        } catch (error) {
+          console.error("Error toggling contribution favorite:", error.message);
+          setFavoriteContributionIds(prev);
+        }
+      }
+    },
+    [favoriteContributionIds, favoriteRestaurantIds]
+  );
 
   const handleSelectRestaurant = useCallback(
     (item, { openDetail = false } = {}) => {
@@ -669,6 +887,15 @@ const MapScreen = () => {
 
   const errorMessage = transientError || locationError || listError;
   const isDetailView = viewMode === "detail" && selectedRestaurant;
+  const selectedContributionFavorite = selectedContribution
+    ? favoriteContributionIds.has(
+        (selectedContribution._id && selectedContribution._id.toString
+          ? selectedContribution._id.toString()
+          : selectedContribution._id) ||
+          selectedContribution.id ||
+          selectedContribution.name
+      )
+    : false;
   const handleTopLayout = useCallback(
     ({ nativeEvent }) => {
       if (nativeEvent?.layout?.height) {
@@ -681,31 +908,54 @@ const MapScreen = () => {
   const renderItem = useCallback(
     ({ item }) => {
       if (activeTab === "contributions") {
+        const contribId =
+          (item._id && item._id.toString ? item._id.toString() : item._id) ||
+          item.id ||
+          item.name;
         return (
           <ContributionCard
             item={item}
+            favorite={contribId ? favoriteContributionIds.has(contribId) : false}
             onPress={() => {
-              setSelectedId(item.id || item._id || item.name);
+              const nextId =
+                (item._id && item._id.toString ? item._id.toString() : item._id) ||
+                item.id ||
+                item.name;
+              setSelectedId(nextId);
               setSelectedContribution(item);
               setViewMode("contribution-detail");
               animateSheetTo(0);
             }}
+            onToggleFavorite={() => toggleFavorite(item)}
           />
         );
       }
 
-      const id = item._id || item.id || item.place_id || item.name;
+      const id =
+        (item._id && item._id.toString ? item._id.toString() : item._id) ||
+        item.id ||
+        item.place_id ||
+        item.name;
+      const placeId = item.place_id || item.id || item.name;
       return (
         <RestaurantCard
           item={item}
           selected={id === selectedId}
-          favorite={favoriteIds.has(id)}
+          favorite={placeId ? favoriteRestaurantIds.has(placeId) : false}
           onPress={() => handleSelectRestaurant(item, { openDetail: true })}
           onToggleFavorite={() => toggleFavorite(item)}
         />
       );
     },
-    [activeTab, favoriteIds, handleSelectRestaurant, selectedId, toggleFavorite, animateSheetTo]
+    [
+      activeTab,
+      favoriteContributionIds,
+      favoriteRestaurantIds,
+      handleSelectRestaurant,
+      selectedId,
+      toggleFavorite,
+      animateSheetTo,
+    ]
   );
 
   if (loading) {
@@ -741,7 +991,13 @@ const MapScreen = () => {
                 handleSelectRestaurant(item, { openDetail: true });
               } else {
                 setSelectedContribution(item);
-                setSelectedId(item.id || item._id || item.name);
+                const nextId =
+                  (item._id && item._id.toString
+                    ? item._id.toString()
+                    : item._id) ||
+                  item.id ||
+                  item.name;
+                setSelectedId(nextId);
                 setViewMode("contribution-detail");
                 animateSheetTo(0);
               }
@@ -787,7 +1043,9 @@ const MapScreen = () => {
               {selectedRestaurant ? (
                 <RestaurantDetail
                   restaurant={selectedRestaurant}
-                  favorite={selectedId ? favoriteIds.has(selectedId) : false}
+                  favorite={
+                    selectedId ? favoriteRestaurantIds.has(selectedId) : false
+                  }
                   onToggleFavorite={() => toggleFavorite(selectedRestaurant)}
                   onGetDirections={() => confirmNavigate(selectedRestaurant)}
                 />
@@ -808,15 +1066,36 @@ const MapScreen = () => {
                     {selectedContribution?.title || "Details"}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={handleCollapseSheet} hitSlop={12}>
-                  <Ionicons name="close" size={20} color="#000000" />
-                </TouchableOpacity>
+                <View style={styles.detailHeaderActions}>
+                  <TouchableOpacity
+                    onPress={() => toggleFavorite(selectedContribution)}
+                    hitSlop={12}
+                    style={styles.detailHeaderButton}
+                  >
+                    <Ionicons
+                      name={
+                        selectedContributionFavorite ? "heart" : "heart-outline"
+                      }
+                      size={20}
+                      color={selectedContributionFavorite ? "#8AB644" : "#000000"}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleCollapseSheet} hitSlop={12}>
+                    <Ionicons name="close" size={20} color="#000000" />
+                  </TouchableOpacity>
+                </View>
               </View>
               <ContributionDetail
                 item={selectedContribution}
-                related={CONTRIBUTIONS.filter((c) => c.id !== selectedContribution.id)}
+                related={contributionsWithCoordinates.filter(
+                  (c) =>
+                    (c._id || c.id) !==
+                    (selectedContribution._id || selectedContribution.id)
+                )}
                 contributions={contributionsWithCoordinates}
                 onPressRSVP={() => setRsvpVisible(true)}
+                favorite={selectedContributionFavorite}
+                onToggleFavorite={() => toggleFavorite(selectedContribution)}
                 onSelectContribution={(next) => {
                   setSelectedContribution(next);
                   setSelectedId(next.id || next._id || next.name);
@@ -832,7 +1111,7 @@ const MapScreen = () => {
                   <Text style={styles.sheetTitle}>Search Results</Text>
                   <Text style={styles.sheetSubtitle}>
                     {activeTab === "restaurants"
-                      ? `${filtered.length} place${filtered.length === 1 ? "" : "s"} nearby`
+                      ? `${restaurantsFiltered.length} place${restaurantsFiltered.length === 1 ? "" : "s"} nearby`
                       : `${contributionsFiltered.length} contribution${contributionsFiltered.length === 1 ? "" : "s"}`}
                   </Text>
                 </View>
@@ -877,13 +1156,21 @@ const MapScreen = () => {
               </View>
 
               <FlatList
-                data={activeTab === "restaurants" ? filtered : contributionsFiltered}
+                data={
+                  activeTab === "restaurants"
+                    ? restaurantsFiltered
+                    : contributionsFiltered
+                }
                 keyExtractor={(item) =>
                   activeTab === "restaurants"
                     ? item._id || item.id || item.place_id || item.name
-                    : item.id
+                    : item._id || item.id
                 }
-                extraData={activeTab === "restaurants" ? favoriteIds : undefined}
+                extraData={
+                  activeTab === "restaurants"
+                    ? favoriteRestaurantIds
+                    : favoriteContributionIds
+                }
                 contentContainerStyle={styles.resultsContent}
                 ItemSeparatorComponent={() => (
                   <View style={styles.cardSpacer} />
@@ -946,6 +1233,35 @@ const MapScreen = () => {
             <Text style={styles.inlineErrorText}>{errorMessage}</Text>
           </View>
         ) : null}
+        <View style={styles.favoritesRow}>
+          <TouchableOpacity
+            style={[
+              styles.favoritesPill,
+              activeFilters.favoritesOnly && styles.favoritesPillActive,
+            ]}
+            onPress={toggleFavoritesFilter}
+            activeOpacity={0.85}
+          >
+            <Ionicons
+              name={activeFilters.favoritesOnly ? "heart" : "heart-outline"}
+              size={16}
+              color={activeFilters.favoritesOnly ? "#ffffff" : "#8C8C8C"}
+            />
+            <Text
+              style={[
+                styles.favoritesText,
+                activeFilters.favoritesOnly && styles.favoritesTextActive,
+              ]}
+            >
+              Favorites only
+            </Text>
+          </TouchableOpacity>
+          {contributionError ? (
+            <Text style={styles.favoritesErrorText} numberOfLines={1}>
+              {contributionError}
+            </Text>
+          ) : null}
+        </View>
       </View>
 
       <Modal
@@ -1066,9 +1382,26 @@ const MapScreen = () => {
   );
 };
 
-const ContributionCard = ({ item, onPress }) => (
+const ContributionCard = ({ item, favorite, onPress, onToggleFavorite }) => (
   <Pressable style={styles.contributionCard} onPress={onPress}>
     <View style={styles.contributionImageWrap}>
+      <TouchableOpacity
+        style={[
+          styles.contributionFavorite,
+          favorite && styles.contributionFavoriteOn,
+        ]}
+        onPress={(e) => {
+          e.stopPropagation?.();
+          onToggleFavorite?.();
+        }}
+        hitSlop={12}
+      >
+        <Ionicons
+          name={favorite ? "heart" : "heart-outline"}
+          size={18}
+          color={favorite ? "#FF3B30" : "#0F172A"}
+        />
+      </TouchableOpacity>
       {item.image ? (
         <Image source={{ uri: item.image }} style={styles.contributionImage} />
       ) : (
@@ -1076,7 +1409,7 @@ const ContributionCard = ({ item, onPress }) => (
           <Ionicons name="image-outline" size={24} color="#94A3B8" />
         </View>
       )}
-      {item.image ? (
+      {item.tags?.length ? (
         <View style={styles.contributionImageOverlay}>
           <Text style={styles.contributionTag}>{item.tags?.[0] || "Deal"}</Text>
         </View>
@@ -1086,8 +1419,34 @@ const ContributionCard = ({ item, onPress }) => (
       <Text style={styles.contributionTitle} numberOfLines={2}>
         {item.title}
       </Text>
-      <Text style={styles.contributionMeta}>{item.time}</Text>
-      <Text style={styles.contributionMeta}>{item.distance}</Text>
+      <View style={styles.cardMetaRow}>
+        <View style={styles.metaChip}>
+          <Ionicons name="time-outline" size={14} color="#475569" />
+          <Text style={styles.metaChipText}>{item.time || "Time TBA"}</Text>
+        </View>
+        <View style={styles.metaChip}>
+          <Ionicons name="navigate-outline" size={14} color="#475569" />
+          <Text style={styles.metaChipText}>
+            {item.distance_text || item.distance || "—"}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.contributionStats}>
+        <View style={styles.statRow}>
+          <Ionicons
+            name={favorite ? "heart" : "heart-outline"}
+            size={14}
+            color={favorite ? "#FF3B30" : "#0F172A"}
+          />
+          <Text style={styles.statText}>{item.votes ?? 0}</Text>
+        </View>
+        <View style={styles.statRow}>
+          <Ionicons name="chatbubble-ellipses-outline" size={14} color="#475569" />
+          <Text style={styles.statText}>
+            {Array.isArray(item.replies) ? item.replies.length : item.comments ?? 0}
+          </Text>
+        </View>
+      </View>
       <View style={styles.contributionTagsRow}>
         {(item.tags || []).map((tag) => (
           <View key={tag} style={styles.contributionTagPill}>
@@ -1105,6 +1464,8 @@ const ContributionDetail = ({
   contributions,
   onPressRSVP,
   onSelectContribution,
+  favorite,
+  onToggleFavorite,
 }) => {
   const gallery = Array.isArray(item?.images) && item.images.length > 0
     ? item.images
@@ -1247,6 +1608,26 @@ const ContributionDetail = ({
       ) : null}
 
       <TouchableOpacity
+        style={[styles.secondaryButton, favorite && styles.secondaryButtonOn]}
+        activeOpacity={0.9}
+        onPress={onToggleFavorite}
+      >
+        <Ionicons
+          name={favorite ? "heart" : "heart-outline"}
+          size={16}
+          color={favorite ? "#FFFFFF" : "#0F172A"}
+        />
+        <Text
+          style={[
+            styles.secondaryButtonText,
+            favorite && styles.secondaryButtonTextOn,
+          ]}
+        >
+          {favorite ? "Saved to favorites" : "Save to favorites"}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={[styles.primaryButton, { marginTop: 8 }]}
         activeOpacity={0.9}
         onPress={onPressRSVP}
@@ -1280,6 +1661,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
+  },
+  secondaryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  secondaryButtonOn: {
+    backgroundColor: "#8AB644",
+    borderColor: "#8AB644",
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  secondaryButtonTextOn: {
+    color: "#FFFFFF",
   },
   primaryButtonText: {
     fontSize: 15,
@@ -1347,6 +1751,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
+  favoritesRow: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  favoritesPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#8C8C8C",
+    backgroundColor: "#FFFFFF",
+  },
+  favoritesPillActive: {
+    backgroundColor: "#8AB644",
+    borderColor: "#8AB644",
+  },
+  favoritesText: {
+    fontSize: 13,
+    color: "#111827",
+    fontWeight: "600",
+  },
+  favoritesTextActive: {
+    color: "#FFFFFF",
+  },
+  favoritesErrorText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#B91C1C",
+    fontWeight: "600",
+  },
   resultsSheet: {
     position: "absolute",
     left: 0,
@@ -1390,6 +1830,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     flex: 1,
+  },
+  detailHeaderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   detailHeaderButton: {
     width: 36,
@@ -1437,24 +1882,44 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   contributionCard: {
-    flexDirection: "row",
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: "rgba(15,23,42,0.06)",
     overflow: "hidden",
     shadowColor: "#0F172A",
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   contributionImageWrap: {
-    width: 110,
-    height: 120,
+    width: "100%",
+    height: 180,
+    position: "relative",
   },
   contributionImage: {
     width: "100%",
     height: "100%",
+  },
+  contributionFavorite: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    zIndex: 3,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  contributionFavoriteOn: {
+    backgroundColor: "#8AB644",
   },
   contributionImagePlaceholder: {
     flex: 1,
@@ -1483,18 +1948,53 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   contributionBody: {
-    flex: 1,
-    padding: 12,
-    gap: 4,
+    padding: 14,
+    gap: 6,
   },
   contributionTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "800",
     color: "#0F172A",
   },
   contributionMeta: {
     fontSize: 12,
     color: "#475569",
+  },
+  cardMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 6,
+  },
+  metaChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: "#F1F5F9",
+  },
+  metaChipText: {
+    fontSize: 12,
+    color: "#475569",
+    fontWeight: "600",
+  },
+  contributionStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 4,
+  },
+  statRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  statText: {
+    fontSize: 12,
+    color: "#0F172A",
+    fontWeight: "700",
   },
   contributionTagsRow: {
     flexDirection: "row",

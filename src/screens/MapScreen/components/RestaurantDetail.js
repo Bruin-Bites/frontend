@@ -61,38 +61,43 @@ const RestaurantDetail = ({
   const normalizedPhotos = useMemo(() => {
     if (Array.isArray(restaurant?.photos) && restaurant.photos.length > 0) {
       const seen = new Set();
-      return restaurant.photos.map((photo, index) => {
-        const proxyUri =
-          typeof photo === "object" && photo?.photo_reference
-            ? buildPhotoUri(photo.photo_reference)
-            : null;
+      return restaurant.photos
+        .map((photo, index) => {
+          const proxyUri =
+            typeof photo === "object" && photo?.photo_reference
+              ? buildPhotoUri(photo.photo_reference)
+              : null;
 
-        const inlineUri =
-          typeof photo === "object" && typeof photo?.uri === "string"
-            ? photo.uri
-            : null;
-        const inlineUriSafe =
-          inlineUri && inlineUri.includes("key=") ? null : inlineUri;
-        const resolvedUri =
-          inlineUriSafe && inlineUriSafe.startsWith("http")
-            ? inlineUriSafe
-            : proxyUri || inlineUriSafe;
+          const inlineUri =
+            typeof photo === "object" && typeof photo?.uri === "string"
+              ? photo.uri
+              : null;
+          const inlineUriSafe =
+            inlineUri && inlineUri.includes("key=") ? null : inlineUri;
+          const resolvedUri =
+            inlineUriSafe && inlineUriSafe.startsWith("http")
+              ? inlineUriSafe
+              : proxyUri || inlineUriSafe;
 
-        const key =
-          photo?.photo_reference || resolvedUri || inlineUriSafe || `idx-${index}`;
-        if (seen.has(key)) {
-          return null;
-        }
-        seen.add(key);
-
-        return {
-          id:
+          const key =
             photo?.photo_reference ||
-            photo?.id ||
-            (typeof photo === "string" ? photo : `photo-${index}`),
-          uri: typeof photo === "string" ? photo : resolvedUri || null,
-        };
-      }).filter(Boolean);
+            resolvedUri ||
+            inlineUriSafe ||
+            `idx-${index}`;
+          if (seen.has(key)) {
+            return null;
+          }
+          seen.add(key);
+
+          return {
+            id:
+              photo?.photo_reference ||
+              photo?.id ||
+              (typeof photo === "string" ? photo : `photo-${index}`),
+            uri: typeof photo === "string" ? photo : resolvedUri || null,
+          };
+        })
+        .filter(Boolean);
     }
     if (Array.isArray(restaurant?.images) && restaurant.images.length > 0) {
       return restaurant.images.map((uri, index) => ({

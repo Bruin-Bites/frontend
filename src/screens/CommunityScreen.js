@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,14 +8,16 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
-  SafeAreaView,
   Keyboard,
   Pressable,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FilterModal from '../components/FilterModal';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import api from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // --- Colors ---
 const BRAND_GREEN = '#A8B84C';
@@ -112,18 +114,39 @@ const TRENDING_SEARCHES = [
 ];
 
 // --- Post Card Component (Standard Horizontal) ---
-const PostCard = ({ item }) => {
+const PostCard = ({ item, favoriteIds, onFavoriteChange }) => {
   const navigation = useNavigation();
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(
+    favoriteIds?.has(item._id || item.id) || Boolean(item.favorite)
+  );
   const [likeCount, setLikeCount] = useState(item.likes);
 
-  const toggleLike = () => {
-    if (isLiked) {
-      setIsLiked(false);
-      setLikeCount(likeCount - 1);
-    } else {
-      setIsLiked(true);
-      setLikeCount(likeCount + 1);
+  useEffect(() => {
+    const id = item._id || item.id;
+    if (id && favoriteIds) {
+      setIsLiked(favoriteIds.has(id));
+    }
+  }, [favoriteIds, item]);
+
+  const toggleLike = async () => {
+    const id = item._id || item.id;
+    if (!id) return;
+    const nextLiked = !isLiked;
+    setIsLiked(nextLiked);
+    setLikeCount((prev) => (nextLiked ? prev + 1 : Math.max(prev - 1, 0)));
+    onFavoriteChange?.(id, nextLiked);
+    try {
+      if (nextLiked) {
+        await api.post(`/auth/me/favorites/contributions/${encodeURIComponent(id)}`);
+      } else {
+        await api.delete(`/auth/me/favorites/contributions/${encodeURIComponent(id)}`);
+      }
+    } catch (err) {
+      // revert on error
+      const revert = !nextLiked;
+      setIsLiked(revert);
+      setLikeCount((prev) => (revert ? prev + 1 : Math.max(prev - 1, 0)));
+      onFavoriteChange?.(id, revert);
     }
   };
 
@@ -238,39 +261,139 @@ export default function CommunityScreen({ navigation, route }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   
-  const [recommendations, setRecommendations] = useState(MOCK_RECOMMENDATIONS);
-  const [events, setEvents] = useState(MOCK_EVENTS);
-  const [trending, setTrending] = useState(MOCK_TRENDING);
-  const [closest, setClosest] = useState(MOCK_CLOSEST_TO_YOU);
+  const [recommendations, setRecommendations] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [trending, setTrending] = useState([]);
+  const [closest, setClosest] = useState([]);
 
-  const [displayRecs, setDisplayRecs] = useState(MOCK_RECOMMENDATIONS);
-  const [displayEvents, setDisplayEvents] = useState(MOCK_EVENTS);
-  const [displayTrending, setDisplayTrending] = useState(MOCK_TRENDING);
-  const [displayClosest, setDisplayClosest] = useState(MOCK_CLOSEST_TO_YOU);
+  const [displayRecs, setDisplayRecs] = useState([]);
+  const [displayEvents, setDisplayEvents] = useState([]);
+  const [displayTrending, setDisplayTrending] = useState([]);
+  const [displayClosest, setDisplayClosest] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [favoriteContributionIds, setFavoriteContributionIds] = useState(new Set());
+  const favoriteIdsRef = useRef(new Set());
 
   const [isFilterVisible, setIsFilterVisible] = useState(false);
 
+  const contributionToCard = useCallback((item) => {
+    const dateString = item?.date
+      ? new Date(item.date).toLocaleDateString('en-US')
+      : 'Date TBA';
+    return {
+      id: item._id || item.id || Date.now().toString(),
+      title: item.title,
+      date: dateString,
+      time: item.time || 'All Day',
+      distance: '0.0 mi',
+      tags: Array.isArray(item.tags) ? item.tags : [],
+      likes: item.votes || 0,
+      comments: Array.isArray(item.replies) ? item.replies.length : 0,
+      image: item.coverImage || item.images?.[0] || 'https://placehold.co/600x400/cccccc/333333?text=Contribution',
+      images: Array.isArray(item.images) ? item.images : item.coverImage ? [item.coverImage] : [],
+      description: item.description || '',
+      location: item.location || item.address || '',
+      address: item.address || item.location || '',
+      menuItems: Array.isArray(item.menu) ? item.menu : [],
+      menuList: Array.isArray(item.menu) ? item.menu.flatMap((m) => m.items || []) : [],
+      allergies: Array.isArray(item.allergies) ? item.allergies : [],
+      accessibility: Array.isArray(item.accessibility) ? item.accessibility : [],
+      hostName: item.author || item.host || 'Community Member',
+      hostContributions: Array.isArray(item.contributions) ? item.contributions.length : 1,
+      tagType: Array.isArray(item.tags) && item.tags.length ? item.tags[0] : 'DEAL',
+    };
+  }, []);
+
+  const loadFavorites = useCallback(async () => {
+    try {
+      const res = await api.get('/auth/me/favorites');
+      const contributionList = Array.isArray(res.data?.favoriteContributions)
+        ? res.data.favoriteContributions
+        : [];
+      const ids = new Set(
+        contributionList
+          .map((fav) =>
+            typeof fav === 'string'
+              ? fav
+              : fav?._id?.toString?.() || fav?.id || null
+          )
+          .filter(Boolean)
+      );
+      favoriteIdsRef.current = ids;
+      setFavoriteContributionIds(ids);
+      return ids;
+    } catch (err) {
+      favoriteIdsRef.current = new Set();
+      setFavoriteContributionIds(new Set());
+      return new Set();
+    }
+  }, []);
+
+  const loadContributions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/contributions');
+      const list = Array.isArray(res.data?.contributions)
+        ? res.data.contributions
+        : [];
+      const cards = list.map((c) => {
+        const mapped = contributionToCard(c);
+        const id = mapped.id;
+        return {
+          ...mapped,
+          favorite: id ? favoriteIdsRef.current.has(id) : false,
+        };
+      });
+      setRecommendations(cards);
+      setEvents(cards);
+      setTrending(cards);
+      setClosest(cards);
+      setDisplayRecs(cards);
+      setDisplayEvents(cards);
+      setDisplayTrending(cards);
+      setDisplayClosest(cards);
+      setError(null);
+    } catch (err) {
+      const message =
+        err.response?.data?.error ||
+        err.message ||
+        'Unable to load contributions.';
+      setError(message);
+      setRecommendations(MOCK_RECOMMENDATIONS);
+      setEvents(MOCK_EVENTS);
+      setTrending(MOCK_TRENDING);
+      setClosest(MOCK_CLOSEST_TO_YOU);
+      setDisplayRecs(MOCK_RECOMMENDATIONS);
+      setDisplayEvents(MOCK_EVENTS);
+      setDisplayTrending(MOCK_TRENDING);
+      setDisplayClosest(MOCK_CLOSEST_TO_YOU);
+    } finally {
+      setLoading(false);
+    }
+  }, [contributionToCard]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        const favs = await loadFavorites();
+        if (!active) return;
+        favoriteIdsRef.current = favs;
+        await loadContributions();
+      })();
+      return () => {
+        active = false;
+      };
+    }, [loadContributions, loadFavorites])
+  );
+
   useEffect(() => {
     if (route.params?.newPost) {
-      const newPost = route.params.newPost;
-      const newPostCard = {
-        id: newPost.id || Date.now().toString(),
-        title: newPost.title,
-        date: newPost.date,
-        time: newPost.time,
-        distance: '0.1 mi',
-        tags: newPost.tags?.slice(0, 3) || ['New Post'],
-        likes: 0,
-        comments: 0,
-        image: newPost.coverImage || 'https://placehold.co/600x400/cccccc/333333?text=New+Post',
-        tagType: newPost.tags?.includes('Free item') ? 'FREE' : 'DEAL',
-      };
-      const updatedRecs = [newPostCard, ...recommendations];
-      setRecommendations(updatedRecs);
-      setDisplayRecs(updatedRecs);
+      loadContributions();
       navigation.setParams({ newPost: null });
     }
-  }, [route.params?.newPost, navigation]);
+  }, [route.params?.newPost, navigation, loadContributions]);
 
   const applyFilters = (filters) => {
     const filterList = (list) => {
@@ -354,7 +477,21 @@ export default function CommunityScreen({ navigation, route }) {
         <Text style={styles.sectionTitle}>Recommendations</Text>
         <FlatList
           data={displayRecs}
-          renderItem={({ item }) => <PostCard item={item} />}
+          renderItem={({ item }) => (
+            <PostCard
+              item={item}
+              favoriteIds={favoriteContributionIds}
+              onFavoriteChange={(id, liked) => {
+                setFavoriteContributionIds((prev) => {
+                  const next = new Set(prev);
+                  if (liked) next.add(id);
+                  else next.delete(id);
+                  favoriteIdsRef.current = next;
+                  return next;
+                });
+              }}
+            />
+          )}
           keyExtractor={(item) => item.id}
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -367,7 +504,21 @@ export default function CommunityScreen({ navigation, route }) {
         <Text style={styles.sectionTitle}>Events Today</Text>
         <FlatList
           data={displayEvents}
-          renderItem={({ item }) => <PostCard item={item} />}
+          renderItem={({ item }) => (
+            <PostCard
+              item={item}
+              favoriteIds={favoriteContributionIds}
+              onFavoriteChange={(id, liked) => {
+                setFavoriteContributionIds((prev) => {
+                  const next = new Set(prev);
+                  if (liked) next.add(id);
+                  else next.delete(id);
+                  favoriteIdsRef.current = next;
+                  return next;
+                });
+              }}
+            />
+          )}
           keyExtractor={(item) => item.id}
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -380,7 +531,21 @@ export default function CommunityScreen({ navigation, route }) {
         <Text style={styles.sectionTitle}>Trending</Text>
         <FlatList
           data={displayTrending}
-          renderItem={({ item }) => <PostCard item={item} />}
+          renderItem={({ item }) => (
+            <PostCard
+              item={item}
+              favoriteIds={favoriteContributionIds}
+              onFavoriteChange={(id, liked) => {
+                setFavoriteContributionIds((prev) => {
+                  const next = new Set(prev);
+                  if (liked) next.add(id);
+                  else next.delete(id);
+                  favoriteIdsRef.current = next;
+                  return next;
+                });
+              }}
+            />
+          )}
           keyExtractor={(item) => item.id}
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -393,7 +558,21 @@ export default function CommunityScreen({ navigation, route }) {
         <Text style={styles.sectionTitle}>Closest To You</Text>
         <FlatList
           data={displayClosest}
-          renderItem={({ item }) => <PostCard item={item} />}
+          renderItem={({ item }) => (
+            <PostCard
+              item={item}
+              favoriteIds={favoriteContributionIds}
+              onFavoriteChange={(id, liked) => {
+                setFavoriteContributionIds((prev) => {
+                  const next = new Set(prev);
+                  if (liked) next.add(id);
+                  else next.delete(id);
+                  favoriteIdsRef.current = next;
+                  return next;
+                });
+              }}
+            />
+          )}
           keyExtractor={(item) => item.id}
           horizontal
           showsHorizontalScrollIndicator={false}
