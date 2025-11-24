@@ -17,6 +17,7 @@ const RestaurantMarkers = ({
     }
 
     const id = item._id || item.id || item.place_id || item.name;
+    const handleCalloutPress = onNavigate ? () => onNavigate(item) : undefined;
 
     return (
       <Marker
@@ -24,7 +25,7 @@ const RestaurantMarkers = ({
         coordinate={{ latitude: lat, longitude: lng }}
         pinColor={id === selectedId ? colors.uclaGold : colors.uclaBlue}
         onPress={() => onSelect(item)}
-        onCalloutPress={() => onNavigate(item)}
+        onCalloutPress={handleCalloutPress}
       >
         <Callout>
           <View style={styles.callout}>

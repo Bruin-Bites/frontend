@@ -6,8 +6,8 @@ import {
   ScrollView,
   Dimensions,
   TouchableOpacity,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const BRAND_GREEN = '#A8B84C';
 const { width } = Dimensions.get('window');
