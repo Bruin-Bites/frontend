@@ -27,7 +27,7 @@ export const API_BASE_URL = deriveBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 60000, // 60 seconds - increased to handle multiple Google Maps API calls
 });
 
 export default api;

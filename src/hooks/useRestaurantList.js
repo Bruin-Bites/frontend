@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import api from "../services/api";
 
+// Module-level cache to persist data across component unmounts/remounts
+let cachedRestaurants = null;
+let cachedLoading = true;
+let cachedError = null;
+let fetchPromise = null;
+
 const FALLBACK_RESTAURANTS = [
   {
     id: "mock-financial-workshop",
@@ -47,17 +53,92 @@ const FALLBACK_RESTAURANTS = [
 ];
 
 export default function useRestaurantList() {
-  const [restaurants, setRestaurants] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  console.log("[useRestaurantList] Hook called");
+  console.log("[useRestaurantList] Cache state:", {
+    hasCachedData: cachedRestaurants !== null,
+    cachedCount: cachedRestaurants?.length || 0,
+    cachedLoading,
+    cachedError: cachedError !== null,
+    hasFetchInProgress: fetchPromise !== null,
+  });
+
+  // Initialize state from cache if available
+  const [restaurants, setRestaurants] = useState(cachedRestaurants || []);
+  const [loading, setLoading] = useState(cachedLoading);
+  const [error, setError] = useState(cachedError);
+
+  console.log("[useRestaurantList] Initial state:", {
+    restaurantsCount: restaurants.length,
+    loading,
+    error: error !== null,
+  });
 
   useEffect(() => {
+    console.log("[useRestaurantList] useEffect triggered");
+
+    // If we already have cached data, use it and don't fetch again
+    if (cachedRestaurants !== null) {
+      console.log("[useRestaurantList] Using cached data:", {
+        count: cachedRestaurants.length,
+        loading: cachedLoading,
+        hasError: cachedError !== null,
+      });
+      setRestaurants(cachedRestaurants);
+      setLoading(false);
+      setError(cachedError);
+      console.log("[useRestaurantList] State updated from cache");
+      return;
+    }
+
+    // If a fetch is already in progress, wait for it
+    if (fetchPromise) {
+      console.log("[useRestaurantList] Fetch already in progress, waiting...");
+      fetchPromise
+        .then(() => {
+          console.log("[useRestaurantList] In-progress fetch completed, updating state:", {
+            count: cachedRestaurants?.length || 0,
+            loading: cachedLoading,
+            hasError: cachedError !== null,
+          });
+          setRestaurants(cachedRestaurants);
+          setLoading(cachedLoading);
+          setError(cachedError);
+        })
+        .catch(() => {
+          console.log("[useRestaurantList] In-progress fetch failed, updating state with fallback");
+          setRestaurants(cachedRestaurants);
+          setLoading(cachedLoading);
+          setError(cachedError);
+        });
+      return;
+    }
+
+    // Start a new fetch
+    console.log("[useRestaurantList] Starting new fetch...");
     const fetchRestaurants = async () => {
       try {
+        console.log("[useRestaurantList] API call initiated");
         const res = await api.get("/restaurants");
         const data = Array.isArray(res.data) ? res.data : [];
+        console.log("[useRestaurantList] API call successful:", {
+          dataLength: data.length,
+          firstItem: data[0]?.name || "N/A",
+        });
+        
+        // Update cache
+        cachedRestaurants = data;
+        cachedLoading = false;
+        cachedError = null;
+        console.log("[useRestaurantList] Cache updated:", {
+          count: cachedRestaurants.length,
+          loading: cachedLoading,
+          hasError: cachedError !== null,
+        });
+        
+        // Update state
         setRestaurants(data);
         setError(null);
+        console.log("[useRestaurantList] State updated with fetched data");
       } catch (err) {
         const message =
           err.response?.data?.error ||
@@ -65,17 +146,36 @@ export default function useRestaurantList() {
           err.message ||
           err.toString?.() ||
           "Unable to load restaurants.";
-        console.error("Error fetching restaurants:", message);
+        console.error("[useRestaurantList] API call failed:", {
+          message,
+          status: err.response?.status,
+          data: err.response?.data,
+        });
+        
+        // Update cache with fallback
+        cachedRestaurants = FALLBACK_RESTAURANTS;
+        cachedLoading = false;
+        cachedError = "We couldn't reach the server—showing sample data for now.";
+        console.log("[useRestaurantList] Cache updated with fallback data:", {
+          count: cachedRestaurants.length,
+          loading: cachedLoading,
+          error: cachedError,
+        });
+        
+        // Update state
         setRestaurants(FALLBACK_RESTAURANTS);
-        setError(
-          "We couldn't reach the server—showing sample data for now."
-        );
+        setError(cachedError);
+        console.log("[useRestaurantList] State updated with fallback data");
       } finally {
         setLoading(false);
+        fetchPromise = null; // Clear the promise
+        console.log("[useRestaurantList] Fetch completed, promise cleared");
       }
     };
-    fetchRestaurants();
-  }, []);
+    
+    fetchPromise = fetchRestaurants();
+  }, []); // Empty deps - only run on mount
+
 
   return { restaurants, loading, error };
 }
