@@ -426,7 +426,7 @@ const MapScreen = () => {
 
   const overlayTopOffset = useMemo(() => {
     const base = headerHeight > 0 ? headerHeight : insets.top;
-    return Math.max(base - 18, 0);
+    return Math.max(base - 24, 0);
   }, [headerHeight, insets.top]);
 
   const effectiveTopPadding = useMemo(
@@ -1201,7 +1201,7 @@ const MapScreen = () => {
         onLayout={handleTopLayout}
       >
         <View style={styles.searchField}>
-          <Ionicons name="search" size={18} color="#000000" />
+          <Ionicons name="search" size={16} color="#000000" />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -1215,16 +1215,15 @@ const MapScreen = () => {
               onPress={() => setQuery("")}
               hitSlop={{ top: 10, left: 10, bottom: 10, right: 10 }}
             >
-              <Ionicons name="close-circle" size={18} color="#8C8C8C" />
+              <Ionicons name="close-circle" size={16} color="#8C8C8C" />
             </TouchableOpacity>
           )}
-          <View style={styles.filterDivider} />
           <TouchableOpacity
             style={styles.filterButton}
             onPress={() => setFiltersVisible(true)}
             hitSlop={{ top: 12, left: 12, bottom: 12, right: 12 }}
           >
-            <Ionicons name="options-outline" size={20} color="#8AB644" />
+            <Ionicons name="options-outline" size={18} color="#000000" />
           </TouchableOpacity>
         </View>
 
@@ -1696,6 +1695,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 20,
+    paddingTop: 0,
     paddingBottom: 12,
     gap: 10,
     backgroundColor: "transparent",
@@ -1708,10 +1708,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 10,
     elevation: 2,
     shadowColor: "#0F172A",
     shadowOpacity: 0.06,
@@ -1730,12 +1730,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#8C8C8C",
   },
   filterButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: "#8AB644",
-    backgroundColor: "transparent",
+    backgroundColor: "rgba(138, 182, 68, 0.15)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2249,6 +2249,7 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingHorizontal: 0,
     maxHeight: "90%",
+    height: "90%",
     shadowColor: "#0F172A",
     shadowOpacity: 0.2,
     shadowRadius: 16,

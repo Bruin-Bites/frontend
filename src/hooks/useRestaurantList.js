@@ -53,25 +53,10 @@ const FALLBACK_RESTAURANTS = [
 ];
 
 export default function useRestaurantList() {
-  console.log("[useRestaurantList] Hook called");
-  console.log("[useRestaurantList] Cache state:", {
-    hasCachedData: cachedRestaurants !== null,
-    cachedCount: cachedRestaurants?.length || 0,
-    cachedLoading,
-    cachedError: cachedError !== null,
-    hasFetchInProgress: fetchPromise !== null,
-  });
-
   // Initialize state from cache if available
   const [restaurants, setRestaurants] = useState(cachedRestaurants || []);
   const [loading, setLoading] = useState(cachedLoading);
   const [error, setError] = useState(cachedError);
-
-  console.log("[useRestaurantList] Initial state:", {
-    restaurantsCount: restaurants.length,
-    loading,
-    error: error !== null,
-  });
 
   useEffect(() => {
     console.log("[useRestaurantList] useEffect triggered");
@@ -117,7 +102,6 @@ export default function useRestaurantList() {
     console.log("[useRestaurantList] Starting new fetch...");
     const fetchRestaurants = async () => {
       try {
-        console.log("[useRestaurantList] API call initiated");
         const res = await api.get("/restaurants");
         const data = Array.isArray(res.data) ? res.data : [];
         console.log("[useRestaurantList] API call successful:", {

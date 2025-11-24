@@ -11,39 +11,63 @@ import {
   PanResponder,
   TextInput
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MIN_DISTANCE = 0;
-const MAX_DISTANCE = 5; // 0-5 miles range
-const DISTANCE_STEP = 0.1; // 0.1 mile increments
-const CONTAINER_PADDING = 16;
+const MAX_DISTANCE = 5;
+const DISTANCE_STEP = 0.1;
+const CONTAINER_PADDING = 22;
 const SLIDER_PADDING = 24;
 const TRACK_WIDTH = SCREEN_WIDTH - CONTAINER_PADDING * 2 - SLIDER_PADDING * 2;
 const THUMB_SIZE = 20;
 
-const dateOptions = ["Tomorrow", "This Week"];
+const BRAND_GREEN = "#8AB644";
+const BORDER_GRAY = "#d1d1d1";
+const CHECKBOX_BORDER = "#797979";
+const TRACK_GRAY = "#d9d9d9";
+
+// Price/Budget range
+const MIN_PRICE = 1;
+const MAX_PRICE = 4;
+const priceOptions = ["$", "$$", "$$$", "$$$$"];
+
+const dateOptions = ["Any Date", "Today", "Tomorrow", "This Week", "This Weekend"];
+
 const dietaryOptions = [
   "Vegetarian",
   "Vegan",
-  "Gluten-Free",
-  "Dairy-Free",
-  "Nut-Free",
   "Halal",
   "Kosher",
+  "Avoid alcohol",
+  "Low carbon footprint",
+  "High carbon footprint",
+  "Avoid peanuts",
+  "Avoid tree nuts",
+  "Avoid wheat",
+  "Avoid gluten",
+  "Avoid soybeans",
+  "Avoid sesame",
+  "Avoid dairy",
+  "Avoid eggs",
+  "Avoid crustacean shellfish",
+  "Avoid fish",
 ];
+
 const dealOptions = [
   "Buy one get one free (BOGO)",
   "First come first serve (FCFS)",
-  "Free Item",
+  "Free item",
   "% off discount",
-  "Student Discount",
-  "Combo Deal",
+  "Student discount",
+  "Combo deal",
   "Rewards/points bonus",
   "Coupon"
 ];
+
 const foodTypes = [
-  "Fast Food",
-  "Coffee & Drinks",
+  "Fast food",
+  "Coffee & drinks",
   "Dessert",
   "Breakfast",
   "Lunch",
@@ -51,14 +75,34 @@ const foodTypes = [
   "Snacks",
   "Buffet",
 ];
+
 const locationTypes = [
   "Franchise",
   "Local",
   "On-campus",
-  "Delivery Only",
+  "Delivery only",
   "Dine-in",
   "Takeout",
   "Pop-up",
+];
+
+const cuisineTypes = [
+  "American",
+  "Asian",
+  "Mexican",
+  "Italian",
+  "Mediterranean",
+  "Japanese",
+  "Korean",
+  "Chinese",
+  "Indian",
+  "Fusion",
+];
+
+const timingOptions = [
+  "Happy hour",
+  "Limited special",
+  "Seasonal/holiday",
 ];
 
 export default function Filter({ 
@@ -67,47 +111,39 @@ export default function Filter({
   onUpdateFilters,
   onClose, 
   onApply,
-  onReset }) {
+  onReset 
+}) {
+  // Deep clone activeFilters without using structuredClone (which can't serialize functions)
+  const oldFilters = JSON.parse(JSON.stringify(activeFilters));
 
-  const oldFilters = structuredClone(activeFilters);
+  // Budget/Price state - derive from activeFilters.price array
+  const getPriceRangeFromFilters = () => {
+    if (Array.isArray(activeFilters?.price) && activeFilters.price.length > 0) {
+      const symbols = activeFilters.price;
+      const indices = symbols.map(s => priceOptions.indexOf(s)).filter(i => i >= 0);
+      if (indices.length > 0) {
+        return {
+          min: Math.min(...indices) + 1,
+          max: Math.max(...indices) + 1,
+        };
+      }
+    }
+    return { min: MIN_PRICE, max: MAX_PRICE };
+  };
 
-  // Price filter state
-  const priceSymbols = Array.isArray(filters?.price) && filters.price.length > 0
-    ? filters.price
-    : ["$", "$$", "$$$", "$$$$"];
+  const initialPriceRange = getPriceRangeFromFilters();
+  const [minPrice, setMinPrice] = useState(initialPriceRange.min);
+  const [maxPrice, setMaxPrice] = useState(initialPriceRange.max);
+  const [activePriceThumb, setActivePriceThumb] = useState(null);
 
-  const [selectedSymbols, setSelectedSymbols] = useState(
-    Array.isArray(activeFilters?.price) && activeFilters.price.length > 0
-      ? activeFilters.price
-      : priceSymbols
-  );
+  // Sync price when activeFilters change
+  useEffect(() => {
+    const range = getPriceRangeFromFilters();
+    setMinPrice(range.min);
+    setMaxPrice(range.max);
+  }, [activeFilters?.price]);
 
-  // Dietary preferences state
-  const [selectedDietary, setSelectedDietary] = useState(
-    Array.isArray(activeFilters?.dietary) ? activeFilters.dietary : []
-  );
-
-  // Deal types state
-  const [selectedDeals, setSelectedDeals] = useState(
-    Array.isArray(activeFilters?.deals) ? activeFilters.deals : []
-  );
-
-  // Food types state
-  const [selectedFoodTypes, setSelectedFoodTypes] = useState(
-    Array.isArray(activeFilters?.foodType) ? activeFilters.foodType : []
-  );
-
-  // Location types state
-  const [selectedLocationTypes, setSelectedLocationTypes] = useState(
-    Array.isArray(activeFilters?.location) ? activeFilters.location : []
-  );
-
-  // Date filter state
-  const [selectedDate, setSelectedDate] = useState(
-    activeFilters?.date || null
-  );
-
-  // Distance filter state
+  // Distance state
   const [minDistance, setMinDistance] = useState(
     activeFilters?.distance?.min ?? 0
   );
@@ -115,311 +151,192 @@ export default function Filter({
     activeFilters?.distance?.max ?? 5
   );
   const [activeThumb, setActiveThumb] = useState(null);
-  const [minInput, setMinInput] = useState(
-    (activeFilters?.distance?.min ?? 0).toString()
+  const [minDistanceInput, setMinDistanceInput] = useState(
+    (activeFilters?.distance?.min ?? 0).toFixed(1)
   );
-  const [maxInput, setMaxInput] = useState(
-    (activeFilters?.distance?.max ?? 5).toString()
+  const [maxDistanceInput, setMaxDistanceInput] = useState(
+    (activeFilters?.distance?.max ?? 5).toFixed(1)
+  );
+  const [minDistanceFocused, setMinDistanceFocused] = useState(false);
+  const [maxDistanceFocused, setMaxDistanceFocused] = useState(false);
+
+  // Other filter states
+  const [selectedDeals, setSelectedDeals] = useState(
+    Array.isArray(activeFilters?.deals) ? activeFilters.deals : []
+  );
+  const [selectedFoodTypes, setSelectedFoodTypes] = useState(
+    Array.isArray(activeFilters?.foodType) ? activeFilters.foodType : []
+  );
+  const [selectedLocationTypes, setSelectedLocationTypes] = useState(
+    Array.isArray(activeFilters?.location) ? activeFilters.location : []
+  );
+  const [selectedCuisineTypes, setSelectedCuisineTypes] = useState(
+    Array.isArray(activeFilters?.cuisineType) ? activeFilters.cuisineType : []
+  );
+  const [selectedTiming, setSelectedTiming] = useState(
+    Array.isArray(activeFilters?.timing) ? activeFilters.timing : []
+  );
+  const [selectedDietary, setSelectedDietary] = useState(
+    Array.isArray(activeFilters?.dietary) ? activeFilters.dietary : []
+  );
+  const [selectedDate, setSelectedDate] = useState(
+    activeFilters?.date || null
   );
 
-  // Sync local state when activeFilters change (e.g., Reset)
+  // Sync distance inputs
   useEffect(() => {
-    if (Array.isArray(activeFilters?.price)) {
-      setSelectedSymbols(activeFilters.price);
+    if (!minDistanceFocused) {
+      setMinDistanceInput(minDistance.toFixed(1));
     }
-    if (Array.isArray(activeFilters?.dietary)) {
-      setSelectedDietary(activeFilters.dietary);
-    }
-    if (Array.isArray(activeFilters?.deals)) {
-      setSelectedDeals(activeFilters.deals);
-    }
-    if (Array.isArray(activeFilters?.foodType)) {
-      setSelectedFoodTypes(activeFilters.foodType);
-    }
-    if (Array.isArray(activeFilters?.location)) {
-      setSelectedLocationTypes(activeFilters.location);
-    }
-    if (activeFilters?.date !== undefined) {
-      setSelectedDate(activeFilters.date || null);
-    }
-    if (activeFilters?.distance) {
-      const min = activeFilters.distance.min ?? 0;
-      const max = activeFilters.distance.max ?? 5;
-      setMinDistance(min);
-      setMaxDistance(max);
-      setMinInput(min.toString());
-      setMaxInput(max.toString());
-    }
-  }, [activeFilters]);
-
-  // Track if inputs are focused to prevent syncing while user is typing
-  const [minInputFocused, setMinInputFocused] = useState(false);
-  const [maxInputFocused, setMaxInputFocused] = useState(false);
-  
-  // Sync distance inputs when slider values change (but not when input is being edited)
-  useEffect(() => {
-    // Only update input if it's not currently focused (user isn't typing)
-    if (!minInputFocused) {
-      setMinInput(minDistance.toFixed(1));
-    }
-  }, [minDistance, minInputFocused]);
+  }, [minDistance, minDistanceFocused]);
 
   useEffect(() => {
-    // Only update input if it's not currently focused (user isn't typing)
-    if (!maxInputFocused) {
-      setMaxInput(maxDistance.toFixed(1));
+    if (!maxDistanceFocused) {
+      setMaxDistanceInput(maxDistance.toFixed(1));
     }
-  }, [maxDistance, maxInputFocused]);
+  }, [maxDistance, maxDistanceFocused]);
 
-  const handleReset = () => {
-    console.log("Reset filters");
-    if (onReset) {
-      onReset();
-    }
-  };
-
-  const handleApply = () => {
-    console.log("Apply filters");
-    if (onApply) {
-      onApply();
-    }
-  };
-
-  const handleClose = () => {
-    if (onClose) {
-      onClose(oldFilters);
-    }
-  };
-
-  // Price filter handlers
-  const togglePriceSymbol = (symbol) => {
-    const next = selectedSymbols.includes(symbol)
-      ? selectedSymbols.filter((s) => s !== symbol)
-      : [...selectedSymbols, symbol];
-    
-    setSelectedSymbols(next);
-    
-    if (typeof onUpdateFilters === "function") {
-      onUpdateFilters({ ...activeFilters, price: next });
-    }
-  };
-
-  // Dietary preferences handlers
-  const toggleDietary = (option) => {
-    const next = selectedDietary.includes(option)
-      ? selectedDietary.filter((item) => item !== option)
-      : [...selectedDietary, option];
-    
-    setSelectedDietary(next);
-    
-    if (typeof onUpdateFilters === "function") {
-      onUpdateFilters({ ...activeFilters, dietary: next });
-    }
-  };
-
-  // Deal types handlers
-  const toggleDeal = (deal) => {
-    const next = selectedDeals.includes(deal)
-      ? selectedDeals.filter((item) => item !== deal)
-      : [...selectedDeals, deal];
-    
-    setSelectedDeals(next);
-    
-    if (typeof onUpdateFilters === "function") {
-      onUpdateFilters({ ...activeFilters, deals: next });
-    }
-  };
-
-  // Food types handlers
-  const toggleFoodType = (type) => {
-    const next = selectedFoodTypes.includes(type)
-      ? selectedFoodTypes.filter((item) => item !== type)
-      : [...selectedFoodTypes, type];
-    
-    setSelectedFoodTypes(next);
-    
-    if (typeof onUpdateFilters === "function") {
-      onUpdateFilters({ ...activeFilters, foodType: next });
-    }
-  };
-
-  // Location types handlers
-  const toggleLocationType = (type) => {
-    const next = selectedLocationTypes.includes(type)
-      ? selectedLocationTypes.filter((item) => item !== type)
-      : [...selectedLocationTypes, type];
-    
-    setSelectedLocationTypes(next);
-    
-    if (typeof onUpdateFilters === "function") {
-      onUpdateFilters({ ...activeFilters, location: next });
-    }
-  };
-
-  // Date filter handlers
-  const handleDateSelect = (option) => {
-    const next = selectedDate === option ? null : option;
-    setSelectedDate(next);
-    
-    if (typeof onUpdateFilters === "function") {
-      onUpdateFilters({ ...activeFilters, date: next });
-    }
-  };
-
-  // Distance filter helpers
-  const formatDistance = (value) => {
-    // Round to 1 decimal place for display
-    const rounded = Math.round(value * 10) / 10;
-    if (rounded === 1) {
-      return "1.0 Mile";
-    }
-    return `${rounded.toFixed(1)} Miles`;
-  };
-
+  // Distance slider helpers
   const getPositionFromValue = (value) => {
     return ((value - MIN_DISTANCE) / (MAX_DISTANCE - MIN_DISTANCE)) * (TRACK_WIDTH - THUMB_SIZE);
   };
 
   const getValueFromPosition = (position) => {
-    // Calculate raw value
     const rawValue = (position / (TRACK_WIDTH - THUMB_SIZE)) * (MAX_DISTANCE - MIN_DISTANCE) + MIN_DISTANCE;
-    // Round to nearest 0.1 mile increment
     const steppedValue = Math.round(rawValue / DISTANCE_STEP) * DISTANCE_STEP;
-    // Clamp to valid range
     return Math.max(MIN_DISTANCE, Math.min(MAX_DISTANCE, steppedValue));
-  };
-
-  const handleMinInputChange = (text) => {
-    setMinInput(text);
-    // Don't update state while typing - only update the input field
-    // Validation and state updates will happen on blur
-  };
-
-  const handleMaxInputChange = (text) => {
-    setMaxInput(text);
-    // Don't update state while typing - only update the input field
-    // Validation and state updates will happen on blur
-  };
-
-  const handleMinBlur = () => {
-    const num = parseFloat(minInput);
-    if (isNaN(num) || num < MIN_DISTANCE) {
-      setMinDistance(MIN_DISTANCE);
-      setMinInput(MIN_DISTANCE.toFixed(1));
-      if (typeof onUpdateFilters === "function") {
-        onUpdateFilters({ ...activeFilters, distance: { min: MIN_DISTANCE, max: maxDistance } });
-      }
-    } else if (num >= maxDistance) {
-      const newMin = Math.max(MIN_DISTANCE, Math.round((maxDistance - DISTANCE_STEP) / DISTANCE_STEP) * DISTANCE_STEP);
-      setMinDistance(newMin);
-      setMinInput(newMin.toFixed(1));
-      if (typeof onUpdateFilters === "function") {
-        onUpdateFilters({ ...activeFilters, distance: { min: newMin, max: maxDistance } });
-      }
-    } else {
-      // Round to nearest 0.1 step
-      const steppedValue = Math.round(num / DISTANCE_STEP) * DISTANCE_STEP;
-      setMinDistance(steppedValue);
-      setMinInput(steppedValue.toFixed(1));
-      if (typeof onUpdateFilters === "function") {
-        onUpdateFilters({ ...activeFilters, distance: { min: steppedValue, max: maxDistance } });
-      }
-    }
-  };
-
-  const handleMaxBlur = () => {
-    const num = parseFloat(maxInput);
-    if (isNaN(num) || num > MAX_DISTANCE) {
-      setMaxDistance(MAX_DISTANCE);
-      setMaxInput(MAX_DISTANCE.toFixed(1));
-      if (typeof onUpdateFilters === "function") {
-        onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: MAX_DISTANCE } });
-      }
-    } else if (num <= minDistance) {
-      const newMax = Math.min(MAX_DISTANCE, Math.round((minDistance + DISTANCE_STEP) / DISTANCE_STEP) * DISTANCE_STEP);
-      setMaxDistance(newMax);
-      setMaxInput(newMax.toFixed(1));
-      if (typeof onUpdateFilters === "function") {
-        onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: newMax } });
-      }
-    } else {
-      // Round to nearest 0.1 step
-      const steppedValue = Math.round(num / DISTANCE_STEP) * DISTANCE_STEP;
-      setMaxDistance(steppedValue);
-      setMaxInput(steppedValue.toFixed(1));
-      if (typeof onUpdateFilters === "function") {
-        onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: steppedValue } });
-      }
-    }
   };
 
   const minPanResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: () => {
-      setActiveThumb("min");
-    },
+    onPanResponderGrant: () => setActiveThumb("min"),
     onPanResponderMove: (evt, gestureState) => {
       const newPosition = getPositionFromValue(minDistance) + gestureState.dx;
       const newValue = getValueFromPosition(newPosition);
-      // Ensure min stays at least DISTANCE_STEP below max
       const clampedValue = Math.min(newValue, maxDistance - DISTANCE_STEP);
       if (clampedValue >= MIN_DISTANCE && clampedValue < maxDistance) {
         setMinDistance(clampedValue);
-        if (typeof onUpdateFilters === "function") {
-          onUpdateFilters({ ...activeFilters, distance: { min: clampedValue, max: maxDistance } });
-        }
+        updateDistanceFilter(clampedValue, maxDistance);
       }
     },
-    onPanResponderRelease: () => {
-      setActiveThumb(null);
-    },
+    onPanResponderRelease: () => setActiveThumb(null),
   });
 
   const maxPanResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: () => {
-      setActiveThumb("max");
-    },
+    onPanResponderGrant: () => setActiveThumb("max"),
     onPanResponderMove: (evt, gestureState) => {
       const newPosition = getPositionFromValue(maxDistance) + gestureState.dx;
       const newValue = getValueFromPosition(newPosition);
-      // Ensure max stays at least DISTANCE_STEP above min
       const clampedValue = Math.max(newValue, minDistance + DISTANCE_STEP);
       if (clampedValue <= MAX_DISTANCE && clampedValue > minDistance) {
         setMaxDistance(clampedValue);
-        if (typeof onUpdateFilters === "function") {
-          onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: clampedValue } });
-        }
+        updateDistanceFilter(minDistance, clampedValue);
       }
     },
-    onPanResponderRelease: () => {
-      setActiveThumb(null);
-    },
+    onPanResponderRelease: () => setActiveThumb(null),
   });
 
-  const handleTrackPress = (evt) => {
-    const x = evt.nativeEvent.locationX - SLIDER_PADDING;
-    const newValue = getValueFromPosition(x);
-    
-    if (Math.abs(newValue - minDistance) < Math.abs(newValue - maxDistance)) {
-      // Closer to min thumb - ensure it's at least DISTANCE_STEP below max
-      const clampedValue = Math.min(newValue, maxDistance - DISTANCE_STEP);
-      if (clampedValue >= MIN_DISTANCE && clampedValue < maxDistance) {
-        setMinDistance(clampedValue);
-        if (typeof onUpdateFilters === "function") {
-          onUpdateFilters({ ...activeFilters, distance: { min: clampedValue, max: maxDistance } });
-        }
+  const updateDistanceFilter = (min, max) => {
+    if (typeof onUpdateFilters === "function") {
+      onUpdateFilters({ ...activeFilters, distance: { min, max } });
+    }
+  };
+
+  const updatePriceFilter = (min, max) => {
+    if (typeof onUpdateFilters === "function") {
+      // Convert price level to price symbols array
+      const priceSymbols = [];
+      for (let i = min; i <= max; i++) {
+        priceSymbols.push(priceOptions[i - 1]);
+      }
+      onUpdateFilters({ ...activeFilters, price: priceSymbols });
+    }
+  };
+
+  // Price slider helpers
+  const getPricePositionFromValue = (value) => {
+    return ((value - MIN_PRICE) / (MAX_PRICE - MIN_PRICE)) * (TRACK_WIDTH - THUMB_SIZE);
+  };
+
+  const getPriceValueFromPosition = (position) => {
+    const rawValue = (position / (TRACK_WIDTH - THUMB_SIZE)) * (MAX_PRICE - MIN_PRICE) + MIN_PRICE;
+    return Math.max(MIN_PRICE, Math.min(MAX_PRICE, Math.round(rawValue)));
+  };
+
+  const minPricePanResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: () => setActivePriceThumb("min"),
+    onPanResponderMove: (evt, gestureState) => {
+      const newPosition = getPricePositionFromValue(minPrice) + gestureState.dx;
+      const newValue = getPriceValueFromPosition(newPosition);
+      const clampedValue = Math.min(newValue, maxPrice - 1);
+      if (clampedValue >= MIN_PRICE && clampedValue < maxPrice) {
+        setMinPrice(clampedValue);
+        updatePriceFilter(clampedValue, maxPrice);
+      }
+    },
+    onPanResponderRelease: () => setActivePriceThumb(null),
+  });
+
+  const maxPricePanResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: () => setActivePriceThumb("max"),
+    onPanResponderMove: (evt, gestureState) => {
+      const newPosition = getPricePositionFromValue(maxPrice) + gestureState.dx;
+      const newValue = getPriceValueFromPosition(newPosition);
+      const clampedValue = Math.max(newValue, minPrice + 1);
+      if (clampedValue <= MAX_PRICE && clampedValue > minPrice) {
+        setMaxPrice(clampedValue);
+        updatePriceFilter(minPrice, clampedValue);
+      }
+    },
+    onPanResponderRelease: () => setActivePriceThumb(null),
+  });
+
+  const minPricePosition = getPricePositionFromValue(minPrice);
+  const maxPricePosition = getPricePositionFromValue(maxPrice);
+
+  const handleDistanceInputBlur = (isMin) => {
+    if (isMin) {
+      setMinDistanceFocused(false);
+      const num = parseFloat(minDistanceInput);
+      if (isNaN(num) || num < MIN_DISTANCE) {
+        setMinDistance(MIN_DISTANCE);
+        setMinDistanceInput(MIN_DISTANCE.toFixed(1));
+        updateDistanceFilter(MIN_DISTANCE, maxDistance);
+      } else if (num >= maxDistance) {
+        const newMin = Math.max(MIN_DISTANCE, Math.round((maxDistance - DISTANCE_STEP) / DISTANCE_STEP) * DISTANCE_STEP);
+        setMinDistance(newMin);
+        setMinDistanceInput(newMin.toFixed(1));
+        updateDistanceFilter(newMin, maxDistance);
+      } else {
+        const steppedValue = Math.round(num / DISTANCE_STEP) * DISTANCE_STEP;
+        setMinDistance(steppedValue);
+        setMinDistanceInput(steppedValue.toFixed(1));
+        updateDistanceFilter(steppedValue, maxDistance);
       }
     } else {
-      // Closer to max thumb - ensure it's at least DISTANCE_STEP above min
-      const clampedValue = Math.max(newValue, minDistance + DISTANCE_STEP);
-      if (clampedValue <= MAX_DISTANCE && clampedValue > minDistance) {
-        setMaxDistance(clampedValue);
-        if (typeof onUpdateFilters === "function") {
-          onUpdateFilters({ ...activeFilters, distance: { min: minDistance, max: clampedValue } });
-        }
+      setMaxDistanceFocused(false);
+      const num = parseFloat(maxDistanceInput);
+      if (isNaN(num) || num > MAX_DISTANCE) {
+        setMaxDistance(MAX_DISTANCE);
+        setMaxDistanceInput(MAX_DISTANCE.toFixed(1));
+        updateDistanceFilter(minDistance, MAX_DISTANCE);
+      } else if (num <= minDistance) {
+        const newMax = Math.min(MAX_DISTANCE, Math.round((minDistance + DISTANCE_STEP) / DISTANCE_STEP) * DISTANCE_STEP);
+        setMaxDistance(newMax);
+        setMaxDistanceInput(newMax.toFixed(1));
+        updateDistanceFilter(minDistance, newMax);
+      } else {
+        const steppedValue = Math.round(num / DISTANCE_STEP) * DISTANCE_STEP;
+        setMaxDistance(steppedValue);
+        setMaxDistanceInput(steppedValue.toFixed(1));
+        updateDistanceFilter(minDistance, steppedValue);
       }
     }
   };
@@ -427,156 +344,149 @@ export default function Filter({
   const minPosition = getPositionFromValue(minDistance);
   const maxPosition = getPositionFromValue(maxDistance);
 
-  // Render functions
-  const renderPriceItem = ({ item }) => {
-    const isSelected = selectedSymbols.includes(item);
-    return (
-      <TouchableOpacity
-        style={styles.optionContainer}
-        onPress={() => togglePriceSymbol(item)}
-      >
-        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-          {isSelected && <Text style={styles.checkMark}>✓</Text>}
-        </View>
-        <Text style={styles.optionText}>{item}</Text>
-      </TouchableOpacity>
-    );
-  };
+  const renderCheckboxItem = ({ item, isSelected, onToggle }) => (
+    <TouchableOpacity
+      style={styles.checkboxRow}
+      onPress={onToggle}
+    >
+      <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+        {isSelected && <Text style={styles.checkMark}>✓</Text>}
+      </View>
+      <Text style={styles.checkboxText}>{item}</Text>
+    </TouchableOpacity>
+  );
 
-  const renderDietaryItem = ({ item }) => {
-    const isSelected = selectedDietary.includes(item);
-    return (
-      <TouchableOpacity
-        style={styles.optionContainer}
-        onPress={() => toggleDietary(item)}
-      >
-        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-          {isSelected && <Text style={styles.checkMark}>✓</Text>}
-        </View>
-        <Text style={styles.optionText}>{item}</Text>
-      </TouchableOpacity>
-    );
-  };
+  const renderRadioItem = ({ item, isSelected, onSelect }) => (
+    <TouchableOpacity
+      style={styles.checkboxRow}
+      onPress={onSelect}
+    >
+      <View style={styles.radioOuter}>
+        {isSelected && <View style={styles.radioInner} />}
+      </View>
+      <Text style={styles.checkboxText}>{item}</Text>
+    </TouchableOpacity>
+  );
 
-  const renderDealItem = ({ item }) => {
-    const isSelected = selectedDeals.includes(item);
-    return (
-      <TouchableOpacity
-        style={styles.optionContainer}
-        onPress={() => toggleDeal(item)}
-      >
-        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-          {isSelected && <Text style={styles.checkMark}>✓</Text>}
-        </View>
-        <Text style={styles.optionText}>{item}</Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderFoodTypeItem = ({ item }) => {
-    const isSelected = selectedFoodTypes.includes(item);
-    return (
-      <TouchableOpacity
-        style={styles.optionContainer}
-        onPress={() => toggleFoodType(item)}
-      >
-        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-          {isSelected && <Text style={styles.checkMark}>✓</Text>}
-        </View>
-        <Text style={styles.optionText}>{item}</Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderLocationTypeItem = ({ item }) => {
-    const isSelected = selectedLocationTypes.includes(item);
-    return (
-      <TouchableOpacity
-        style={styles.optionContainer}
-        onPress={() => toggleLocationType(item)}
-      >
-        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-          {isSelected && <Text style={styles.checkMark}>✓</Text>}
-        </View>
-        <Text style={styles.optionText}>{item}</Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderDateItem = ({ item }) => {
-    const isSelected = selectedDate === item;
-    return (
-      <TouchableOpacity
-        style={styles.optionContainer}
-        onPress={() => handleDateSelect(item)}
-      >
-        <View style={styles.radioOuter}>
-          {isSelected && <View style={styles.radioInner} />}
-        </View>
-        <Text style={styles.optionText}>{item}</Text>
-      </TouchableOpacity>
-    );
-  };
-  
   return (
     <View style={styles.container}>
-      <View style={styles.filterHeader}>
-        <Text style={styles.headerText}>Filters</Text>
-        <Pressable onPress={handleClose}>
-          <Text style={styles.closeButton}>✕</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Filters</Text>
+        <Pressable onPress={onClose} hitSlop={8}>
+          <Ionicons name="close" size={24} color="#000000" />
         </Pressable>
       </View>
 
       <ScrollView 
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        style={styles.scrollView}
       >
-        {/* Price Filter */}
-        <View style={styles.filterSection}>
-          <Text style={styles.label}>Price</Text>
-          <FlatList
-            data={priceSymbols}
-            keyExtractor={(item) => item}
-            renderItem={renderPriceItem}
-            scrollEnabled={false}
-          />
+        {/* Budget Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Budget</Text>
+          <View style={styles.inputRow}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Min</Text>
+              <TouchableOpacity 
+                style={styles.priceInputBox}
+                onPress={() => {
+                  const next = minPrice < maxPrice ? minPrice + 1 : minPrice;
+                  if (next <= MAX_PRICE) {
+                    setMinPrice(next);
+                    updatePriceFilter(next, maxPrice);
+                  }
+                }}
+              >
+                <Text style={styles.priceInputText}>
+                  {priceOptions[minPrice - 1] || "$"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.separatorLine} />
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Max</Text>
+              <TouchableOpacity 
+                style={styles.priceInputBox}
+                onPress={() => {
+                  const next = maxPrice > minPrice ? maxPrice - 1 : maxPrice;
+                  if (next >= MIN_PRICE) {
+                    setMaxPrice(next);
+                    updatePriceFilter(minPrice, next);
+                  }
+                }}
+              >
+                <Text style={styles.priceInputText}>
+                  {priceOptions[maxPrice - 1] || "$$$$"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={styles.sliderWrapper}>
+            <View style={styles.trackBackground} />
+            <View
+              style={[
+                styles.trackUnselected,
+                { left: SLIDER_PADDING, width: minPricePosition },
+              ]}
+            />
+            <View
+              style={[
+                styles.trackActive,
+                {
+                  left: minPricePosition + THUMB_SIZE / 2 + SLIDER_PADDING,
+                  width: maxPricePosition - minPricePosition,
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.trackUnselected,
+                {
+                  left: maxPricePosition + THUMB_SIZE / 2 + SLIDER_PADDING,
+                  width: TRACK_WIDTH - maxPricePosition - THUMB_SIZE / 2,
+                },
+              ]}
+            />
+            <View
+              {...minPricePanResponder.panHandlers}
+              style={[styles.thumb, { left: minPricePosition + SLIDER_PADDING }]}
+            />
+            <View
+              {...maxPricePanResponder.panHandlers}
+              style={[styles.thumb, { left: maxPricePosition + SLIDER_PADDING }]}
+            />
+          </View>
         </View>
 
-        {/* Distance Filter */}
-        <View style={styles.filterSection}>
-          <Text style={styles.label}>Distance</Text>
+        {/* Distance Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Distance</Text>
           <View style={styles.inputRow}>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Min</Text>
               <TextInput
-                style={styles.inputBox}
+                style={styles.distanceInputBox}
+                value={minDistanceInput}
+                onChangeText={setMinDistanceInput}
+                onFocus={() => setMinDistanceFocused(true)}
+                onBlur={() => handleDistanceInputBlur(true)}
                 keyboardType="decimal-pad"
-                value={minInput}
-                onChangeText={handleMinInputChange}
-                onFocus={() => setMinInputFocused(true)}
-                onBlur={() => {
-                  setMinInputFocused(false);
-                  handleMinBlur();
-                }}
                 placeholder="0.0"
-                placeholderTextColor="#999"
               />
             </View>
-            <Text style={styles.separator}>—</Text>
+            <View style={styles.separatorLine} />
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Max</Text>
               <TextInput
-                style={styles.inputBox}
+                style={styles.distanceInputBox}
+                value={maxDistanceInput}
+                onChangeText={setMaxDistanceInput}
+                onFocus={() => setMaxDistanceFocused(true)}
+                onBlur={() => handleDistanceInputBlur(false)}
                 keyboardType="decimal-pad"
-                value={maxInput}
-                onChangeText={handleMaxInputChange}
-                onFocus={() => setMaxInputFocused(true)}
-                onBlur={() => {
-                  setMaxInputFocused(false);
-                  handleMaxBlur();
-                }}
                 placeholder="5.0"
-                placeholderTextColor="#999"
               />
             </View>
           </View>
@@ -585,10 +495,7 @@ export default function Filter({
             <View
               style={[
                 styles.trackUnselected,
-                {
-                  left: SLIDER_PADDING,
-                  width: minPosition,
-                },
+                { left: SLIDER_PADDING, width: minPosition },
               ]}
             />
             <View
@@ -611,97 +518,202 @@ export default function Filter({
             />
             <View
               {...minPanResponder.panHandlers}
-              style={[
-                styles.thumb,
-                { left: minPosition + SLIDER_PADDING },
-              ]}
+              style={[styles.thumb, { left: minPosition + SLIDER_PADDING }]}
             />
             <View
               {...maxPanResponder.panHandlers}
-              style={[
-                styles.thumb,
-                { left: maxPosition + SLIDER_PADDING },
-              ]}
+              style={[styles.thumb, { left: maxPosition + SLIDER_PADDING }]}
             />
-            <View
-              style={styles.touchableArea}
-              onTouchStart={handleTrackPress}
+          </View>
+        </View>
+
+        {/* Deal Type */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Deal Type</Text>
+          <View style={styles.checkboxContainer}>
+            <FlatList
+              data={dealOptions}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => renderCheckboxItem({
+                item,
+                isSelected: selectedDeals.includes(item),
+                onToggle: () => {
+                  const next = selectedDeals.includes(item)
+                    ? selectedDeals.filter((d) => d !== item)
+                    : [...selectedDeals, item];
+                  setSelectedDeals(next);
+                  if (typeof onUpdateFilters === "function") {
+                    onUpdateFilters({ ...activeFilters, deals: next });
+                  }
+                },
+              })}
+              scrollEnabled={false}
+            />
+          </View>
+        </View>
+
+        {/* Food Type */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Food Type</Text>
+          <View style={styles.checkboxContainer}>
+            <FlatList
+              data={foodTypes}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => renderCheckboxItem({
+                item,
+                isSelected: selectedFoodTypes.includes(item),
+                onToggle: () => {
+                  const next = selectedFoodTypes.includes(item)
+                    ? selectedFoodTypes.filter((f) => f !== item)
+                    : [...selectedFoodTypes, item];
+                  setSelectedFoodTypes(next);
+                  if (typeof onUpdateFilters === "function") {
+                    onUpdateFilters({ ...activeFilters, foodType: next });
+                  }
+                },
+              })}
+              scrollEnabled={false}
+            />
+          </View>
+        </View>
+
+        {/* Location Type */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Location Type</Text>
+          <View style={styles.checkboxContainer}>
+            <FlatList
+              data={locationTypes}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => renderCheckboxItem({
+                item,
+                isSelected: selectedLocationTypes.includes(item),
+                onToggle: () => {
+                  const next = selectedLocationTypes.includes(item)
+                    ? selectedLocationTypes.filter((l) => l !== item)
+                    : [...selectedLocationTypes, item];
+                  setSelectedLocationTypes(next);
+                  if (typeof onUpdateFilters === "function") {
+                    onUpdateFilters({ ...activeFilters, location: next });
+                  }
+                },
+              })}
+              scrollEnabled={false}
+            />
+          </View>
+        </View>
+
+        {/* Cuisine Type */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Cuisine Type</Text>
+          <View style={styles.checkboxContainer}>
+            <FlatList
+              data={cuisineTypes}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => renderCheckboxItem({
+                item,
+                isSelected: selectedCuisineTypes.includes(item),
+                onToggle: () => {
+                  const next = selectedCuisineTypes.includes(item)
+                    ? selectedCuisineTypes.filter((c) => c !== item)
+                    : [...selectedCuisineTypes, item];
+                  setSelectedCuisineTypes(next);
+                  if (typeof onUpdateFilters === "function") {
+                    onUpdateFilters({ ...activeFilters, cuisineType: next });
+                  }
+                },
+              })}
+              scrollEnabled={false}
+            />
+          </View>
+        </View>
+
+        {/* Timing */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Timing</Text>
+          <View style={styles.checkboxContainer}>
+            <FlatList
+              data={timingOptions}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => renderCheckboxItem({
+                item,
+                isSelected: selectedTiming.includes(item),
+                onToggle: () => {
+                  const next = selectedTiming.includes(item)
+                    ? selectedTiming.filter((t) => t !== item)
+                    : [...selectedTiming, item];
+                  setSelectedTiming(next);
+                  if (typeof onUpdateFilters === "function") {
+                    onUpdateFilters({ ...activeFilters, timing: next });
+                  }
+                },
+              })}
+              scrollEnabled={false}
             />
           </View>
         </View>
 
         {/* Dietary Preferences */}
-        <View style={styles.filterSection}>
-          <Text style={styles.label}>Dietary Preferences</Text>
-          <FlatList
-            data={dietaryOptions}
-            keyExtractor={(item) => item}
-            renderItem={renderDietaryItem}
-            scrollEnabled={false}
-          />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Dietary Preferences</Text>
+          <View style={styles.checkboxContainer}>
+            <FlatList
+              data={dietaryOptions}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => renderCheckboxItem({
+                item,
+                isSelected: selectedDietary.includes(item),
+                onToggle: () => {
+                  const next = selectedDietary.includes(item)
+                    ? selectedDietary.filter((d) => d !== item)
+                    : [...selectedDietary, item];
+                  setSelectedDietary(next);
+                  if (typeof onUpdateFilters === "function") {
+                    onUpdateFilters({ ...activeFilters, dietary: next });
+                  }
+                },
+              })}
+              scrollEnabled={false}
+            />
+          </View>
         </View>
 
-        {/* Deal Types */}
-        <View style={styles.filterSection}>
-          <Text style={styles.label}>Deal Type</Text>
-          <FlatList
-            data={dealOptions}
-            keyExtractor={(item) => item}
-            renderItem={renderDealItem}
-            scrollEnabled={false}
-          />
-        </View>
-
-        {/* Location Types */}
-        <View style={styles.filterSection}>
-          <Text style={styles.label}>Location Types</Text>
-          <FlatList
-            data={locationTypes}
-            keyExtractor={(item) => item}
-            renderItem={renderLocationTypeItem}
-            scrollEnabled={false}
-          />
-        </View>
-
-        {/* Food Types */}
-        <View style={styles.filterSection}>
-          <Text style={styles.label}>Food Types</Text>
-          <FlatList
-            data={foodTypes}
-            keyExtractor={(item) => item}
-            renderItem={renderFoodTypeItem}
-            scrollEnabled={false}
-          />
-        </View>
-
-        {/* Date Filter */}
-        <View style={styles.filterSection}>
-          <Text style={styles.label}>Date</Text>
+        {/* Date */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Date</Text>
           <FlatList
             data={dateOptions}
             keyExtractor={(item) => item}
-            renderItem={renderDateItem}
+            renderItem={({ item }) => renderRadioItem({
+              item,
+              isSelected: selectedDate === item,
+              onSelect: () => {
+                const next = selectedDate === item ? null : item;
+                setSelectedDate(next);
+                if (typeof onUpdateFilters === "function") {
+                  onUpdateFilters({ ...activeFilters, date: next });
+                }
+              },
+            })}
             scrollEnabled={false}
           />
         </View>
       </ScrollView>
 
-      {/* Buttons at the bottom */}
-      <View style={styles.buttonContainer}>
+      {/* Footer Buttons */}
+      <View style={styles.footer}>
         <TouchableOpacity 
           style={styles.resetButton} 
-          onPress={handleReset}
+          onPress={onReset}
           activeOpacity={0.7}
         >
           <Text style={styles.resetButtonText}>Reset</Text>
         </TouchableOpacity>
-        
         <TouchableOpacity 
           style={styles.applyButton} 
-          onPress={handleApply}
+          onPress={onApply}
           activeOpacity={0.7}
         >
-          <Text style={styles.applyButtonText}>Apply</Text>
+          <Text style={styles.applyButtonText}>Apply Filters</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -710,162 +722,106 @@ export default function Filter({
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
     height: "100%",
-    width: "100%",
-    borderRadius: 10,
-    backgroundColor: "#fafafa",
-    paddingVertical: 8,
   },
-  scrollContainer: {
-    paddingVertical: 10,
-    paddingBottom: 20,
-  },
-  filterHeader: {
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    height: 50,
-    backgroundColor: "lightgray",
+    paddingHorizontal: 33,
+    paddingVertical: 25,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+    backgroundColor: "#FFFFFF",
   },
-  headerText: {
-    fontSize: 18,
+  headerTitle: {
+    fontSize: 16,
     fontWeight: "600",
-    color: "#333",
+    color: "#000000",
   },
-  closeButton: {
-    fontSize: 24,
-    color: "#333",
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#ddd",
-    backgroundColor: "#fff",
-    gap: 12,
-  },
-  resetButton: {
+  scrollView: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#007AFF",
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
   },
-  resetButtonText: {
-    color: "#007AFF",
+  scrollContent: {
+    paddingBottom: 20,
+  },
+  section: {
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER_GRAY,
+    paddingHorizontal: CONTAINER_PADDING,
+    paddingVertical: 18,
+  },
+  sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
-  },
-  applyButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: "#007AFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  applyButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  filterSection: {
-    padding: 16,
-    width: "100%",
-    backgroundColor: "#fafafa",
-    borderRadius: 10,
-    marginBottom: 8,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 12,
-    color: "#333",
-  },
-  optionContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderWidth: 1,
-    borderColor: "#333",
-    borderRadius: 4,
-    marginRight: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#fff",
-  },
-  checkboxSelected: {
-    backgroundColor: "#007AFF",
-    borderColor: "#007AFF",
-  },
-  checkMark: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  optionText: {
-    fontSize: 16,
-    color: "#333",
-  },
-  radioOuter: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#007AFF",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#007AFF",
+    color: "#000000",
+    marginBottom: 29,
   },
   inputRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    marginBottom: 24,
-    gap: 12,
+    alignItems: "center",
+    marginBottom: 36,
+    gap: 8,
+    flexWrap: "nowrap",
   },
   inputGroup: {
-    flex: 1,
-    alignItems: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    flexShrink: 0,
+    flexWrap: "nowrap",
   },
   inputLabel: {
     fontSize: 14,
-    color: "#666",
     fontWeight: "500",
-    marginBottom: 6,
+    color: "#000000",
+    minWidth: 34,
+    flexShrink: 0,
   },
-  inputBox: {
-    width: "100%",
-    height: 40,
-    backgroundColor: "#E5E5E5",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    color: "#333",
-    fontWeight: "400",
-    textAlign: "left",
+  priceInputBox: {
+    width: 113,
+    height: 30,
+    borderWidth: 1,
+    borderColor: BRAND_GREEN,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+    flexShrink: 0,
   },
-  separator: {
-    fontSize: 18,
-    color: "#666",
+  priceInputText: {
+    fontSize: 14,
     fontWeight: "500",
-    marginTop: 24,
-    marginHorizontal: 8,
+    color: "#000000",
+  },
+  distanceInputBox: {
+    width: 113,
+    height: 30,
+    borderWidth: 1,
+    borderColor: BRAND_GREEN,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#000000",
+    flexShrink: 0,
+  },
+  separatorLine: {
+    width: 43,
+    height: 1,
+    backgroundColor: "#000000",
+    flexShrink: 0,
   },
   sliderWrapper: {
     height: 50,
@@ -877,7 +833,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     height: 4,
     width: TRACK_WIDTH,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: TRACK_GRAY,
     borderRadius: 2,
     top: "50%",
     marginTop: -2,
@@ -886,7 +842,7 @@ const styles = StyleSheet.create({
   trackActive: {
     position: "absolute",
     height: 4,
-    backgroundColor: "#666",
+    backgroundColor: BRAND_GREEN,
     borderRadius: 2,
     top: "50%",
     marginTop: -2,
@@ -894,7 +850,7 @@ const styles = StyleSheet.create({
   trackUnselected: {
     position: "absolute",
     height: 4,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: TRACK_GRAY,
     borderRadius: 2,
     top: "50%",
     marginTop: -2,
@@ -904,7 +860,7 @@ const styles = StyleSheet.create({
     width: THUMB_SIZE,
     height: THUMB_SIZE,
     borderRadius: THUMB_SIZE / 2,
-    backgroundColor: "#666",
+    backgroundColor: BRAND_GREEN,
     top: "50%",
     marginTop: -THUMB_SIZE / 2,
     shadowColor: "#000",
@@ -914,11 +870,99 @@ const styles = StyleSheet.create({
     elevation: 3,
     zIndex: 2,
   },
-  touchableArea: {
-    position: "absolute",
-    width: TRACK_WIDTH,
-    height: 50,
-    left: SLIDER_PADDING,
-    top: 0,
+  checkboxContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    padding: 15,
+  },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 10,
+  },
+  checkbox: {
+    width: 25,
+    height: 25,
+    borderWidth: 1.8,
+    borderColor: CHECKBOX_BORDER,
+    borderRadius: 4.5,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+  },
+  checkboxSelected: {
+    backgroundColor: BRAND_GREEN,
+    borderColor: BRAND_GREEN,
+  },
+  checkMark: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  checkboxText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "400",
+    color: "#000000",
+  },
+  radioOuter: {
+    width: 25,
+    height: 25,
+    borderRadius: 12.5,
+    borderWidth: 1.8,
+    borderColor: CHECKBOX_BORDER,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: BRAND_GREEN,
+  },
+  footer: {
+    flexDirection: "row",
+    paddingHorizontal: 49,
+    paddingVertical: 29,
+    gap: 36,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+    backgroundColor: "#FFFFFF",
+  },
+  resetButton: {
+    flex: 1,
+    height: 35,
+    borderWidth: 1,
+    borderColor: BRAND_GREEN,
+    borderRadius: 30,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 45,
+    paddingVertical: 9,
+  },
+  resetButtonText: {
+    fontSize: 14,
+    fontWeight: "400",
+    color: BRAND_GREEN,
+  },
+  applyButton: {
+    flex: 1,
+    height: 35,
+    borderRadius: 30,
+    backgroundColor: BRAND_GREEN,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 22,
+    paddingVertical: 9,
+  },
+  applyButtonText: {
+    fontSize: 14,
+    fontWeight: "400",
+    color: "#FFFFFF",
   },
 });
