@@ -113,8 +113,21 @@ export default function Filter({
   onApply,
   onReset 
 }) {
-  // Deep clone activeFilters without using structuredClone (which can't serialize functions)
-  const oldFilters = JSON.parse(JSON.stringify(activeFilters));
+  // Deep clone activeFilters - manually clone to avoid circular reference issues
+  const oldFilters = {
+    price: Array.isArray(activeFilters?.price) ? [...activeFilters.price] : [],
+    distance: activeFilters?.distance 
+      ? { min: activeFilters.distance.min, max: activeFilters.distance.max }
+      : { min: 0, max: 5 },
+    dietary: Array.isArray(activeFilters?.dietary) ? [...activeFilters.dietary] : [],
+    deals: Array.isArray(activeFilters?.deals) ? [...activeFilters.deals] : [],
+    foodType: Array.isArray(activeFilters?.foodType) ? [...activeFilters.foodType] : [],
+    location: Array.isArray(activeFilters?.location) ? [...activeFilters.location] : [],
+    cuisineType: Array.isArray(activeFilters?.cuisineType) ? [...activeFilters.cuisineType] : [],
+    timing: Array.isArray(activeFilters?.timing) ? [...activeFilters.timing] : [],
+    date: activeFilters?.date || null,
+    favoritesOnly: activeFilters?.favoritesOnly || false,
+  };
 
   // Budget/Price state - derive from activeFilters.price array
   const getPriceRangeFromFilters = () => {
@@ -128,6 +141,7 @@ export default function Filter({
         };
       }
     }
+    // Default to full range: $ to $$$$
     return { min: MIN_PRICE, max: MAX_PRICE };
   };
 
@@ -135,13 +149,40 @@ export default function Filter({
   const [minPrice, setMinPrice] = useState(initialPriceRange.min);
   const [maxPrice, setMaxPrice] = useState(initialPriceRange.max);
   const [activePriceThumb, setActivePriceThumb] = useState(null);
+  const [minPriceInput, setMinPriceInput] = useState(
+    priceOptions[initialPriceRange.min - 1] || "$"
+  );
+  const [maxPriceInput, setMaxPriceInput] = useState(
+    priceOptions[initialPriceRange.max - 1] || "$$$$"
+  );
+  const [minPriceFocused, setMinPriceFocused] = useState(false);
+  const [maxPriceFocused, setMaxPriceFocused] = useState(false);
 
   // Sync price when activeFilters change
   useEffect(() => {
     const range = getPriceRangeFromFilters();
     setMinPrice(range.min);
     setMaxPrice(range.max);
-  }, [activeFilters?.price]);
+    if (!minPriceFocused) {
+      setMinPriceInput(priceOptions[range.min - 1] || "$");
+    }
+    if (!maxPriceFocused) {
+      setMaxPriceInput(priceOptions[range.max - 1] || "$$$$");
+    }
+  }, [activeFilters?.price, minPriceFocused, maxPriceFocused]);
+
+  // Sync price inputs when slider values change (but not when input is being edited)
+  useEffect(() => {
+    if (!minPriceFocused) {
+      setMinPriceInput(priceOptions[minPrice - 1] || "$");
+    }
+  }, [minPrice, minPriceFocused]);
+
+  useEffect(() => {
+    if (!maxPriceFocused) {
+      setMaxPriceInput(priceOptions[maxPrice - 1] || "$$$$");
+    }
+  }, [maxPrice, maxPriceFocused]);
 
   // Distance state
   const [minDistance, setMinDistance] = useState(
@@ -273,9 +314,10 @@ export default function Filter({
     onPanResponderMove: (evt, gestureState) => {
       const newPosition = getPricePositionFromValue(minPrice) + gestureState.dx;
       const newValue = getPriceValueFromPosition(newPosition);
-      const clampedValue = Math.min(newValue, maxPrice - 1);
-      if (clampedValue >= MIN_PRICE && clampedValue < maxPrice) {
+      const clampedValue = Math.min(newValue, maxPrice); // Allow min to equal max
+      if (clampedValue >= MIN_PRICE && clampedValue <= maxPrice) {
         setMinPrice(clampedValue);
+        setMinPriceInput(levelToSymbol(clampedValue));
         updatePriceFilter(clampedValue, maxPrice);
       }
     },
@@ -289,14 +331,47 @@ export default function Filter({
     onPanResponderMove: (evt, gestureState) => {
       const newPosition = getPricePositionFromValue(maxPrice) + gestureState.dx;
       const newValue = getPriceValueFromPosition(newPosition);
-      const clampedValue = Math.max(newValue, minPrice + 1);
-      if (clampedValue <= MAX_PRICE && clampedValue > minPrice) {
+      const clampedValue = Math.max(newValue, minPrice); // Allow max to equal min
+      if (clampedValue <= MAX_PRICE && clampedValue >= minPrice) {
         setMaxPrice(clampedValue);
+        setMaxPriceInput(levelToSymbol(clampedValue));
         updatePriceFilter(minPrice, clampedValue);
       }
     },
     onPanResponderRelease: () => setActivePriceThumb(null),
   });
+
+  // Convert price symbol to level (1-4)
+  const symbolToLevel = (symbol) => {
+    const trimmed = symbol.trim();
+    const index = priceOptions.indexOf(trimmed);
+    return index >= 0 ? index + 1 : MIN_PRICE;
+  };
+
+  // Convert level (1-4) to price symbol
+  const levelToSymbol = (level) => {
+    return priceOptions[level - 1] || "$";
+  };
+
+  const handleMinPriceBlur = () => {
+    setMinPriceFocused(false);
+    const level = symbolToLevel(minPriceInput);
+    // Allow min to equal max (can select single price level)
+    const clampedLevel = Math.max(MIN_PRICE, Math.min(level, maxPrice));
+    setMinPrice(clampedLevel);
+    setMinPriceInput(levelToSymbol(clampedLevel));
+    updatePriceFilter(clampedLevel, maxPrice);
+  };
+
+  const handleMaxPriceBlur = () => {
+    setMaxPriceFocused(false);
+    const level = symbolToLevel(maxPriceInput);
+    // Allow max to equal min (can select single price level)
+    const clampedLevel = Math.min(MAX_PRICE, Math.max(level, minPrice));
+    setMaxPrice(clampedLevel);
+    setMaxPriceInput(levelToSymbol(clampedLevel));
+    updatePriceFilter(minPrice, clampedLevel);
+  };
 
   const minPricePosition = getPricePositionFromValue(minPrice);
   const maxPricePosition = getPricePositionFromValue(maxPrice);
@@ -389,38 +464,28 @@ export default function Filter({
           <View style={styles.inputRow}>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Min</Text>
-              <TouchableOpacity 
+              <TextInput
                 style={styles.priceInputBox}
-                onPress={() => {
-                  const next = minPrice < maxPrice ? minPrice + 1 : minPrice;
-                  if (next <= MAX_PRICE) {
-                    setMinPrice(next);
-                    updatePriceFilter(next, maxPrice);
-                  }
-                }}
-              >
-                <Text style={styles.priceInputText}>
-                  {priceOptions[minPrice - 1] || "$"}
-                </Text>
-              </TouchableOpacity>
+                value={minPriceInput}
+                onChangeText={setMinPriceInput}
+                onFocus={() => setMinPriceFocused(true)}
+                onBlur={handleMinPriceBlur}
+                placeholder="$"
+                placeholderTextColor="#999"
+              />
             </View>
             <View style={styles.separatorLine} />
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Max</Text>
-              <TouchableOpacity 
+              <TextInput
                 style={styles.priceInputBox}
-                onPress={() => {
-                  const next = maxPrice > minPrice ? maxPrice - 1 : maxPrice;
-                  if (next >= MIN_PRICE) {
-                    setMaxPrice(next);
-                    updatePriceFilter(minPrice, next);
-                  }
-                }}
-              >
-                <Text style={styles.priceInputText}>
-                  {priceOptions[maxPrice - 1] || "$$$$"}
-                </Text>
-              </TouchableOpacity>
+                value={maxPriceInput}
+                onChangeText={setMaxPriceInput}
+                onFocus={() => setMaxPriceFocused(true)}
+                onBlur={handleMaxPriceBlur}
+                placeholder="$$$$"
+                placeholderTextColor="#999"
+              />
             </View>
           </View>
           <View style={styles.sliderWrapper}>
