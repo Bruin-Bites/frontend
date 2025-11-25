@@ -93,17 +93,9 @@ export default function ProfileScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           bounces={true}
         >
-          {/* Header with Back Button */}
+          {/* Header */}
           <View style={styles.header}>
-            <Pressable
-              onPress={() => navigation.navigate("Home")}
-              style={styles.backButton}
-              hitSlop={10}
-            >
-              <Ionicons name="chevron-back" size={24} color={colors.ink} />
-            </Pressable>
             <Text style={styles.headerTitle}>My account</Text>
-            <View style={styles.headerRightPlaceholder} />
           </View>
           <View style={styles.separator} />
 
@@ -123,7 +115,7 @@ export default function ProfileScreen({ navigation }) {
               >
                 <Image
                   source={require("../../assets/Edit Icon.png")}
-                  style={{ width: 14, height: 14, tintColor: "#fff" }}
+                  style={{ width: 19, height: 19, tintColor: "#fff" }}
                   resizeMode="contain"
                 />
               </Pressable>
@@ -137,7 +129,7 @@ export default function ProfileScreen({ navigation }) {
                   value={username}
                   onChangeText={setUsername}
                   placeholder="My_super_username"
-                  placeholderTextColor={colors.textLight}
+                  placeholderTextColor="#7E7E7E"
                   editable={editingUsername}
                   onBlur={handleUsernameSave}
                   autoCapitalize="none"
@@ -151,7 +143,7 @@ export default function ProfileScreen({ navigation }) {
                     <Ionicons
                       name="checkmark"
                       size={18}
-                      color={colors.textLight}
+                      color="#7E7E7E"
                     />
                   ) : (
                     <Image
@@ -159,7 +151,7 @@ export default function ProfileScreen({ navigation }) {
                       style={{
                         width: 18,
                         height: 18,
-                        tintColor: colors.textLight,
+                        tintColor: "#7E7E7E",
                       }}
                       resizeMode="contain"
                     />
@@ -168,6 +160,9 @@ export default function ProfileScreen({ navigation }) {
               </View>
             </View>
           </View>
+
+          {/* Divider */}
+          <View style={styles.sectionDivider} />
 
           {/* Navigation Menu */}
           <View style={styles.menuSection}>
@@ -179,14 +174,14 @@ export default function ProfileScreen({ navigation }) {
                 <Ionicons
                   name="document-text-outline"
                   size={24}
-                  color={colors.textLight}
+                  color="#4B5563"
                 />
               </View>
               <Text style={styles.menuButtonText}>Contributions</Text>
               <Ionicons
                 name="chevron-forward"
                 size={20}
-                color={colors.textLight}
+                color="#4B5563"
               />
             </Pressable>
 
@@ -198,14 +193,14 @@ export default function ProfileScreen({ navigation }) {
                 <Ionicons
                   name="people-outline"
                   size={24}
-                  color={colors.textLight}
+                  color="#4B5563"
                 />
               </View>
               <Text style={styles.menuButtonText}>Following</Text>
               <Ionicons
                 name="chevron-forward"
                 size={20}
-                color={colors.textLight}
+                color="#4B5563"
               />
             </Pressable>
 
@@ -217,14 +212,14 @@ export default function ProfileScreen({ navigation }) {
                 <Ionicons
                   name="notifications-outline"
                   size={24}
-                  color={colors.textLight}
+                  color="#4B5563"
                 />
               </View>
               <Text style={styles.menuButtonText}>Notifications</Text>
               <Ionicons
                 name="chevron-forward"
                 size={20}
-                color={colors.textLight}
+                color="#4B5563"
               />
             </Pressable>
 
@@ -236,14 +231,14 @@ export default function ProfileScreen({ navigation }) {
                 <Ionicons
                   name="settings-outline"
                   size={24}
-                  color={colors.textLight}
+                  color="#4B5563"
                 />
               </View>
               <Text style={styles.menuButtonText}>Account</Text>
               <Ionicons
                 name="chevron-forward"
                 size={20}
-                color={colors.textLight}
+                color="#4B5563"
               />
             </Pressable>
 
@@ -255,14 +250,14 @@ export default function ProfileScreen({ navigation }) {
                 <Ionicons
                   name="time-outline"
                   size={24}
-                  color={colors.textLight}
+                  color="#4B5563"
                 />
               </View>
               <Text style={styles.menuButtonText}>History</Text>
               <Ionicons
                 name="chevron-forward"
                 size={20}
-                color={colors.textLight}
+                color="#4B5563"
               />
             </Pressable>
           </View>
@@ -281,16 +276,16 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg0,
+    backgroundColor: "#FFFFFF",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.bg0,
+    backgroundColor: "#FFFFFF",
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 20,
   },
 
   // Header
@@ -298,64 +293,57 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 8,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    position: "relative",
+    paddingTop: 26,
+    paddingBottom: 16,
+    paddingHorizontal: 26,
     backgroundColor: "#fff",
-  },
-  backButton: {
-    position: "absolute",
-    left: 16,
-    padding: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "#d9d9d9",
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.ink,
-  },
-  headerRightPlaceholder: {
-    position: "absolute",
-    right: 16,
-    width: 32,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#000",
+    textAlign: "center",
   },
   separator: {
-    height: 1,
-    backgroundColor: colors.border,
+    height: 0, // Handled by header border
   },
 
   // Profile Section
   profileSection: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    gap: 16,
-    backgroundColor: "#fff",
+    paddingHorizontal: 26,
+    paddingTop: 20,
+    paddingBottom: 20,
+    gap: 14,
+    backgroundColor: "transparent", // bg0 handles it? Design has bg-white for whole page? No, looks like cards on white? Wait, design "Content" is on "User Profile Page: Main" which is white.
   },
   avatarWrapper: {
     position: "relative",
+    width: 101,
+    height: 101,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 101,
+    height: 101,
+    borderRadius: 50.5,
     backgroundColor: "#eaf6ea",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 0,
+    overflow: "hidden",
   },
   avatarInner: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 101,
+    height: 101,
+    borderRadius: 50.5,
     backgroundColor: "#7fbf65",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 0,
   },
   avatarText: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "700",
     color: "#ffffff",
   },
@@ -363,10 +351,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: "#7fbf65",
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    backgroundColor: "#8AB644",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
@@ -374,94 +362,93 @@ const styles = StyleSheet.create({
   },
   usernameSection: {
     flex: 1,
+    height: 60, // Adjust to match layout
+    justifyContent: "center",
   },
   usernameLabel: {
-    fontSize: 12,
-    color: colors.textLight,
-    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#7E7E7E",
+    marginBottom: 7,
   },
   usernameInputWrapper: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#e6e6e6",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderColor: "#D9D9D9",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    height: 38,
     backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 1,
   },
   usernameInput: {
     flex: 1,
-    fontSize: 16,
-    color: colors.ink,
+    fontSize: 14,
+    color: "#000",
     paddingVertical: 0,
   },
   usernameEditButton: {
     padding: 4,
   },
 
+  // Divider
+  sectionDivider: {
+    height: 1,
+    backgroundColor: "#D9D9D9",
+    marginHorizontal: 26,
+    marginBottom: 20,
+  },
+
   // Navigation Menu
   menuSection: {
-    paddingHorizontal: 20,
-    gap: 14,
-    marginBottom: 24,
-    marginTop: 18,
+    paddingHorizontal: 26,
+    gap: 20,
+    marginBottom: 35,
+    marginTop: 0,
   },
   menuButton: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    borderRadius: 14,
+    borderRadius: 20,
     paddingVertical: 12,
-    paddingHorizontal: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
+    paddingHorizontal: 20,
+    justifyContent: "center",
+    gap: 45, // Increased to move icons farther out
     shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    shadowOpacity: 0.25,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
   },
   menuIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: "transparent",
+    width: 30, // Figma size
+    height: 30, // Figma size
     alignItems: "center",
     justifyContent: "center",
   },
   menuButtonText: {
-    flex: 1,
+    width: 140, // Close to Figma 153, keeping safe
+    textAlign: "center",
     fontSize: 16,
-    fontWeight: "600",
-    color: colors.ink,
+    fontWeight: "400",
+    color: "#000",
   },
 
   // Logout Button
   logoutButton: {
-    marginHorizontal: 20,
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
+    marginHorizontal: 26,
+    backgroundColor: "transparent",
+    borderRadius: 12,
+    paddingVertical: 12,
     alignItems: "center",
     borderWidth: 2,
-    borderColor: colors.error,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    borderColor: "#F65952",
+    marginBottom: 40,
   },
   logoutButtonText: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.error,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#F65952",
   },
 });

@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingVertical: 24,
-    paddingBottom: 120,
+    paddingBottom: 60,
   },
 
   // Profile Picture Section

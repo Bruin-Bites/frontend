@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { colors } from "../theme/colors";
 import { useLikes } from "../contexts/LikesContext";
 import BottomNavigation from "../components/BottomNavigation";
 
@@ -17,160 +15,252 @@ export default function ArchivedScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("contributions");
   const { likedMap, engagementCounts, toggleLike, setInitialData } = useLikes();
 
-  // Mock contributions - include `image` field for future GET replacement
   const contributions = [
-    { id: "1", title: "Fruits & Veggies Deal", image: null },
-    { id: "2", title: "Free Breakfast", image: null },
-    { id: "3", title: "Farm to Fork Event", image: null },
+    {
+      id: "1",
+      title: "Fruits & Veggies Deal",
+      dateTime: "October 17, 2025 | 12:00PM - 1:30PM",
+    },
+    {
+      id: "2",
+      title: "Free Breakfast",
+      dateTime: "October 17, 2025 | 12:00PM - 1:30PM",
+    },
+    {
+      id: "3",
+      title: "Farm to Fork Event",
+      dateTime: "October 17, 2025 | 12:00PM - 1:30PM",
+    },
+    {
+      id: "4",
+      title: "Acai 50% Off",
+      dateTime: "October 17, 2025 | 12:00PM - 1:30PM",
+    },
   ];
 
   const comments = [
-    { id: "c1", username: "Username", text: "This is my amazing comment." },
-    { id: "c2", username: "Username", text: "Another thoughtful comment." },
+    {
+      id: "c1",
+      eventTitle: "Event Title",
+      username: "Username",
+      time: "5d ago",
+      text: "This is my amazing comment. What a great placeholder comment!",
+    },
+    {
+      id: "c2",
+      eventTitle: "Event Title",
+      username: "Username",
+      time: "5d ago",
+      text: "This is my amazing comment. What a great placeholder comment!",
+    },
+    {
+      id: "c3",
+      eventTitle: "Event Title",
+      username: "Username",
+      time: "5d ago",
+      text: "This is my amazing comment. What a great placeholder comment!",
+    },
+    {
+      id: "c4",
+      eventTitle: "Event Title",
+      username: "Username",
+      time: "5d ago",
+      text: "This is my amazing comment. What a great placeholder comment!",
+    },
   ];
 
   useEffect(() => {
-    // initialize like counts for the displayed contributions
     setInitialData(contributions, 13);
   }, []);
 
   return (
     <View style={styles.container}>
       <SafeAreaView style={{ flex: 1 }} edges={[]}>
+        {/* Header */}
         <View style={styles.header}>
           <Pressable
             onPress={() => navigation.goBack()}
-            style={styles.backBtn}
-            hitSlop={8}
+            style={styles.backButton}
+            hitSlop={10}
           >
-            <Ionicons name="chevron-back" size={22} color={colors.ink} />
+            <Ionicons name="chevron-back" size={18} color="#000" />
           </Pressable>
           <Text style={styles.headerTitle}>Archived</Text>
+          <View style={styles.headerSpacer} />
         </View>
-        <View style={styles.separator} />
 
-        <View style={styles.tabRow}>
-          <Pressable
-            onPress={() => setActiveTab("contributions")}
-            style={[
-              styles.tab,
-              activeTab === "contributions" && styles.tabActive,
-            ]}
-          >
-            <Text
+        {/* Tabs */}
+        <View style={styles.tabsHeader}>
+          <View style={styles.tabContainer}>
+            <Pressable
               style={[
-                styles.tabText,
-                activeTab === "contributions" && styles.tabTextActive,
+                styles.tab,
+                activeTab === "contributions" && styles.tabActive,
               ]}
+              onPress={() => setActiveTab("contributions")}
             >
-              Contributions
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setActiveTab("comments")}
-            style={[styles.tab, activeTab === "comments" && styles.tabActive]}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "comments" && styles.tabTextActive,
-              ]}
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "contributions" && styles.tabTextActive,
+                ]}
+              >
+                Contributions
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.tab, activeTab === "comments" && styles.tabActive]}
+              onPress={() => setActiveTab("comments")}
             >
-              Comments
-            </Text>
-          </Pressable>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "comments" && styles.tabTextActive,
+                ]}
+              >
+                Comments
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           bounces={true}
+          contentContainerStyle={styles.scrollContent}
         >
-          {activeTab === "contributions"
-            ? contributions.map((item) => (
+          <View style={styles.contentContainer}>
+            {activeTab === "contributions" ? (
+              (contributions || []).map((item) => (
                 <View key={item.id} style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <Pressable
-                      style={styles.heartBadge}
-                      onPress={() => toggleLike(item.id)}
-                      hitSlop={8}
-                    >
-                      <Ionicons
-                        name={likedMap[item.id] ? "heart" : "heart-outline"}
-                        size={18}
-                        color={
-                          likedMap[item.id] ? colors.error : colors.textLight
-                        }
-                      />
-                    </Pressable>
-                    <Image
-                      source={
-                        item.image
-                          ? { uri: item.image }
-                          : require("../../assets/adaptive-icon.png")
-                      }
-                      style={styles.cardImage}
-                    />
-                    <View style={styles.freeBadge}>
-                      <Text style={styles.freeText}>FREE</Text>
+                  {/* Image Section */}
+                  <View style={styles.cardImageContainer}>
+                    <View style={styles.imagePlaceholder}>
+                      <Ionicons name="image-outline" size={40} color="#D9D9D9" />
+                    </View>
+                    <View style={styles.imageOverlay}>
+                      <Pressable
+                        onPress={() => toggleLike(item.id)}
+                        style={styles.heartButton}
+                        hitSlop={8}
+                      >
+                        <Ionicons
+                          name={likedMap[item.id] ? "heart" : "heart-outline"}
+                          size={20}
+                          color={likedMap[item.id] ? "#F65952" : "#666"}
+                        />
+                      </Pressable>
+                      <View style={styles.freeTag}>
+                        <Text style={styles.freeTagText}>FREE</Text>
+                      </View>
                     </View>
                   </View>
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  <View style={styles.cardFooterRow}>
-                    <Text style={styles.cardMeta}>
-                      October 17, 2025 | 12:00PM - 1:30PM
-                    </Text>
-                    <View style={styles.cardRightRow}>
-                      <Text style={styles.cardDistance}>0.5 mi</Text>
-                      <View style={styles.engagementRow}>
+
+                  {/* Text Content */}
+                  <View style={styles.cardContent}>
+                    <Text style={styles.cardTitle}>{item.title}</Text>
+
+                    <View style={styles.dateTimeRow}>
+                      <Text style={styles.cardDateTime}>{item.dateTime}</Text>
+                      <Text style={styles.distance}>0.5 mi</Text>
+                    </View>
+
+                    <View style={styles.tagsAndEngagementRow}>
+                      <View style={styles.tagsContainer}>
+                        <View style={[styles.tag, styles.tagDeal]}>
+                          <Text style={[styles.tagText, styles.tagDealText]}>
+                            Deal type
+                          </Text>
+                        </View>
+                        <View style={[styles.tag, styles.tagFood]}>
+                          <Text style={[styles.tagText, styles.tagFoodText]}>
+                            Food type
+                          </Text>
+                        </View>
+                        <View style={[styles.tag, styles.tagLocation]}>
+                          <Text style={[styles.tagText, styles.tagLocationText]}>
+                            Location type
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.engagement}>
                         <Ionicons
                           name="thumbs-up-outline"
-                          size={14}
-                          color={colors.text}
+                          size={16}
+                          color="#8C8C8C"
                         />
-                        <Text style={styles.engagementCount}>
-                          {engagementCounts[item.id] ?? 0}
+                        <Text style={styles.engagementText}>
+                          {engagementCounts[item.id] ?? 13}
                         </Text>
                         <Ionicons
                           name="chatbubble-outline"
                           size={14}
-                          color={colors.text}
-                          style={{ marginLeft: 8 }}
+                          color="#8C8C8C"
+                          style={styles.engagementIcon}
                         />
-                        <Text style={styles.engagementCount}>3</Text>
+                        <Text style={styles.engagementText}>3</Text>
                       </View>
                     </View>
                   </View>
                 </View>
               ))
-            : comments.map((c) => (
-                <View key={c.id} style={styles.commentWrapper}>
-                  <View style={styles.eventTag}>
-                    <Text style={styles.eventTagText}>Event Title 5d ago</Text>
-                  </View>
-                  <View style={styles.commentCard}>
-                    <View style={styles.commentRow}>
-                      <View style={styles.commentAvatar} />
-                      <View style={styles.commentBody}>
-                        <Text style={styles.commentUsername}>{c.username}</Text>
-                        <Text style={styles.commentText}>{c.text}</Text>
-                        <View style={styles.commentActionsRow}>
-                          <Ionicons
-                            name="thumbs-up-outline"
-                            size={14}
-                            color={colors.text}
-                          />
-                          <Text style={styles.commentActionCount}>2</Text>
-                          <Text style={styles.commentActionLink}>Reply</Text>
-                          <Text style={styles.commentActionLink}>Report</Text>
+            ) : (
+              <View>
+                {(comments || []).map((c) => (
+                  <View key={c.id} style={styles.commentWrapper}>
+                    <View style={styles.commentEventTag}>
+                      <Text style={styles.commentEventTagText}>
+                        {c.eventTitle}{" "}
+                        <Text style={styles.commentEventTime}>{c.time}</Text>
+                      </Text>
+                    </View>
+                    <View style={styles.threadLine} />
+                    <View style={styles.commentCard}>
+                      <View style={styles.commentRow}>
+                        <View style={styles.commentAvatar} />
+                        <View style={styles.commentBody}>
+                          <View style={styles.commentHeaderRow}>
+                            <Text style={styles.commentUsername}>
+                              {c.username}
+                            </Text>
+                            <Text style={styles.commentTime}>{c.time}</Text>
+                          </View>
+                          <Text style={styles.commentText}>{c.text}</Text>
+                          <View style={styles.commentActions}>
+                            <View style={styles.commentActionItem}>
+                              <Ionicons
+                                name="thumbs-up-outline"
+                                size={16}
+                                color="#8C8C8C"
+                              />
+                              <Text style={styles.commentActionText}>2</Text>
+                            </View>
+                            <View style={styles.commentActionItem}>
+                              <Ionicons
+                                name="return-up-back-outline"
+                                size={16}
+                                color="#8C8C8C"
+                              />
+                              <Text style={styles.commentActionText}>Reply</Text>
+                            </View>
+                            <View style={styles.commentActionItem}>
+                              <Ionicons
+                                name="alert-circle-outline"
+                                size={16}
+                                color="#8C8C8C"
+                              />
+                              <Text style={styles.commentActionText}>Report</Text>
+                            </View>
+                          </View>
                         </View>
                       </View>
                     </View>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
+            )}
+          </View>
         </ScrollView>
-
         <BottomNavigation />
       </SafeAreaView>
     </View>
@@ -178,118 +268,310 @@ export default function ArchivedScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
   header: {
-    height: 56,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 26,
+    paddingTop: 26,
+    paddingBottom: 16,
+    backgroundColor: "#fff",
+  },
+  backButton: {
+    width: 18,
+    height: 18,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
   },
-  backBtn: { position: "absolute", left: 12 },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: colors.ink },
-  separator: { height: 1, backgroundColor: colors.border },
-  tabRow: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#000",
+    textAlign: "center",
+    flex: 1,
   },
-  tab: { flex: 1, alignItems: "center", paddingVertical: 8 },
-  tabActive: { borderBottomWidth: 3, borderBottomColor: colors.uclaGold },
-  tabText: { fontSize: 16, color: colors.text },
-  tabTextActive: { color: colors.ink, fontWeight: "700" },
-  scrollContent: { padding: 16, paddingBottom: 120 },
+  headerSpacer: {
+    width: 18,
+  },
+  tabsHeader: {
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5E5",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingHorizontal: 41,
+    paddingBottom: 0,
+  },
+  tab: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  tabActive: {
+    borderBottomWidth: 5,
+    borderBottomColor: "#F8DC73",
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: "400",
+    color: "#000",
+  },
+  tabTextActive: {
+    fontWeight: "700",
+  },
+  scrollContent: {
+    paddingBottom: 60,
+  },
+  contentContainer: {
+    paddingHorizontal: 26,
+    paddingVertical: 20,
+  },
   card: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    padding: 10,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
   },
-  cardHeader: { position: "relative", marginBottom: 8 },
-  heartBadge: {
-    position: "absolute",
-    left: 8,
-    top: 8,
-    zIndex: 2,
-    backgroundColor: "#fff",
-    padding: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cardImage: {
+  cardImageContainer: {
     width: "100%",
-    height: 90,
+    height: 100,
     borderRadius: 8,
-    backgroundColor: colors.bg1,
+    overflow: "hidden",
+    marginBottom: 10,
+    position: "relative",
   },
-  freeBadge: {
+  imagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#F0F0F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageOverlay: {
     position: "absolute",
-    right: 8,
-    top: 8,
-    backgroundColor: colors.loginPrimaryGreen,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    padding: 8,
   },
-  freeText: { color: "#fff", fontWeight: "700", fontSize: 12 },
+  heartButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  freeTag: {
+    backgroundColor: "#8AB644",
+    paddingHorizontal: 15,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  freeTagText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  cardContent: {
+    gap: 3,
+  },
   cardTitle: {
     fontSize: 16,
-    fontWeight: "700",
-    color: colors.ink,
-    marginTop: 8,
+    fontWeight: "600",
+    color: "#000",
+    marginBottom: 3,
   },
-  cardFooterRow: {
+  dateTimeRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 8,
+    marginBottom: 10,
   },
-  cardMeta: { color: colors.text, fontSize: 13 },
-  cardDistance: { color: colors.text, fontSize: 13 },
-  cardRightRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  engagementRow: { flexDirection: "row", alignItems: "center", marginLeft: 12 },
-  engagementCount: { color: colors.text, marginLeft: 6 },
-  commentWrapper: { marginBottom: 20 },
-  eventTag: {
-    alignSelf: "flex-start",
-    backgroundColor: "#eef7f0",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  cardDateTime: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#000",
+  },
+  tagsAndEngagementRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginBottom: 0,
+  },
+  tagsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 5,
+    flex: 1,
+  },
+  tag: {
+    paddingHorizontal: 7,
+    paddingVertical: 5,
     borderRadius: 12,
-    marginBottom: 8,
+    borderWidth: 1,
   },
-  eventTagText: { color: "#7fbf65", fontSize: 12, fontWeight: "700" },
+  tagDeal: {
+    backgroundColor: "rgba(138, 182, 68, 0.2)",
+    borderColor: "#8AB644",
+  },
+  tagDealText: {
+    color: "#8AB644",
+    fontSize: 10,
+    fontWeight: "400",
+  },
+  tagFood: {
+    backgroundColor: "rgba(248, 220, 115, 0.4)",
+    borderColor: "#E3B300",
+  },
+  tagFoodText: {
+    color: "#E3B300",
+    fontSize: 10,
+    fontWeight: "400",
+  },
+  tagLocation: {
+    backgroundColor: "rgba(170, 216, 230, 0.3)",
+    borderColor: "#23BEED",
+  },
+  tagLocationText: {
+    color: "#23BEED",
+    fontSize: 10,
+    fontWeight: "400",
+  },
+  tagText: {
+    fontSize: 10,
+    fontWeight: "400",
+  },
+  distance: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#000",
+  },
+  engagement: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  engagementIcon: {
+    marginLeft: 8,
+  },
+  engagementText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#8C8C8C",
+  },
+  /* Comment styles */
+  commentWrapper: {
+    marginBottom: 25,
+  },
+  commentEventTag: {
+    alignSelf: "flex-start",
+    backgroundColor: "#fff",
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 2.5 },
+    elevation: 5,
+    height: 25,
+    justifyContent: "center",
+  },
+  commentEventTagText: {
+    color: "#8AB644",
+    fontSize: 12,
+    fontWeight: "400",
+  },
+  commentEventTime: {
+    fontSize: 10,
+    fontWeight: "400",
+  },
+  threadLine: {
+    width: 2,
+    height: 25,
+    backgroundColor: "#D9D9D9",
+    borderRadius: 1,
+    marginLeft: 16,
+  },
   commentCard: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingHorizontal: 15,
+    paddingVertical: 17,
     shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    shadowOpacity: 0.25,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
   },
-  commentRow: { flexDirection: "row", gap: 12 },
-  commentAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#d9eede",
-  },
-  commentBody: { flex: 1 },
-  commentUsername: { fontWeight: "700", color: colors.ink, marginBottom: 6 },
-  commentText: { color: colors.ink },
-  commentActionsRow: {
+  commentRow: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  commentAvatar: {
+    width: 27,
+    height: 27,
+    borderRadius: 13.5,
+    backgroundColor: "#C8DFC4",
+  },
+  commentBody: {
+    flex: 1,
+  },
+  commentHeaderRow: {
+    flexDirection: "row",
+    gap: 5,
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  commentUsername: {
+    fontWeight: "600",
+    fontSize: 14,
+    color: "#000",
+  },
+  commentTime: {
+    color: "#8C8C8C",
+    fontSize: 12,
+    fontWeight: "400",
+  },
+  commentText: {
+    color: "#000",
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 17,
+    marginBottom: 15,
+  },
+  commentActions: {
+    flexDirection: "row",
+    gap: 15,
     alignItems: "center",
   },
-  commentActionCount: { color: colors.text, marginLeft: 4 },
-  commentActionLink: { color: colors.text, marginLeft: 12 },
+  commentActionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  commentActionText: {
+    color: "#8C8C8C",
+    fontSize: 12,
+    fontWeight: "400",
+  },
 });

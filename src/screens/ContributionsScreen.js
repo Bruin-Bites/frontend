@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,22 +11,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import { useLikes } from "../contexts/LikesContext";
-import { useUser } from "../contexts/UserContext";
 import BottomNavigation from "../components/BottomNavigation";
 
-export default function ContributionsScreen({ navigation, route }) {
-  const { user } = useUser();
+export default function ContributionsScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState("contributions");
   const [contributions, setContributions] = useState([]);
   const [comments, setComments] = useState([]);
   const { likedMap, engagementCounts, toggleLike, setInitialData } = useLikes();
-  const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    contributions: 16,
-    followers: 33,
-    following: 44,
-  });
 
   useEffect(() => {
     loadData();
@@ -55,19 +47,6 @@ export default function ContributionsScreen({ navigation, route }) {
       setLoading(false);
     }
   };
-
-  const getInitials = (username) => {
-    if (!username) return "U";
-    return username
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const currentData = activeTab === "contributions" ? contributions : comments;
-  const isEmpty = currentData.length === 0;
 
   // Mock data for demo
   const mockContributions = [
@@ -126,22 +105,6 @@ export default function ContributionsScreen({ navigation, route }) {
     return Promise.resolve(mockComments);
   };
 
-  // Profile fetch stub - replace with real GET request later (e.g. api.get(`/profiles/${userId}`))
-  // Note: we don't call this yet; it's a framework for future integration.
-  const fetchProfile = async (userId) => {
-    // TODO: replace with actual API call, return profile shape { username, stats, bio, avatar }
-    return Promise.resolve({
-      username: route?.params?.username || user?.username || null,
-      stats: {
-        contributions: stats.contributions,
-        followers: stats.followers,
-        following: stats.following,
-      },
-      bio: "A contributor's profile description. Might contain location, among other things!",
-      avatar: null,
-    });
-  };
-
   // NOTE: use `toggleLike(id)` from LikesContext to toggle like and update counts
 
   return (
@@ -154,87 +117,17 @@ export default function ContributionsScreen({ navigation, route }) {
             style={styles.backButton}
             hitSlop={10}
           >
-            <Ionicons name="chevron-back" size={24} color={colors.ink} />
+            <Ionicons name="chevron-back" size={18} color={colors.ink} />
           </Pressable>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerUsername}>
-              {route?.params?.username
-                ? route.params.username
-                : "My contributions"}
-            </Text>
-          </View>
+          <Text style={styles.headerTitle}>My contributions</Text>
+          <View style={styles.headerSpacer} />
         </View>
-        <View style={styles.separator} />
-        {/* Profile Section */}
-        <View style={styles.profileSection}>
-          <View style={styles.avatarWrapperProfile}>
-            <View style={styles.avatarProfile}>
-              <View style={styles.avatarInnerProfile}>
-                <Text style={styles.avatarProfileText}>
-                  {getInitials(
-                    route?.params?.username || user?.username || "U"
-                  )}
-                </Text>
-              </View>
-            </View>
-          </View>
 
-          <View style={styles.profileStatsWrap}>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{stats.contributions}</Text>
-                <Text style={styles.statLabel}>contributions</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{stats.followers}</Text>
-                <Text style={styles.statLabel}>followers</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{stats.following}</Text>
-                <Text style={styles.statLabel}>following</Text>
-              </View>
-            </View>
-
-            <Text style={styles.profileDescription}>
-              A contributor's profile description. Might contain location, among
-              other things!
-            </Text>
-
-            <Pressable
-              onPress={() => setIsFollowing((s) => !s)}
-              style={[
-                styles.followButton,
-                isFollowing && styles.followButtonFollowing,
-              ]}
-              android_ripple={{ color: "#eee" }}
-            >
-              <Text
-                style={[
-                  styles.followButtonText,
-                  isFollowing && styles.followButtonTextFollowing,
-                ]}
-              >
-                {isFollowing ? "Following" : "Follow"}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          bounces={true}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {/* Profile details removed — focus on contributions/comments list */}
-
-          {/* Tabs */}
+        {/* Tabs - moved to header section */}
+        <View style={styles.tabsHeader}>
           <View style={styles.tabContainer}>
             <Pressable
-              style={[
-                styles.tab,
-                activeTab === "contributions" && styles.tabActive,
-              ]}
+              style={[styles.tab, activeTab === "contributions" && styles.tabActive]}
               onPress={() => setActiveTab("contributions")}
             >
               <Text
@@ -260,7 +153,12 @@ export default function ContributionsScreen({ navigation, route }) {
               </Text>
             </Pressable>
           </View>
-          <View style={styles.separator} />
+        </View>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          contentContainerStyle={styles.scrollContent}
+        >
 
           {/* Content */}
           {loading ? (
@@ -272,65 +170,73 @@ export default function ContributionsScreen({ navigation, route }) {
               {activeTab === "contributions" ? (
                 (contributions || []).map((item) => (
                   <View key={item.id} style={styles.card}>
-                    <View style={styles.cardHeader}>
-                      <Pressable
-                        onPress={() => toggleLike(item.id)}
-                        hitSlop={8}
-                      >
+                    {/* Image Section */}
+                    <View style={styles.cardImageContainer}>
+                      <View style={styles.imagePlaceholder}>
                         <Ionicons
-                          name={likedMap[item.id] ? "heart" : "heart-outline"}
-                          size={22}
-                          color={
-                            likedMap[item.id] ? colors.error : colors.textLight
-                          }
+                          name="image-outline"
+                          size={40}
+                          color="#D9D9D9"
                         />
-                      </Pressable>
-                      <View style={styles.cardHeaderRight}>
+                      </View>
+                      <View style={styles.imageOverlay}>
+                        <Pressable
+                          onPress={() => toggleLike(item.id)}
+                          style={styles.heartButton}
+                          hitSlop={8}
+                        >
+                          <Ionicons
+                            name={likedMap[item.id] ? "heart" : "heart-outline"}
+                            size={20}
+                            color={likedMap[item.id] ? colors.error : "#666"}
+                          />
+                        </Pressable>
                         <View style={styles.freeTag}>
                           <Text style={styles.freeTagText}>FREE</Text>
                         </View>
-                        <Ionicons
-                          name="image-outline"
-                          size={36}
-                          color={colors.lightGray}
-                          style={styles.imagePlaceholder}
-                        />
                       </View>
                     </View>
 
-                    <Text style={styles.cardTitle}>
-                      {item.title || "Financial Literacy Workshop"}
-                    </Text>
-                    <Text style={styles.cardDateTime}>{item.dateTime}</Text>
+                    {/* Text Content */}
+                    <View style={styles.cardContent}>
+                      <Text style={styles.cardTitle}>
+                        {item.title || "Financial Literacy Workshop"}
+                      </Text>
 
-                    <View style={styles.tagsContainer}>
-                      {["Deal type", "Food type", "Location type"].map(
-                        (tag, idx) => (
-                          <View key={idx} style={styles.tag}>
-                            <Text style={styles.tagText}>{tag}</Text>
+                      <View style={styles.dateTimeRow}>
+                        <Text style={styles.cardDateTime}>{item.dateTime}</Text>
+                        <Text style={styles.distance}>0.5 mi</Text>
+                      </View>
+
+                      <View style={styles.tagsAndEngagementRow}>
+                        <View style={styles.tagsContainer}>
+                          <View style={[styles.tag, styles.tagDeal]}>
+                            <Text style={[styles.tagText, styles.tagDealText]}>Deal type</Text>
                           </View>
-                        )
-                      )}
-                    </View>
-
-                    <View style={styles.cardFooter}>
-                      <Text style={styles.distance}>0.5 mi</Text>
-                      <View style={styles.engagement}>
-                        <Ionicons
-                          name="thumbs-up-outline"
-                          size={16}
-                          color={colors.text}
-                        />
-                        <Text style={styles.engagementText}>
-                          {engagementCounts[item.id] ?? 13}
-                        </Text>
-                        <Ionicons
-                          name="chatbubble-outline"
-                          size={16}
-                          color={colors.text}
-                          style={styles.engagementIcon}
-                        />
-                        <Text style={styles.engagementText}>3</Text>
+                          <View style={[styles.tag, styles.tagFood]}>
+                            <Text style={[styles.tagText, styles.tagFoodText]}>Food type</Text>
+                          </View>
+                          <View style={[styles.tag, styles.tagLocation]}>
+                            <Text style={[styles.tagText, styles.tagLocationText]}>Location type</Text>
+                          </View>
+                        </View>
+                        <View style={styles.engagement}>
+                          <Ionicons
+                            name="thumbs-up-outline"
+                            size={16}
+                            color="#8C8C8C"
+                          />
+                          <Text style={styles.engagementText}>
+                            {engagementCounts[item.id] ?? 13}
+                          </Text>
+                          <Ionicons
+                            name="chatbubble-outline"
+                            size={14}
+                            color="#8C8C8C"
+                            style={styles.engagementIcon}
+                          />
+                          <Text style={styles.engagementText}>3</Text>
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -404,139 +310,63 @@ export default function ContributionsScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg0,
+    backgroundColor: "#FFFFFF",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingHorizontal: 26,
+    paddingTop: 26,
+    paddingBottom: 16,
     backgroundColor: "#fff",
   },
   backButton: {
-    padding: 4,
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-  },
-  headerUsername: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.ink,
-    textAlign: "center",
-  },
-  shareButton: {
-    padding: 4,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  profileSection: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    alignItems: "center",
-  },
-  avatarContainer: {
-    marginRight: 16,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.uclaGold,
+    width: 18,
+    height: 18,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.uclaBlue,
   },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: colors.uclaBlue,
-  },
-  statsContainer: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-  },
-  statItem: {
-    alignItems: "center",
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: colors.border,
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.uclaBlue,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.text,
-    fontWeight: "600",
-  },
-  description: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    fontSize: 14,
-    color: colors.ink,
-    lineHeight: 20,
-  },
-  followingButton: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingVertical: 10,
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: colors.uclaBlue,
-    shadowColor: colors.uclaBlue,
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  followingButtonText: {
+  headerTitle: {
     fontSize: 16,
-    fontWeight: "700",
-    color: colors.uclaBlue,
+    fontWeight: "600",
+    color: "#000",
+    textAlign: "center",
+    flex: 1,
+  },
+  headerSpacer: {
+    width: 18,
+  },
+  tabsHeader: {
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E5E5",
   },
   tabContainer: {
     flexDirection: "row",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
+    justifyContent: "space-around",
+    paddingHorizontal: 41,
+    paddingBottom: 0,
   },
   tab: {
     flex: 1,
     alignItems: "center",
-    paddingBottom: 8,
+    paddingVertical: 12,
   },
   tabActive: {
-    borderBottomWidth: 3,
-    borderBottomColor: colors.uclaGold,
+    borderBottomWidth: 5,
+    borderBottomColor: "#F8DC73",
   },
   tabText: {
-    fontSize: 16,
-    color: colors.text,
+    fontSize: 14,
+    fontWeight: "400",
+    color: "#000",
   },
   tabTextActive: {
     fontWeight: "700",
-    color: colors.ink,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 60,
   },
   loadingContainer: {
     flex: 1,
@@ -545,121 +375,153 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   contentContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 26,
+    paddingVertical: 20,
   },
   card: {
     backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 20,
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
+    shadowOpacity: 0.25,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
   },
-  cardHeader: {
+  cardImageContainer: {
+    width: "100%",
+    height: 100,
+    borderRadius: 8,
+    overflow: "hidden",
+    marginBottom: 10,
+    position: "relative",
+  },
+  imagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#F0F0F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 12,
+    padding: 8,
   },
-  cardHeaderRight: {
-    alignItems: "flex-end",
-    gap: 8,
+  heartButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
   },
   freeTag: {
-    backgroundColor: "#7fbf65",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: "#8AB644",
+    paddingHorizontal: 15,
+    paddingVertical: 3,
     borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#fff",
   },
   freeTagText: {
-    color: colors.tagText,
+    color: "#fff",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "600",
   },
-  imagePlaceholder: {
-    marginTop: 4,
+  cardContent: {
+    gap: 3,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.ink,
-    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#000",
+    marginBottom: 3,
+  },
+  dateTimeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
   },
   cardDateTime: {
-    fontSize: 14,
-    color: colors.ink,
-    marginBottom: 12,
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#000",
+  },
+  tagsAndEngagementRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginBottom: 0,
   },
   tagsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 12,
+    gap: 5,
+    flex: 1,
   },
   tag: {
-    backgroundColor: colors.bg1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.uclaBlue + "20",
+  },
+  tagDeal: {
+    backgroundColor: "rgba(138, 182, 68, 0.2)",
+    borderColor: "#8AB644",
+  },
+  tagDealText: {
+    color: "#8AB644",
+    fontSize: 10,
+    fontWeight: "400",
+  },
+  tagFood: {
+    backgroundColor: "rgba(248, 220, 115, 0.4)",
+    borderColor: "#E3B300",
+  },
+  tagFoodText: {
+    color: "#E3B300",
+    fontSize: 10,
+    fontWeight: "400",
+  },
+  tagLocation: {
+    backgroundColor: "rgba(170, 216, 230, 0.3)",
+    borderColor: "#23BEED",
+  },
+  tagLocationText: {
+    color: "#23BEED",
+    fontSize: 10,
+    fontWeight: "400",
   },
   tagText: {
-    fontSize: 12,
-    color: colors.uclaBlue,
-    fontWeight: "600",
-  },
-  cardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 8,
+    fontSize: 10,
+    fontWeight: "400",
   },
   distance: {
-    fontSize: 14,
-    color: colors.uclaBlue,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#000",
   },
   engagement: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 2,
   },
   engagementIcon: {
     marginLeft: 8,
   },
   engagementText: {
-    fontSize: 14,
-    color: colors.uclaBlue,
-    fontWeight: "600",
-  },
-  placeholderCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 40,
-    marginBottom: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  placeholderText: {
-    fontSize: 14,
-    color: colors.ink,
-  },
-  emptyContainer: {
-    paddingVertical: 20,
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#8C8C8C",
   },
   /* Comment styles */
   commentWrapper: {
@@ -737,93 +599,5 @@ const styles = StyleSheet.create({
   commentActionText: {
     color: colors.textLight,
     fontSize: 12,
-  },
-  // Profile section styles
-  profileSection: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    gap: 16,
-    backgroundColor: "#fff",
-  },
-  avatarWrapperProfile: {
-    marginRight: 12,
-  },
-  avatarProfile: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#eaf6ea",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarInnerProfile: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#7fbf65",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarProfileText: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#fff",
-  },
-  profileStatsWrap: {
-    flex: 1,
-  },
-  statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-  },
-  statItem: {
-    alignItems: "center",
-    flex: 1,
-  },
-  statNumber: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.ink,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: colors.text,
-    fontWeight: "600",
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: colors.border,
-  },
-  profileDescription: {
-    marginTop: 8,
-    marginBottom: 12,
-    color: colors.text,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  followButton: {
-    alignSelf: "flex-start",
-    backgroundColor: colors.loginPrimaryGreen,
-    paddingVertical: 12,
-    paddingHorizontal: 36,
-    borderRadius: 28,
-  },
-  followButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  followButtonFollowing: {
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: colors.uclaBlue,
-  },
-  followButtonTextFollowing: {
-    color: colors.uclaBlue,
   },
 });

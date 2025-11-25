@@ -50,13 +50,18 @@ export default function BottomNavigation() {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    backgroundColor: colors.lightGray,
-    paddingVertical: 12,
+    backgroundColor: "#fff",
+    paddingTop: 12,
+    paddingBottom: 20, // Reduced bottom padding
     paddingHorizontal: 8,
     justifyContent: "space-around",
     alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopWidth: 0,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2.5 },
+    shadowOpacity: 0.25,
+    shadowRadius: 7,
+    elevation: 10,
   },
   navItem: {
     alignItems: "center",
@@ -66,10 +71,10 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: colors.tagBg,
+    backgroundColor: "#D9D9D9", // Default gray
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginBottom: 4, // Reduce gap
   },
   circleActive: {
     backgroundColor: colors.uclaBlue,

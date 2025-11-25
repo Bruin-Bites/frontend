@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -84,11 +84,9 @@ export default function FollowingScreen({ navigation }) {
       }
       android_ripple={{ color: "#eee" }}
     >
-      <View style={styles.avatarWrapper}>
-        <View style={styles.avatar}>
-          <View style={styles.avatarInner}>
-            <Text style={styles.avatarText}>{getInitials(item.username)}</Text>
-          </View>
+      <View style={styles.avatar}>
+        <View style={styles.avatarInner}>
+          <Text style={styles.avatarText}>{getInitials(item.username)}</Text>
         </View>
       </View>
       <View style={styles.userInfo}>
@@ -97,18 +95,7 @@ export default function FollowingScreen({ navigation }) {
           {item.description}
         </Text>
       </View>
-      <Pressable
-        onPress={() =>
-          navigation.navigate("Contributions", {
-            username: item.username,
-            userId: item.id,
-          })
-        }
-        hitSlop={8}
-        style={styles.chevronPressable}
-      >
-        <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
-      </Pressable>
+      <Ionicons name="chevron-forward" size={20} color="#8C8C8C" />
     </Pressable>
   );
 
@@ -122,12 +109,11 @@ export default function FollowingScreen({ navigation }) {
             style={styles.backButton}
             hitSlop={10}
           >
-            <Ionicons name="chevron-back" size={24} color={colors.ink} />
+            <Ionicons name="chevron-back" size={18} color="#000" />
           </Pressable>
           <Text style={styles.headerTitle}>Following</Text>
-          <View style={styles.headerRightPlaceholder} />
+          <View style={styles.headerSpacer} />
         </View>
-        <View style={styles.separator} />
 
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -152,36 +138,34 @@ export default function FollowingScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg0,
+    backgroundColor: "#FFFFFF",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-    position: "relative",
+    justifyContent: "space-between",
+    paddingHorizontal: 26,
+    paddingTop: 26,
+    paddingBottom: 16,
     backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#D9D9D9",
   },
   backButton: {
-    position: "absolute",
-    left: 16,
-    padding: 4,
+    width: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.ink,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#000",
+    textAlign: "center",
+    flex: 1,
   },
-  headerRightPlaceholder: {
-    position: "absolute",
-    right: 16,
-    width: 32,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: colors.border,
+  headerSpacer: {
+    width: 18,
   },
   loadingContainer: {
     flex: 1,
@@ -189,48 +173,39 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   listContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 120,
+    paddingHorizontal: 27,
+    paddingTop: 38,
+    paddingBottom: 60,
   },
   userCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    marginBottom: 15,
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  chevronPressable: {
-    padding: 8,
-    width: 36,
-    alignItems: "center",
-  },
-  avatarWrapper: {
-    position: "relative",
-    marginRight: 4,
+    shadowOpacity: 0.25,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
+    height: 85,
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#eaf6ea",
+    width: 49,
+    height: 49,
+    borderRadius: 24.5,
+    backgroundColor: "#C8DFC4",
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 38,
   },
   avatarInner: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#7fbf65",
+    width: 49,
+    height: 49,
+    borderRadius: 24.5,
+    backgroundColor: "#7EBF65",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -241,15 +216,16 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flex: 1,
+    gap: 5,
   },
   username: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colors.ink,
-    marginBottom: 4,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
   },
   description: {
-    fontSize: 14,
-    color: colors.text,
+    fontSize: 12,
+    fontWeight: "400",
+    color: "#8C8C8C",
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,13 +7,10 @@ import {
   Pressable,
   TextInput,
   Alert,
-  ActivityIndicator,
-  Switch,
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { colors } from "../theme/colors";
 import { useUser } from "../contexts/UserContext";
 import BottomNavigation from "../components/BottomNavigation";
 
@@ -39,7 +36,7 @@ function Toggle({ value, onChange }) {
 }
 
 export default function AccountScreen({ navigation }) {
-  const { user, updateUser } = useUser();
+  const { user } = useUser();
   const [accountData, setAccountData] = useState({
     school: user?.school || "University of California, Los Angeles",
     graduatingYear: user?.graduatingYear || "2029",
@@ -48,7 +45,6 @@ export default function AccountScreen({ navigation }) {
     twoFactorEnabled: false,
   });
   const [editingField, setEditingField] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -66,8 +62,7 @@ export default function AccountScreen({ navigation }) {
     setEditingField(field);
   };
 
-  const handleSave = async (field) => {
-    setLoading(true);
+  const handleSave = async () => {
     try {
       // No network call - update local state only
       setEditingField(null);
@@ -75,8 +70,6 @@ export default function AccountScreen({ navigation }) {
     } catch (error) {
       console.error("Failed to update:", error);
       Alert.alert("Error", "Failed to update information");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -112,12 +105,11 @@ export default function AccountScreen({ navigation }) {
             style={styles.backButton}
             hitSlop={10}
           >
-            <Ionicons name="chevron-back" size={24} color={colors.ink} />
+            <Ionicons name="chevron-back" size={18} color="#000" />
           </Pressable>
           <Text style={styles.headerTitle}>Account</Text>
-          <View style={styles.headerRightPlaceholder} />
+          <View style={styles.headerSpacer} />
         </View>
-        <View style={styles.separator} />
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -157,7 +149,7 @@ export default function AccountScreen({ navigation }) {
               </View>
             </View>
 
-            <View style={styles.fieldContainer}>
+            <View style={[styles.fieldContainer, styles.lastFieldContainer]}>
               <Text style={styles.fieldLabel}>Graduating year</Text>
               <View style={styles.inputRow}>
                 <TextInput
@@ -188,6 +180,9 @@ export default function AccountScreen({ navigation }) {
               </View>
             </View>
           </View>
+
+          {/* Divider Line */}
+          <View style={styles.divider} />
 
           {/* Account Information Section */}
           <View style={styles.section}>
@@ -249,10 +244,10 @@ export default function AccountScreen({ navigation }) {
               </View>
             </View>
 
-            <View style={styles.fieldContainer}>
+            <View style={[styles.fieldContainer, styles.lastFieldContainer]}>
               <Text style={styles.fieldLabel}>Password</Text>
               <View style={styles.inputRow}>
-                <Text style={styles.passwordText}>••••••••••••</Text>
+                <Text style={styles.passwordText}>•••••••••••••••</Text>
                 <Pressable
                   onPress={() => navigation.navigate("ChangePassword")}
                 >
@@ -263,12 +258,10 @@ export default function AccountScreen({ navigation }) {
                 </Pressable>
               </View>
             </View>
-          </View>
 
-          {/* Two-Factor Authentication */}
-          <View style={styles.section}>
+            {/* Two-Factor Authentication */}
             <View style={styles.twoFactorRow}>
-              <Text style={styles.fieldLabel}>Two-factor authentication</Text>
+              <Text style={styles.twoFactorLabel}>Two-factor authentication</Text>
               <Toggle
                 value={accountData.twoFactorEnabled}
                 onChange={(v) =>
@@ -276,12 +269,12 @@ export default function AccountScreen({ navigation }) {
                 }
               />
             </View>
-          </View>
 
-          {/* Delete Account */}
-          <Pressable style={styles.deleteButton} onPress={handleDeleteAccount}>
-            <Text style={styles.deleteButtonText}>Delete account</Text>
-          </Pressable>
+            {/* Delete Account */}
+            <Pressable style={styles.deleteButton} onPress={handleDeleteAccount}>
+              <Text style={styles.deleteButtonText}>Delete account</Text>
+            </Pressable>
+          </View>
         </ScrollView>
         <BottomNavigation />
       </SafeAreaView>
@@ -292,149 +285,140 @@ export default function AccountScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg0,
+    backgroundColor: "#FFFFFF",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-    position: "relative",
+    justifyContent: "space-between",
+    paddingHorizontal: 26,
+    paddingTop: 26,
+    paddingBottom: 16,
     backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#D9D9D9",
   },
   backButton: {
-    position: "absolute",
-    left: 16,
-    padding: 4,
+    width: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.ink,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#000",
+    textAlign: "center",
+    flex: 1,
   },
-  headerRightPlaceholder: {
-    position: "absolute",
-    right: 16,
-    width: 32,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: colors.border,
+  headerSpacer: {
+    width: 18,
   },
   scrollContent: {
-    paddingBottom: 120,
-    flexGrow: 1,
+    paddingBottom: 60,
+    paddingTop: 38,
   },
   section: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-    marginHorizontal: 16,
-    marginTop: 16,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    paddingHorizontal: 26,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
-    color: colors.ink,
-    marginBottom: 20,
+    color: "#000",
+    marginBottom: 13,
   },
   fieldContainer: {
     marginBottom: 20,
   },
+  lastFieldContainer: {
+    marginBottom: 0,
+  },
   fieldLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    color: colors.ink,
-    marginBottom: 8,
+    color: "#7E7E7E",
+    marginBottom: 7,
   },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderColor: "#D9D9D9",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    height: 38,
     backgroundColor: "#fff",
   },
   input: {
     flex: 1,
-    fontSize: 16,
-    color: colors.ink,
+    fontSize: 14,
+    color: "#000",
     paddingVertical: 0,
   },
   passwordText: {
     flex: 1,
-    fontSize: 16,
-    color: colors.ink,
+    fontSize: 14,
+    color: "#000",
+  },
+  editIcon: {
+    width: 19,
+    height: 19,
+    tintColor: "#7E7E7E",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#D9D9D9",
+    marginHorizontal: 26,
+    marginVertical: 20,
   },
   twoFactorRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginTop: 15,
+    marginBottom: 25,
+  },
+  twoFactorLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#7E7E7E",
   },
   deleteButton: {
-    marginHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 24,
-    paddingVertical: 14,
-    backgroundColor: "#fff",
-    borderRadius: 28,
+    marginHorizontal: 0,
+    paddingVertical: 10,
+    backgroundColor: "transparent",
+    borderRadius: 20,
     alignItems: "center",
     borderWidth: 2,
-    borderColor: colors.error,
+    borderColor: "#F65952",
+    height: 38,
+    justifyContent: "center",
   },
   deleteButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.error,
+    fontSize: 14,
+    fontWeight: "400",
+    color: "#F65952",
   },
 });
 
 // Toggle-specific styles (kept separate to avoid name clash)
 const accountStyles = StyleSheet.create({
   toggleOuter: {
-    width: 44,
-    height: 28,
-    borderRadius: 16,
-    padding: 3,
+    width: 36,
+    height: 21,
+    borderRadius: 23,
+    padding: 2.4,
     justifyContent: "center",
   },
-  toggleOuterOff: { backgroundColor: "#e6e6e6" },
-  toggleOuterOn: { backgroundColor: colors.loginPrimaryGreen },
+  toggleOuterOff: { backgroundColor: "#D9D9D9" },
+  toggleOuterOn: { backgroundColor: "#8AB644" },
   toggleInner: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
   },
   toggleInnerOff: { alignSelf: "flex-start" },
   toggleInnerOn: { alignSelf: "flex-end" },
 });
-
-// Image edit icon style
-const editStyles = StyleSheet.create({
-  editIcon: {
-    width: 18,
-    height: 18,
-    resizeMode: "contain",
-    tintColor: colors.uclaBlue,
-  },
-});
-
-// Merge editStyles into styles object so component uses `styles.editIcon`
-Object.assign(styles, editStyles);
