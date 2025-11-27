@@ -1,11 +1,10 @@
 import React from "react";
 import { Pressable } from "react-native";
-// import { NavigationContainer } from "@react-navigation/native"; // <-- 1. REMOVED THIS
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 
 import OnboardingScreen from "../screens/OnboardingScreen";
-import AuthScreen from "../screens/AuthScreen"; 
+import AuthScreen from "../screens/AuthScreen";
 import HomeScreen from "../screens/HomeScreen";
 import MapScreen from "../screens/MapScreen";
 import RecipesScreen from "../screens/RecipesScreen";
@@ -23,16 +22,14 @@ import AccountScreen from "../screens/AccountScreen";
 import ArchivedScreen from "../screens/ArchivedScreen";
 import LikedScreen from "../screens/LikedScreen";
 import AddContributionScreen from "../screens/AddContributionScreen";
-import EventDetailsScreen from '../screens/EventDetailsScreen'; // <--- Import this
+import EventDetailsScreen from '../screens/EventDetailsScreen';
 import { colors } from "../theme/colors";
 
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
   return (
-    // <NavigationContainer> {/* <-- 1. REMOVED THIS WRAPPER */}
       <Stack.Navigator
-        // 3. SET THE FIRST SCREEN TO 'Auth'
         initialRouteName="Auth" 
         screenOptions={({ navigation, route }) => ({
           headerStyle: { backgroundColor: colors.uclaBlue },

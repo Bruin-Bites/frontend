@@ -247,9 +247,11 @@ export default function ContributionsScreen({ navigation }) {
                     <View key={c.id} style={styles.commentWrapper}>
                       <View style={styles.commentEventTag}>
                         <Text style={styles.commentEventTagText}>
-                          {c.eventTitle} {c.time}
+                          {c.eventTitle}{" "}
+                          <Text style={styles.commentEventTime}>{c.time}</Text>
                         </Text>
                       </View>
+                      <View style={styles.threadLine} />
                       <View style={styles.commentCard}>
                         <View style={styles.commentRow}>
                           <View style={styles.commentAvatar} />
@@ -265,16 +267,16 @@ export default function ContributionsScreen({ navigation }) {
                               <View style={styles.commentActionItem}>
                                 <Ionicons
                                   name="thumbs-up-outline"
-                                  size={14}
-                                  color={colors.text}
+                                  size={16}
+                                  color="#8C8C8C"
                                 />
                                 <Text style={styles.commentActionText}>2</Text>
                               </View>
                               <View style={styles.commentActionItem}>
                                 <Ionicons
-                                  name="chatbubble-outline"
-                                  size={14}
-                                  color={colors.text}
+                                  name="return-up-back-outline"
+                                  size={16}
+                                  color="#8C8C8C"
                                 />
                                 <Text style={styles.commentActionText}>
                                   Reply
@@ -282,9 +284,9 @@ export default function ContributionsScreen({ navigation }) {
                               </View>
                               <View style={styles.commentActionItem}>
                                 <Ionicons
-                                  name="warning-outline"
-                                  size={14}
-                                  color={colors.text}
+                                  name="alert-circle-outline"
+                                  size={16}
+                                  color="#8C8C8C"
                                 />
                                 <Text style={styles.commentActionText}>
                                   Report
@@ -525,79 +527,99 @@ const styles = StyleSheet.create({
   },
   /* Comment styles */
   commentWrapper: {
-    marginBottom: 20,
+    marginBottom: 25,
   },
   commentEventTag: {
     alignSelf: "flex-start",
-    backgroundColor: "#eef7f0",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: "#fff",
+    paddingHorizontal: 15,
+    paddingVertical: 5,
     borderRadius: 12,
-    marginLeft: 8,
-    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 2.5 },
+    elevation: 5,
+    height: 25,
+    justifyContent: "center",
   },
   commentEventTagText: {
-    color: "#7fbf65",
+    color: "#8AB644",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "400",
+  },
+  commentEventTime: {
+    fontSize: 10,
+    fontWeight: "400",
+  },
+  threadLine: {
+    width: 2,
+    height: 25,
+    backgroundColor: "#D9D9D9",
+    borderRadius: 1,
+    marginLeft: 16,
   },
   commentCard: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    padding: 12,
-    marginHorizontal: 4,
+    paddingHorizontal: 15,
+    paddingVertical: 17,
     shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: colors.border,
+    shadowOpacity: 0.25,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
   },
   commentRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 12,
+    gap: 10,
   },
   commentAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#d9eede",
+    width: 27,
+    height: 27,
+    borderRadius: 13.5,
+    backgroundColor: "#C8DFC4",
   },
   commentBody: {
     flex: 1,
   },
   commentHeaderRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: 5,
     alignItems: "center",
-    marginBottom: 6,
+    marginBottom: 5,
   },
   commentUsername: {
-    fontWeight: "700",
-    color: colors.ink,
+    fontWeight: "600",
+    fontSize: 14,
+    color: "#000",
   },
   commentTime: {
-    color: colors.textLight,
+    color: "#8C8C8C",
     fontSize: 12,
+    fontWeight: "400",
   },
   commentText: {
-    color: colors.ink,
-    marginBottom: 8,
+    color: "#000",
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 17,
+    marginBottom: 15,
   },
   commentActions: {
     flexDirection: "row",
-    gap: 16,
+    gap: 15,
     alignItems: "center",
   },
   commentActionItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 5,
   },
   commentActionText: {
-    color: colors.textLight,
+    color: "#8C8C8C",
     fontSize: 12,
+    fontWeight: "400",
   },
 });

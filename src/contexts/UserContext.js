@@ -19,9 +19,26 @@ export const UserProvider = ({ children }) => {
         api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
         const response = await api.get("/user/profile");
         setUser(response.data);
+      } else {
+        // Set a default mock user for development when not logged in
+        setUser({
+          username: "My_super_username",
+          email: "user_name@ucla.edu",
+          school: "University of California, Los Angeles",
+          graduatingYear: "2029",
+          phone: "+1 (123) 456-789",
+        });
       }
     } catch (error) {
       console.error("Failed to load user:", error);
+      // Set a default mock user on error for development
+      setUser({
+        username: "My_super_username",
+        email: "user_name@ucla.edu",
+        school: "University of California, Los Angeles",
+        graduatingYear: "2029",
+        phone: "+1 (123) 456-789",
+      });
     } finally {
       setLoading(false);
     }

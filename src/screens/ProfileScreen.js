@@ -18,7 +18,7 @@ import BottomNavigation from "../components/BottomNavigation";
 
 export default function ProfileScreen({ navigation }) {
   const { user, loading, logout, updateUser } = useUser();
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState("My_super_username");
   const [editingUsername, setEditingUsername] = useState(false);
 
   useEffect(() => {
@@ -172,7 +172,7 @@ export default function ProfileScreen({ navigation }) {
             >
               <View style={styles.menuIconContainer}>
                 <Ionicons
-                  name="document-text-outline"
+                  name="create-outline"
                   size={24}
                   color="#4B5563"
                 />
@@ -180,7 +180,7 @@ export default function ProfileScreen({ navigation }) {
               <Text style={styles.menuButtonText}>Contributions</Text>
               <Ionicons
                 name="chevron-forward"
-                size={20}
+                size={30}
                 color="#4B5563"
               />
             </Pressable>
@@ -192,7 +192,7 @@ export default function ProfileScreen({ navigation }) {
               <View style={styles.menuIconContainer}>
                 <Ionicons
                   name="people-outline"
-                  size={24}
+                  size={30}
                   color="#4B5563"
                 />
               </View>
@@ -211,7 +211,7 @@ export default function ProfileScreen({ navigation }) {
               <View style={styles.menuIconContainer}>
                 <Ionicons
                   name="notifications-outline"
-                  size={24}
+                  size={30}
                   color="#4B5563"
                 />
               </View>
@@ -230,7 +230,7 @@ export default function ProfileScreen({ navigation }) {
               <View style={styles.menuIconContainer}>
                 <Ionicons
                   name="settings-outline"
-                  size={24}
+                  size={30}
                   color="#4B5563"
                 />
               </View>
@@ -249,7 +249,7 @@ export default function ProfileScreen({ navigation }) {
               <View style={styles.menuIconContainer}>
                 <Ionicons
                   name="time-outline"
-                  size={24}
+                  size={30}
                   color="#4B5563"
                 />
               </View>
