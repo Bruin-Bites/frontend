@@ -15,6 +15,7 @@ import CreateAccountScreen from "../screens/CreateAccountScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
 import ContributionsScreen from "../screens/ContributionsScreen";
+import ContributorProfileScreen from "../screens/ContributorProfileScreen";
 import FollowingScreen from "../screens/FollowingScreen";
 import HistoryScreen from "../screens/HistoryScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
@@ -140,6 +141,11 @@ export default function AppNavigator() {
           name="Contributions"
           component={ContributionsScreen}
           options={{ title: "Contributions", headerShown: false }}
+        />
+        <Stack.Screen
+          name="ContributorProfile"
+          component={ContributorProfileScreen}
+          options={{ title: "Contributor Profile", headerShown: false }}
         />
         <Stack.Screen
           name="Following"

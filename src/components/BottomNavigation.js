@@ -1,26 +1,84 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Pressable, StyleSheet } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { colors } from "../theme/colors";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function BottomNavigation() {
   const navigation = useNavigation();
   const route = useRoute();
 
-  const navItems = [
-    { key: "Discover", letter: "D", route: "Home" },
-    { key: "Map", letter: "M", route: "Map" },
-    { key: "Save", letter: "S", route: "Home" }, // Placeholder
-    { key: "Recipe", letter: "R", route: "Recipes" },
-    { key: "Me", letter: "P", route: "Profile" },
-  ];
-
   const isActive = (routeName) => {
-    if (routeName === "Profile" && (route.name === "Profile" || route.name === "EditProfile" || route.name === "Contributions" || route.name === "Following" || route.name === "History" || route.name === "Notifications" || route.name === "Account")) {
+    if (routeName === "Profile" && (route.name === "Profile" || route.name === "EditProfile" || route.name === "Contributions" || route.name === "ContributorProfile" || route.name === "Following" || route.name === "History" || route.name === "Notifications" || route.name === "Account")) {
       return true;
     }
     return route.name === routeName;
   };
+
+  const renderIcon = (key, active) => {
+    const activeColor = "#255633";
+    const inactiveColor = "#9CA3AF";
+    const iconSize = 40;
+
+    switch (key) {
+      case "Discover":
+        return (
+          <Ionicons
+            name="search"
+            size={iconSize}
+            color={active ? activeColor : inactiveColor}
+            style={{ fontWeight: "bold" }}
+          />
+        );
+      case "Map":
+        return (
+          <Ionicons
+            name="location-outline"
+            size={iconSize}
+            color={active ? activeColor : inactiveColor}
+            style={{ fontWeight: "bold" }}
+          />
+        );
+      case "Save":
+        return (
+          <Ionicons
+            name="bookmark-outline"
+            size={iconSize}
+            color={active ? activeColor : inactiveColor}
+            style={{ fontWeight: "bold" }}
+          />
+        );
+      case "Recipe":
+        return (
+          <MaterialCommunityIcons
+            name="silverware-fork-knife"
+            size={iconSize}
+            color={active ? activeColor : inactiveColor}
+            style={{ fontWeight: "bold" }}
+          />
+        );
+      case "Me":
+        return (
+          <View style={[styles.profileIconContainer, active && styles.profileIconContainerActive]}>
+            <Ionicons
+              name="person"
+              size={24}
+              color={active ? "#255633" : "#9CA3AF"}
+              style={{ fontWeight: "bold" }}
+            />
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const navItems = [
+    { key: "Discover", route: "Home" },
+    { key: "Map", route: "Map" },
+    { key: "Save", route: "Home" }, // Placeholder
+    { key: "Recipe", route: "Recipes" },
+    { key: "Me", route: "Profile" },
+  ];
 
   return (
     <View style={styles.container}>
@@ -32,14 +90,7 @@ export default function BottomNavigation() {
             style={styles.navItem}
             onPress={() => navigation.navigate(item.route)}
           >
-            <View style={[styles.circle, active && styles.circleActive]}>
-              <Text style={[styles.letter, active && styles.letterActive]}>
-                {item.letter}
-              </Text>
-            </View>
-            <Text style={[styles.label, active && styles.labelActive]}>
-              {item.key}
-            </Text>
+            {renderIcon(item.key, active)}
           </Pressable>
         );
       })}
@@ -50,11 +101,11 @@ export default function BottomNavigation() {
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    paddingTop: 12,
-    paddingBottom: 20, // Reduced bottom padding
-    paddingHorizontal: 8,
-    justifyContent: "space-around",
+    backgroundColor: "#FFFFFF",
+    paddingTop: 14,
+    paddingBottom: 12, 
+    paddingHorizontal: 27,
+    justifyContent: "space-between",
     alignItems: "center",
     borderTopWidth: 0,
     shadowColor: "#000",
@@ -65,36 +116,20 @@ const styles = StyleSheet.create({
   },
   navItem: {
     alignItems: "center",
-    flex: 1,
+    justifyContent: "center",
+    width: 40,
+    height: 40,
   },
-  circle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#D9D9D9", // Default gray
+  profileIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#DCE8D4",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4, // Reduce gap
   },
-  circleActive: {
-    backgroundColor: colors.uclaBlue,
-  },
-  letter: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#fff",
-  },
-  letterActive: {
-    color: "#fff",
-  },
-  label: {
-    fontSize: 12,
-    color: colors.text,
-    fontWeight: "500",
-  },
-  labelActive: {
-    color: colors.ink,
-    fontWeight: "700",
+  profileIconContainerActive: {
+    backgroundColor: "#DCE8D4",
   },
 });
 

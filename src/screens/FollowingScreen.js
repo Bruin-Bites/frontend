@@ -77,7 +77,7 @@ export default function FollowingScreen({ navigation }) {
     <Pressable
       style={styles.userCard}
       onPress={() =>
-        navigation.navigate("Contributions", {
+        navigation.navigate("ContributorProfile", {
           username: item.username,
           userId: item.id,
         })
@@ -85,9 +85,11 @@ export default function FollowingScreen({ navigation }) {
       android_ripple={{ color: "#eee" }}
     >
       <View style={styles.avatar}>
-        <View style={styles.avatarInner}>
-          <Text style={styles.avatarText}>{getInitials(item.username)}</Text>
-        </View>
+        <Ionicons
+          name="person"
+          size={24}
+          color="#255633"
+        />
       </View>
       <View style={styles.userInfo}>
         <Text style={styles.username}>{item.username}</Text>
@@ -196,23 +198,10 @@ const styles = StyleSheet.create({
     width: 49,
     height: 49,
     borderRadius: 24.5,
-    backgroundColor: "#C8DFC4",
+    backgroundColor: "#DCE8D4",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 38,
-  },
-  avatarInner: {
-    width: 49,
-    height: 49,
-    borderRadius: 24.5,
-    backgroundColor: "#7EBF65",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#ffffff",
   },
   userInfo: {
     flex: 1,

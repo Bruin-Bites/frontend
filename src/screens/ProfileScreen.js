@@ -103,11 +103,11 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.profileSection}>
             <View style={styles.avatarWrapper}>
               <View style={styles.avatar}>
-                <View style={styles.avatarInner}>
-                  <Text style={styles.avatarText}>
-                    {user?.avatar ? "" : getInitials(username || "User")}
-                  </Text>
-                </View>
+                <Ionicons
+                  name="person"
+                  size={50}
+                  color="#255633"
+                />
               </View>
               <Pressable
                 style={styles.editAvatarBadge}
@@ -329,23 +329,10 @@ const styles = StyleSheet.create({
     width: 101,
     height: 101,
     borderRadius: 50.5,
-    backgroundColor: "#eaf6ea",
+    backgroundColor: "#DCE8D4",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-  },
-  avatarInner: {
-    width: 101,
-    height: 101,
-    borderRadius: 50.5,
-    backgroundColor: "#7fbf65",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#ffffff",
   },
   editAvatarBadge: {
     position: "absolute",
