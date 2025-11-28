@@ -45,7 +45,7 @@ frontend/
 │   ├── screens/
 │   │   ├── HomeScreen.js    # UCLA-themed home with quick links
 │   │   ├── MapScreen.js     # Cheap Eats map with search + filters
-│   │   ├── RecipesScreen.js  # Budget recipes + AI chatbot
+│   │   ├── ChatScreen.js  # Budget recipes + AI chatbot
 │   │   └── CommunityScreen.js  # Student posts with upvotes & tags
 │   ├── services/
 │   │   └── api.js           # Axios instance with baseURL from app.json

@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import HomeScreen from "../screens/HomeScreen";
 import MapScreen from "../screens/MapScreen";
-import RecipesScreen from "../screens/RecipesScreen";
+import ChatScreen from "../screens/ChatScreen";
 import CommunityScreen from "../screens/CommunityScreen";
 
 const Stack = createNativeStackNavigator();
@@ -30,8 +30,13 @@ import { Ionicons } from "@expo/vector-icons";
 
 import HomeScreen from "../screens/HomeScreen";
 import MapScreen from "../screens/MapScreen";
-import RecipesScreen from "../screens/RecipesScreen";
+import ChatScreen from "../screens/ChatScreen";
+import UserRecipesScreen from "../screens/UserRecipesScreen";
+import RecipeSearchScreen from "../screens/RecipeSearchScreen";
+import RecipeDetailScreen from "../screens/RecipeDetailScreen";
+import FilterScreen from "../screens/FilterScreen";
 import CommunityScreen from "../screens/CommunityScreen";
+import RecipeEditScreen from "../screens/RecipeEditScreen";
 import { colors } from "../theme/colors";
 
 const Stack = createNativeStackNavigator();
@@ -59,8 +64,13 @@ export default function AppNavigator() {
       >
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Map" component={MapScreen} options={{ title: "Cheap Eats Map" }} />
-        <Stack.Screen name="Recipes" component={RecipesScreen} options={{ title: "Budget Recipes" }} />
+        <Stack.Screen name="UserRecipes" component={UserRecipesScreen} options={{ title: "User Recipes" }} />
+        <Stack.Screen name="RecipeSearch" component={RecipeSearchScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Filter" component={FilterScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Recipes" component={ChatScreen} options={{ title: "AI Recipe Chat" }} />
         <Stack.Screen name="Community" component={CommunityScreen} />
+        <Stack.Screen name="RecipeEdit" component={RecipeEditScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
