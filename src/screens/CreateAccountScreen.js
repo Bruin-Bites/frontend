@@ -6,54 +6,70 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { register } from '../services/authService';
 
 const BRAND_GREEN = '#A8B84C';
 const ERROR_RED = '#D9534F';
 
-// 1. A standard regex for basic email validation
+// A standard regex for basic email validation
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function CreateAccountScreen({ navigation }) {
-  const [username, setUsername] = useState('');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isUCLAStudent, setIsUCLAStudent] = useState(false);
 
   const [isPasswordSecure, setIsPasswordSecure] = useState(true);
   const [isConfirmPasswordSecure, setIsConfirmPasswordSecure] = useState(true);
 
   const [errorMessage, setErrorMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleCreateAccount = () => {
-    // 2. Check for empty fields first
-    if (!username || !email || !password || !confirmPassword) {
+  const handleCreateAccount = async () => {
+    // Check for empty fields first
+    if (!name || !email || !password || !confirmPassword) {
       setErrorMessage('All fields are required.');
       return;
     }
 
-    // 3. Check for valid email format
+    // Check for valid email format
     if (!emailRegex.test(email)) {
       setErrorMessage('Please enter a valid email address.');
       return;
     }
     
-    // 4. Check for password mismatch
+    // Check for password mismatch
     if (password !== confirmPassword) {
       setErrorMessage('Passwords do not match. Please try again.');
-      return; // Stop the function here
+      return;
     }
 
-    // If all checks pass:
-    setErrorMessage(''); // Clear any previous errors
+    // Check password length (backend requires min 6)
+    if (password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters long.');
+      return;
+    }
 
-    // No backend connection for now
-    console.log('Creating account with:', { username, email, password });
-    
-    // Navigate to the new Onboarding screen
-    navigation.replace('Onboarding');
+    // Clear any previous errors
+    setErrorMessage('');
+    setLoading(true);
+
+    try {
+      await register(name, email, password, isUCLAStudent);
+      // Navigate to Home on success
+      navigation.replace('Home');
+    } catch (error) {
+      setErrorMessage(error.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -63,10 +79,10 @@ export default function CreateAccountScreen({ navigation }) {
 
         <TextInput
           style={styles.input}
-          placeholder="Username"
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
+          placeholder="Name"
+          value={name}
+          onChangeText={setName}
+          autoCapitalize="words"
         />
 
         <TextInput
@@ -126,10 +142,15 @@ export default function CreateAccountScreen({ navigation }) {
         ) : null}
 
         <TouchableOpacity
-          style={styles.createButton}
+          style={[styles.createButton, loading && styles.createButtonDisabled]}
           onPress={handleCreateAccount}
+          disabled={loading}
         >
-          <Text style={styles.createButtonText}>Create Account</Text>
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.createButtonText}>Create Account</Text>
+          )}
         </TouchableOpacity>
 
         <View style={styles.loginContainer}>
@@ -225,5 +246,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     marginLeft: 5,
+  },
+  createButtonDisabled: {
+    opacity: 0.6,
   },
 });

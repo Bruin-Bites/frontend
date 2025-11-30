@@ -33,33 +33,12 @@ export default function ForgotPasswordScreen({ navigation }) {
       return;
     }
     
-    setIsLoading(true);
-    try {
-      const response = await api.post("/auth/forgot-password", {
-        email: email.trim(),
-      });
-
-      // Show success message
-      setIsSubmitted(true);
-    } catch (error) {
-      console.error("Forgot password error:", error);
-      let errorMessage = "Failed to send reset instructions. Please try again.";
-      
-      if (error.response) {
-        // Server responded with error
-        if (error.response.data.error) {
-          errorMessage = error.response.data.error;
-        } else if (error.response.data.errors && error.response.data.errors.length > 0) {
-          errorMessage = error.response.data.errors[0].msg || errorMessage;
-        }
-      } else if (error.request) {
-        errorMessage = "Unable to connect to server. Please check your connection.";
-      }
-
-      Alert.alert("Error", errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
+    // Backend doesn't have forgot-password endpoint yet
+    Alert.alert(
+      "Feature Not Available",
+      "Password reset functionality is not yet implemented. Please contact support for assistance.",
+      [{ text: "OK", onPress: () => navigation.navigate("Login") }]
+    );
   };
 
   const handleBackToLogin = () => {
@@ -67,32 +46,11 @@ export default function ForgotPasswordScreen({ navigation }) {
   };
 
   const handleResendEmail = async () => {
-    if (!email.trim()) {
-      Alert.alert("Error", "Please enter your email address");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await api.post("/auth/forgot-password", {
-        email: email.trim(),
-      });
-
-      Alert.alert("Email Sent", "Reset instructions have been sent again!");
-    } catch (error) {
-      console.error("Resend email error:", error);
-      let errorMessage = "Failed to send reset instructions. Please try again.";
-      
-      if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.request) {
-        errorMessage = "Unable to connect to server. Please check your connection.";
-      }
-
-      Alert.alert("Error", errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
+    // Backend doesn't have forgot-password endpoint yet
+    Alert.alert(
+      "Feature Not Available",
+      "Password reset functionality is not yet implemented. Please contact support for assistance."
+    );
   };
 
   return (

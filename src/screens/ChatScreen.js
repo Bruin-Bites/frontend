@@ -31,11 +31,12 @@ export default function ChatScreen() {
         history: newHistory.map(({ role, text }) => ({ role, content: text }))
       });
 
-      const text = res?.data?.text;
-      const recipe = res?.data?.recipe;
+      // Backend returns { reply, tips, pricing } format
+      const recipe = res?.data?.reply;
       const tips = res?.data?.tips || [];
-      const totalCost = res?.data?.totalCost || 0;
-      const costPerServing = res?.data?.costPerServing || 0;
+      const pricing = res?.data?.pricing || {};
+      const totalCost = pricing?.totalCost || 0;
+      const costPerServing = pricing?.costPerServing || 0;
 
       if (!recipe) {
         setMessages(prev => [
@@ -48,7 +49,7 @@ export default function ChatScreen() {
       const assistantMsg = {
         id: `a-${Date.now()}`,
         role: "assistant",
-        text: text || "Here's a recipe you can make:",
+        text: "Here's a recipe you can make:",
         recipe,
         tips,
         totalCost,
@@ -60,9 +61,10 @@ export default function ChatScreen() {
       requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     } catch (e) {
       console.error("Error fetching recipe:", e);
+      const errorMessage = e.response?.data?.error || e.message || "Network error. Try again in a sec.";
       setMessages(prev => [
         ...prev,
-        { id: `a-${Date.now()}`, role: "assistant", text: "Network error. Try again in a sec." }
+        { id: `a-${Date.now()}`, role: "assistant", text: errorMessage }
       ]);
     } finally {
       setSending(false);

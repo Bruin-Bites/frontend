@@ -6,23 +6,37 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons'; // 1. Import Ionicons
+import { Ionicons } from '@expo/vector-icons';
+import { login } from '../services/authService';
 
 const BRAND_GREEN = '#A8B84C';
 
 export default function LoginScreen({ navigation }) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
-  // 2. Add state for password visibility
   const [isPasswordSecure, setIsPasswordSecure] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    // No backend connection for now
-    console.log('Logging in with:', { username, password });
-    // navigation.navigate('Home');
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter both email and password');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await login(email, password);
+      // Navigate to Home on success
+      navigation.replace('Home');
+    } catch (error) {
+      Alert.alert('Login Failed', error.message || 'Invalid email or password');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -32,9 +46,10 @@ export default function LoginScreen({ navigation }) {
 
         <TextInput
           style={styles.input}
-          placeholder="Username"
-          value={username}
-          onChangeText={setUsername}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
           autoCapitalize="none"
         />
 
@@ -67,8 +82,16 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginButtonText}>Log In</Text>
+        <TouchableOpacity 
+          style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.loginButtonText}>Log In</Text>
+          )}
         </TouchableOpacity>
 
         <View style={styles.signUpContainer}>
@@ -164,5 +187,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     marginLeft: 5,
+  },
+  loginButtonDisabled: {
+    opacity: 0.6,
   },
 });

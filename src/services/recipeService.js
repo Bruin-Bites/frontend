@@ -58,12 +58,9 @@ export const createCommunityPost = async (text, tag, author = 'Anonymous Bruin')
 };
 
 // Save a recipe to user's collection
-export const saveRecipe = async (recipeData, userId = 'default-user') => {
+export const saveRecipe = async (recipeData) => {
   try {
-    const response = await api.post('/recipes', {
-      ...recipeData,
-      userId,
-    });
+    const response = await api.post('/recipes', recipeData);
     return response.data;
   } catch (error) {
     console.error('Error saving recipe:', error);

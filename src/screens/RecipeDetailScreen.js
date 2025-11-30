@@ -46,6 +46,27 @@ const DIETARY_RESTRICTION_ICONS = {
 };
 
 export default function RecipeDetailScreen({ route, navigation }) {
+  // Debug: Check what we're receiving
+  console.log("Route params:", route?.params);
+  console.log("Recipe:", route?.params?.recipe);
+
+  // Add safety checks
+  if (!route?.params?.recipe) {
+    return (
+      <View style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ fontSize: 18, marginBottom: 10 }}>Recipe not found</Text>
+          <Pressable 
+            onPress={() => navigation.goBack()}
+            style={{ padding: 10, backgroundColor: '#A8B84C', borderRadius: 8 }}
+          >
+            <Text style={{ color: 'white', fontWeight: '600' }}>Go Back</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
   const { recipe, isPrivate = false } = route.params;
   const [liked, setLiked] = useState(recipe.isLiked || false);
   const [ingredients, setIngredients] = useState(recipe.ingredients || []);
@@ -57,8 +78,8 @@ export default function RecipeDetailScreen({ route, navigation }) {
   console.log("Recipe location:", recipe.location);
   console.log("Location ingredients:", recipe.location?.ingredients);
 
-  // Get dietary restrictions from tags
-  const dietaryRestrictions = recipe.tags.filter(tag => isDietaryRestriction(tag));
+  // Get dietary restrictions from tags - add safety check
+  const dietaryRestrictions = (recipe.tags || []).filter(tag => isDietaryRestriction(tag));
 
   const handlePublish = () => {
     Alert.alert(
@@ -119,7 +140,10 @@ export default function RecipeDetailScreen({ route, navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={isPrivate ? styles.scrollContentWithFooter : styles.scrollContent}>
         {/* Header Image */}
         <View style={styles.imageContainer}>
-          <Image source={{ uri: recipe.image }} style={styles.image} />
+          <Image 
+            source={{ uri: recipe.image || 'https://placehold.co/400x300/cccccc/333333?text=Recipe' }} 
+            style={styles.image} 
+          />
 
           {/* Back Button */}
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -164,7 +188,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
         {/* Recipe Title and Info */}
         <View style={styles.content}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>{recipe.name}</Text>
+            <Text style={styles.title}>{recipe.name || 'Untitled Recipe'}</Text>
             <View style={styles.statusBlurb}>
               <Text style={styles.statusBlurbText}>
                 {isPrivate ? "Private" : `${recipe.likeCount || 0} likes`}
@@ -177,13 +201,13 @@ export default function RecipeDetailScreen({ route, navigation }) {
             <View style={styles.statItem}>
               <Image source={clockIcon} style={styles.statIcon} />
               <Text style={styles.statSubheading}>Prep Time: </Text>
-              <Text style={styles.statText}>{recipe.prepTime} minutes</Text>
+              <Text style={styles.statText}>{recipe.prepTime || 'N/A'} minutes</Text>
             </View>
             <View style={styles.statItem}>
               <Image source={difficultyIcon} style={styles.statIcon} />
               <Text style={styles.statSubheading}>Difficulty: </Text>
               <View style={styles.starsContainer}>
-                {renderStars(recipe.difficulty)}
+                {renderStars(recipe.difficulty || 0)}
               </View>
             </View>
           </View>
@@ -205,11 +229,11 @@ export default function RecipeDetailScreen({ route, navigation }) {
           </View>
 
           {/* Description */}
-          <Text style={styles.description}>{recipe.description}</Text>
+          <Text style={styles.description}>{recipe.description || ''}</Text>
 
           {/* Tags */}
           <View style={styles.tagsContainer}>
-            {recipe.tags
+            {(recipe.tags || [])
               .filter(tag => !isDietaryRestriction(tag))
               .map((tag, index) => {
                 const colors = getTagColors(tag);
@@ -315,11 +339,11 @@ export default function RecipeDetailScreen({ route, navigation }) {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Instructions</Text>
             </View>
-            {recipe.instructions.map((instruction, index) => (
+            {(recipe.instructions || []).map((instruction, index) => (
               <View key={index} style={styles.instructionItem}>
                 <Text style={styles.stepLabel}>
                   <Text style={styles.stepText}>Step {index + 1}</Text>
-                  <Text style={styles.stepNumber}> / {recipe.instructions.length}</Text>
+                  <Text style={styles.stepNumber}> / {recipe.instructions?.length || 0}</Text>
                 </Text>
                 <Text style={styles.instructionText}>{instruction}</Text>
               </View>
