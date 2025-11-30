@@ -63,7 +63,7 @@ export default function HomeScreen({ navigation }) {
               }
               title="Budget Recipes"
               text="AI ideas from TJ's & Ralphs staples."
-              onPress={() => navigation.navigate("Recipes")}
+              onPress={() => navigation.navigate("UserRecipes")}
             />
             <ActionCard
               icon={<Ionicons name="people" size={28} color={colors.uclaBlue} />}

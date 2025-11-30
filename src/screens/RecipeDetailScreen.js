@@ -1,365 +1,508 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  Image,
   Pressable,
+  TextInput,
   Alert,
-  Platform,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { getSavedRecipes, saveRecipe, deleteRecipe } from '../services/recipeService';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { getTagColors, isDietaryRestriction } from "../utils/tagHelpers";
 
-// Mock ingredients for demo
-const MOCK_INGREDIENTS = [
-  '1 block extra-firm tofu',
-  '2 tbsp soy sauce',
-  '1 tbsp chili paste',
-  '1 tbsp sesame oil',
-  '3 cloves garlic (minced)',
-  '1 bell pepper (sliced)',
-  '1 small broccoli head (cut into florets)',
-  '1 tbsp cornstarch',
-  '1 tsp sugar',
-  '2 tbsp neutral oil (for frying)',
-];
+// Import custom icons
+const clockIcon = require("../../assets/clock.png");
+const difficultyIcon = require("../../assets/difficulty-meter.png");
+const userIcon = require("../../assets/user-icon.png");
+const dollarIcon = require("../../assets/dollar-sign.png");
+const locationIcon = require("../../assets/location.png");
 
-const MOCK_INSTRUCTIONS = [
-  {step: 1, text: 'Drain & press tofu for 10 minutes, then cut into cubes.'},
-  {step: 2, text: 'Toss tofu in cornstarch until evenly coated.'},
-  {step: 3, text: 'Heat oil in a pan and fry tofu until golden on all sides; set aside.'},
-  {step: 4, text: 'In the same pan, add garlic, chili paste, soy sauce, sesame oil, and sugar, and stir for 30 seconds.'},
-  {step: 5, text: 'Add broccoli and bell pepper; stir-fry for 3-5 minutes.'},
-  {step: 6, text: 'Add tofu back in and toss everything in the sauce.'},
-  {step: 7, text: 'Serve hot with rice or noodles.'},
-];
+// Import allergy icons
+const veganIcon = require("../../assets/vegan.png");
+const vegetarianIcon = require("../../assets/vegetarian.png");
+const lowCarbonIcon = require("../../assets/low-carbon-footprint.png");
+const soybeansIcon = require("../../assets/soybeans.png"); // unused
+const sesameIcon = require("../../assets/seasame.png"); // unused
+const halalIcon = require("../../assets/halal.png");
+const eggsIcon = require("../../assets/eggs.png");
+const glutenIcon = require("../../assets/gluten.png");
+const dairyIcon = require("../../assets/dairy.png");
+
+// Predefined allergies/dietary restriction options
+const DIETARY_RESTRICTION_ICONS = {
+  "Vegan": veganIcon,
+  "Vegetarian": vegetarianIcon,
+  "Low-Carbon Footprint": lowCarbonIcon,
+  "Gluten-Free": glutenIcon,
+  "Dairy-Free": dairyIcon,
+  "Keto": vegetarianIcon, // Placeholder - need icon
+  "Paleo": vegetarianIcon, // Placeholder - need icon
+  "Halal": halalIcon,
+  "Kosher": vegetarianIcon, // Placeholder - need icon
+  "Nut-Free": vegetarianIcon, // Placeholder - need icon
+  "Egg-Free": eggsIcon,
+};
 
 export default function RecipeDetailScreen({ route, navigation }) {
-  const { recipe, pricing } = route.params;
-  const [checkedIngredients, setCheckedIngredients] = useState([]);
-  const [isSaved, setIsSaved] = useState(false);
-  const [savedRecipeId, setSavedRecipeId] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const { recipe, isPrivate = false } = route.params;
+  const [liked, setLiked] = useState(recipe.isLiked || false);
+  const [ingredients, setIngredients] = useState(recipe.ingredients || []);
+  const [personalNote, setPersonalNote] = useState(recipe.personalNote || "");
+  const [isCooked, setIsCooked] = useState(recipe.isCooked || false);
+  const [showActionMenu, setShowActionMenu] = useState(false);
 
-  // Use actual recipe data or fall back to mock
-  const ingredients = recipe.ingredients || MOCK_INGREDIENTS.map(ing => ({ item: ing, amount: '' }));
-  const instructions = recipe.instructions || MOCK_INSTRUCTIONS.map(inst => inst.text);
+  // Debug: Log location data
+  console.log("Recipe location:", recipe.location);
+  console.log("Location ingredients:", recipe.location?.ingredients);
 
-  // Check if recipe is already saved on mount
-  useEffect(() => {
-    checkIfSaved();
-  }, []);
+  // Get dietary restrictions from tags
+  const dietaryRestrictions = recipe.tags.filter(tag => isDietaryRestriction(tag));
 
-  const checkIfSaved = async () => {
-    try {
-      const response = await getSavedRecipes();
-      const saved = response.recipes?.find(r => r.name === recipe.name);
-      if (saved) {
-        setIsSaved(true);
-        setSavedRecipeId(saved._id);
-      }
-    } catch (error) {
-      console.error('Error checking if recipe is saved:', error);
-    }
+  const handlePublish = () => {
+    Alert.alert(
+      "Publish Recipe",
+      "Are you sure you want to publish this recipe?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Publish", onPress: () => console.log("Recipe published!") },
+      ]
+    );
   };
 
-  const toggleIngredient = (index) => {
-    if (checkedIngredients.includes(index)) {
-      setCheckedIngredients(checkedIngredients.filter(i => i !== index));
+  const toggleIngredient = (groupIndex, itemIndex) => {
+    const updated = [...ingredients];
+    // Check if ingredients are grouped (have 'items' array) or flat
+    if (updated[groupIndex].items) {
+      // Grouped ingredients
+      updated[groupIndex].items[itemIndex].checked = !updated[groupIndex].items[itemIndex].checked;
     } else {
-      setCheckedIngredients([...checkedIngredients, index]);
+      // Flat ingredients
+      updated[groupIndex].checked = !updated[groupIndex].checked;
     }
+    setIngredients(updated);
   };
 
-  const handleToggleSave = async () => {
-    if (loading) return;
+  // Check if ingredients are grouped or flat
+  const isGroupedIngredients = ingredients.length > 0 && ingredients[0].items !== undefined;
 
-    if (isSaved && savedRecipeId) {
-      // Delete recipe
-      const confirmDelete = () => {
-        return new Promise((resolve) => {
-          if (Platform.OS === 'web') {
-            resolve(window.confirm('Remove this recipe from your saved collection?'));
-          } else {
-            Alert.alert(
-              'Remove Recipe',
-              'Remove this recipe from your saved collection?',
-              [
-                { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-                { text: 'Remove', style: 'destructive', onPress: () => resolve(true) },
-              ]
-            );
-          }
-        });
-      };
+  const renderStars = (rating) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 !== 0;
 
-      const confirmed = await confirmDelete();
-      if (!confirmed) return;
-
-      try {
-        setLoading(true);
-        await deleteRecipe(savedRecipeId);
-        setIsSaved(false);
-        setSavedRecipeId(null);
-      } catch (error) {
-        console.error('Error deleting recipe:', error);
-        if (Platform.OS === 'web') {
-          window.alert('Failed to remove recipe');
-        } else {
-          Alert.alert('Error', 'Failed to remove recipe');
-        }
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      // Save recipe
-      try {
-        setLoading(true);
-        const response = await saveRecipe({
-          name: recipe.name,
-          servings: recipe.servings,
-          ingredients: recipe.ingredients,
-          instructions: recipe.instructions,
-          tips: recipe.tips || [],
-          pricing: {
-            ingredients: pricing?.ingredients || [],
-            totalCost: pricing?.totalCost || 0,
-            costPerServing: pricing?.costPerServing || 0,
-          },
-          prepTime: recipe.prepTime || '15 minutes',
-          difficulty: recipe.difficulty || 2,
-          budget: recipe.budget || `$${pricing?.totalCost?.toFixed(2) || '0'}`,
-          tags: recipe.tags || [],
-          isPublic: false,
-          isCooked: false,
-          likes: recipe.likes || 0,
-          comments: recipe.comments || 0,
-          description: recipe.description || recipe.instructions?.[0] || '',
-        });
-        setIsSaved(true);
-        setSavedRecipeId(response.recipe._id);
-
-        if (Platform.OS === 'web') {
-          window.alert('Recipe saved to your collection!');
-        } else {
-          Alert.alert('Saved!', 'Recipe saved to your collection!');
-        }
-      } catch (error) {
-        console.error('Error saving recipe:', error);
-        if (Platform.OS === 'web') {
-          window.alert('Failed to save recipe');
-        } else {
-          Alert.alert('Error', 'Failed to save recipe');
-        }
-      } finally {
-        setLoading(false);
-      }
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<Text key={`full-${i}`} style={styles.star}>★</Text>);
     }
+    if (hasHalfStar) {
+      stars.push(<Text key="half" style={styles.star}>★</Text>);
+    }
+    const emptyStars = 5 - Math.ceil(rating);
+    for (let i = 0; i < emptyStars; i++) {
+      stars.push(<Text key={`empty-${i}`} style={styles.starEmpty}>★</Text>);
+    }
+    return stars;
+  };
+
+  const toggleActionMenu = () => {
+    setShowActionMenu(!showActionMenu);
+  };
+
+  const handleEdit = () => {
+    setShowActionMenu(false);
+    navigation.navigate("RecipeEdit", { recipe });
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Recipe Details</Text>
-        <View style={styles.headerActions}>
-          <Pressable style={styles.iconButton}>
-            <Ionicons name="share-outline" size={24} color="#000" />
-          </Pressable>
-          <Pressable
-            style={styles.iconButton}
-            onPress={handleToggleSave}
-            disabled={loading}
-          >
-            <Ionicons
-              name={isSaved ? "heart" : "heart-outline"}
-              size={24}
-              color={isSaved ? "#ff0000" : "#000"}
-            />
-          </Pressable>
-          <Pressable style={styles.iconButton}>
-            <Ionicons name="ellipsis-vertical" size={24} color="#000" />
-          </Pressable>
-        </View>
-      </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={isPrivate ? styles.scrollContentWithFooter : styles.scrollContent}>
+        {/* Header Image */}
+        <View style={styles.imageContainer}>
+          <Image source={{ uri: recipe.image }} style={styles.image} />
 
-      <ScrollView style={styles.scrollView}>
-        {/* Image Carousel Placeholder */}
-        <View style={styles.imageCarousel}>
-          <View style={styles.imagePlaceholder}>
-            <Ionicons name="image-outline" size={60} color="#ddd" />
-          </View>
-          {/* Carousel dots */}
-          <View style={styles.carouselDots}>
-            {[1,2,3,4].map((dot, i) => (
-              <View key={i} style={[styles.dot, i === 0 && styles.dotActive]} />
-            ))}
-            <Pressable>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
+          {/* Back Button */}
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color="#000" />
+          </Pressable>
+
+          {/* Action Buttons */}
+          <View style={styles.headerActions}>
+            <Pressable style={styles.actionButton}>
+              <Ionicons name="share-outline" size={20} color="#000" />
             </Pressable>
+            <Pressable onPress={() => setLiked(!liked)} style={styles.actionButton}>
+              <Ionicons
+                name={liked ? "heart" : "heart-outline"}
+                size={20}
+                color={liked ? "#EF4444" : "#000"}
+              />
+            </Pressable>
+            <Pressable style={styles.actionButton} onPress={toggleActionMenu}>
+              <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
+            </Pressable>
+
+            {/* Action Menu Dropdown */}
+            {showActionMenu && (
+              <View style={styles.actionMenu}>
+                <Pressable style={styles.actionMenuItem} onPress={handleEdit}>
+                  <Ionicons name="create-outline" size={18} color="#100C08" />
+                  <Text style={styles.actionMenuText}>Edit</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+
+          {/* Image Gallery Indicators */}
+          <View style={styles.imageIndicators}>
+            {[1, 2, 3, 4].map((_, i) => (
+              <View key={i} style={[styles.indicator, i === 0 && styles.indicatorActive]} />
+            ))}
           </View>
         </View>
 
-        {/* Recipe Title & Info */}
-        <View style={styles.titleSection}>
-          <Text style={styles.recipeTitle}>{recipe?.name || 'Spicy Garlic Tofu Stir-Fry'}</Text>
-          <View style={styles.likeRow}>
-            <Ionicons name="thumbs-up" size={16} color="#666" />
-            <Text style={styles.likeCount}>34</Text>
-          </View>
-        </View>
-
-        {/* Meta Info */}
-        <View style={styles.metaRow}>
-          <View style={styles.metaItem}>
-            <Ionicons name="time-outline" size={16} color="#666" />
-            <Text style={styles.metaText}>Prep Time: 25 minutes</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Ionicons name="people-outline" size={16} color="#666" />
-            <Text style={styles.metaText}>Difficulty: ★★★☆☆</Text>
-          </View>
-        </View>
-
-        <View style={styles.metaRow}>
-          <View style={styles.metaItem}>
-            <Ionicons name="person-outline" size={16} color="#666" />
-            <Text style={styles.metaText}>Created by mayayeday</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Ionicons name="cash-outline" size={16} color="#666" />
-            <Text style={styles.metaText}>Budget: $5-10</Text>
-          </View>
-        </View>
-
-        {/* Description */}
-        <Text style={styles.description}>
-          A quick plant-based stir-fry featuring crispy tofu, garlic, and a spicy soy glaze, perfect for busy weeknights.
-        </Text>
-
-        {/* Tags */}
-        <View style={styles.tagRow}>
-          {['Mexican', 'Halal', 'High Protein'].map((tag, index) => (
-            <View key={index} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
+        {/* Recipe Title and Info */}
+        <View style={styles.content}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{recipe.name}</Text>
+            <View style={styles.statusBlurb}>
+              <Text style={styles.statusBlurbText}>
+                {isPrivate ? "Private" : `${recipe.likeCount || 0} likes`}
+              </Text>
             </View>
-          ))}
-        </View>
+          </View>
 
-        {/* Ingredients Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ingredients</Text>
-          {ingredients.map((ingredient, index) => (
-            <Pressable
-              key={index}
-              style={styles.ingredientRow}
-              onPress={() => toggleIngredient(index)}
-            >
-              <View style={[
-                styles.checkbox,
-                checkedIngredients.includes(index) && styles.checkboxChecked
-              ]}>
-                {checkedIngredients.includes(index) && (
-                  <Ionicons name="checkmark" size={14} color="#000" />
+          {/* Stats Row 1 - Prep Time and Difficulty */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Image source={clockIcon} style={styles.statIcon} />
+              <Text style={styles.statSubheading}>Prep Time: </Text>
+              <Text style={styles.statText}>{recipe.prepTime} minutes</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Image source={difficultyIcon} style={styles.statIcon} />
+              <Text style={styles.statSubheading}>Difficulty: </Text>
+              <View style={styles.starsContainer}>
+                {renderStars(recipe.difficulty)}
+              </View>
+            </View>
+          </View>
+
+          {/* Stats Row 2 - Created By and Budget */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Image source={userIcon} style={styles.statIcon} />
+              <Text style={styles.statText}>Created by </Text>
+              <Pressable onPress={() => console.log("Profile clicked:", recipe.createdBy || "Anonymous")}>
+                <Text style={styles.statSubheading}>{recipe.createdBy || "Anonymous"}</Text>
+              </Pressable>
+            </View>
+            <View style={styles.statItem}>
+              <Image source={dollarIcon} style={styles.statIcon} />
+              <Text style={styles.statSubheading}>Budget: </Text>
+              <Text style={styles.statText}>${recipe.budget || "0"}</Text>
+            </View>
+          </View>
+
+          {/* Description */}
+          <Text style={styles.description}>{recipe.description}</Text>
+
+          {/* Tags */}
+          <View style={styles.tagsContainer}>
+            {recipe.tags
+              .filter(tag => !isDietaryRestriction(tag))
+              .map((tag, index) => {
+                const colors = getTagColors(tag);
+                if (!colors) return null;
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.tag,
+                      {
+                        backgroundColor: colors.background,
+                        borderWidth: 1,
+                        borderColor: colors.border
+                      }
+                    ]}
+                  >
+                    <Text style={[styles.tagText, { color: colors.text }]}>
+                      {tag}
+                    </Text>
+                  </View>
+                );
+              })}
+          </View>
+
+          {/* Ingredients Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Ingredients</Text>
+            {isGroupedIngredients ? (
+              // Grouped ingredients with subheadings
+              ingredients.map((group, groupIndex) => (
+                <View key={groupIndex} style={styles.ingredientGroup}>
+                  <Text style={styles.ingredientGroupTitle}>{group.title}</Text>
+                  {group.items.map((ingredient, itemIndex) => (
+                    <Pressable
+                      key={itemIndex}
+                      onPress={() => toggleIngredient(groupIndex, itemIndex)}
+                      style={styles.ingredientItem}
+                    >
+                      <Ionicons
+                        name={ingredient.checked ? "checkbox" : "square-outline"}
+                        size={20}
+                        color={ingredient.checked ? "#8AB644" : "#D1D5DB"}
+                      />
+                      <Text style={[styles.ingredientName, ingredient.checked && styles.checkedText]}>
+                        {ingredient.amount + ingredient.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ))
+            ) : (
+              // Flat ingredients (legacy support)
+              ingredients.map((ingredient, index) => (
+                <Pressable
+                  key={index}
+                  onPress={() => toggleIngredient(index, null)}
+                  style={styles.ingredientItem}
+                >
+                  <Ionicons
+                    name={ingredient.checked ? "checkbox" : "square-outline"}
+                    size={20}
+                    color={ingredient.checked ? "#8AB644" : "#D1D5DB"}
+                  />
+                  <Text style={[styles.ingredientAmount, ingredient.checked && styles.checkedText]}>
+                    {ingredient.amount}
+                  </Text>
+                  <Text style={[styles.ingredientName, ingredient.checked && styles.checkedText]}>
+                    {ingredient.name}
+                  </Text>
+                </Pressable>
+              ))
+            )}
+          </View>
+
+          {/* Location Section */}
+          {recipe.location && (
+            <View style={styles.section}>
+              <View style={styles.locationContainer}>
+                <View style={styles.mapPlaceholder}>
+                  <Ionicons name="map" size={40} color="#D1D5DB" />
+                  <Text style={styles.mapText}>Map View</Text>
+                </View>
+
+                <View style={styles.locationHeader}>
+                  <View style={styles.locationTitleRow}>
+                    <Image source={locationIcon} style={styles.locationIcon} />
+                    <Text style={styles.locationName}>{recipe.location.name}</Text>
+                  </View>
+                  <Text style={styles.locationDistance}>{recipe.location.distance}</Text>
+                </View>
+
+                <Text style={styles.locationAddress}>{recipe.location.address}</Text>
+
+                {recipe.location.ingredients && (
+                  <Text style={styles.locationIngredientsText}>{recipe.location.ingredients}</Text>
                 )}
               </View>
-              <Text style={[
-                styles.ingredientText,
-                checkedIngredients.includes(index) && styles.ingredientTextChecked
-              ]}>
-                {typeof ingredient === 'string' ? ingredient : `${ingredient.amount} ${ingredient.item}`}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Store Location */}
-        <View style={styles.storeSection}>
-          <View style={styles.mapPlaceholder}>
-            <Ionicons name="map-outline" size={40} color="#999" />
-            <Text style={styles.mapText}>Map placeholder</Text>
-          </View>
-          <View style={styles.storeInfo}>
-            <View style={styles.storeRow}>
-              <Ionicons name="location" size={16} color="#666" />
-              <View style={styles.storeDetails}>
-                <Text style={styles.storeName}>99 Ranch Market</Text>
-                <Text style={styles.storeAddress}>1360 Westwood Blvd</Text>
-                <Text style={styles.storeAddress}>Los Angeles, CA 90024</Text>
-                <Text style={styles.storeSubtext}>All ingredients</Text>
-              </View>
-              <Text style={styles.storeDistance}>1.2 mi</Text>
             </View>
-          </View>
-        </View>
+          )}
 
-        {/* Instructions Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Instructions</Text>
-          {instructions.map((instruction, index) => (
-            <View key={index} style={styles.instructionRow}>
-              <Text style={styles.stepNumber}>Step {index + 1} /{instructions.length}</Text>
-              <Text style={styles.instructionText}>{typeof instruction === 'string' ? instruction : instruction.text}</Text>
+          {/* Instructions Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Instructions</Text>
             </View>
-          ))}
-        </View>
-
-        {/* Allergies Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Allergies</Text>
-          <View style={styles.allergyRow}>
-            {['Vegan', 'Low-Carbon-Footprint', 'Contains Soybeans', 'Contains Sesame'].map((allergy, index) => (
-              <View key={index} style={styles.allergyTag}>
-                <Text style={styles.allergyText}>{allergy}</Text>
+            {recipe.instructions.map((instruction, index) => (
+              <View key={index} style={styles.instructionItem}>
+                <Text style={styles.stepLabel}>
+                  <Text style={styles.stepText}>Step {index + 1}</Text>
+                  <Text style={styles.stepNumber}> / {recipe.instructions.length}</Text>
+                </Text>
+                <Text style={styles.instructionText}>{instruction}</Text>
               </View>
             ))}
           </View>
-        </View>
 
-        {/* Tips Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tips</Text>
-          <View style={styles.tipRow}>
-            <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-            <Text style={styles.tipText}>Use tofu or grilled portobello mushrooms for a vegetarian version.</Text>
-          </View>
-          <View style={styles.tipRow}>
-            <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-            <Text style={styles.tipText}>Add cashews for extra crunch.</Text>
-          </View>
-          <View style={styles.tipRow}>
-            <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
-            <Text style={styles.tipText}>For meal prep: store chicken and crema separately, and assemble right before serving to keep tacos from getting soggy.</Text>
-          </View>
-        </View>
+          {/* Allergies & Dietary Restrictions Section */}
+          {dietaryRestrictions.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Allergies & Dietary</Text>
+              <View style={styles.allergiesGrid}>
+                {dietaryRestrictions.map((restriction, index) => {
+                  const icon = DIETARY_RESTRICTION_ICONS[restriction];
+                  if (!icon) return null;
+                  return (
+                    <View
+                      key={restriction}
+                      style={[
+                        styles.allergyOption,
+                        index % 2 === 0 && styles.allergyOptionLeft,
+                      ]}
+                    >
+                      <Image source={icon} style={styles.allergyIcon} />
+                      <Text style={styles.allergyLabel}>{restriction}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
-        {/* Personal Note Section */}
-        <View style={styles.noteSection}>
-          <View style={styles.noteHeader}>
-            <Text style={styles.noteTitle}>Personal Note</Text>
-            <View style={styles.noteButtons}>
-              <Pressable style={styles.noteButton}>
-                <Ionicons name="create-outline" size={16} color="#666" />
-                <Text style={styles.noteButtonText}>Cooked</Text>
-              </Pressable>
-              <Pressable style={styles.noteButtonActive}>
-                <Ionicons name="checkmark" size={16} color="#666" />
-                <Text style={styles.noteButtonText}>Uncooked</Text>
-              </Pressable>
+          {/* Tips Section */}
+          {recipe.tips && recipe.tips.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Tips</Text>
+              {recipe.tips.map((tip, index) => (
+                <View key={index} style={styles.tipItem}>
+                  <Text style={styles.tipBullet}>•</Text>
+                  <Text style={styles.tipText}>{tip}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Personal Notes Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Personal Notes</Text>
+              <View style={styles.cookedToggleContainer}>
+                <Pressable
+                  onPress={() => setIsCooked(true)}
+                  style={[
+                    styles.cookedToggleButton,
+                    styles.cookedToggleButtonLeft,
+                    isCooked && styles.cookedToggleButtonActive
+                  ]}
+                >
+                  <Ionicons
+                    name="checkmark"
+                    size={14}
+                    color={"#000"}
+                  />
+                  <Text style={[
+                    styles.cookedToggleText
+                  ]}>
+                    Cooked
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setIsCooked(false)}
+                  style={[
+                    styles.cookedToggleButton,
+                    styles.cookedToggleButtonRight,
+                    !isCooked && styles.cookedToggleButtonActive
+                  ]}
+                >
+                  <Ionicons
+                    name="checkmark"
+                    size={14}
+                    color={"#000"}
+                  />
+                  <Text style={[
+                    styles.cookedToggleText
+                  ]}>
+                    Uncooked
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+            <View style={styles.noteInputContainer}>
+              <Ionicons name="create-outline" size={18} color="#5F6C7B" />
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Add your own tips or insights about the recipe"
+                placeholderTextColor="#99A3AD"
+                value={personalNote}
+                onChangeText={setPersonalNote}
+                multiline
+              />
             </View>
           </View>
-          <Pressable style={styles.noteInput}>
-            <Ionicons name="create-outline" size={16} color="#999" />
-            <Text style={styles.notePlaceholder}>Add your own tips or insights about this recipe</Text>
+
+          {/* More For You Section - Placeholder */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>More For You</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.moreForYouItem}>
+                <Image
+                  source={{ uri: "https://via.placeholder.com/120" }}
+                  style={styles.moreForYouImage}
+                />
+                <Text style={styles.moreForYouTitle}>Creamy Mushroom Pasta</Text>
+                <Text style={styles.moreForYouMeta}>Difficulty: ★★</Text>
+              </View>
+              <View style={styles.moreForYouItem}>
+                <Image
+                  source={{ uri: "https://via.placeholder.com/120" }}
+                  style={styles.moreForYouImage}
+                />
+                <Text style={styles.moreForYouTitle}>Avocado Toast with Chili...</Text>
+                <Text style={styles.moreForYouMeta}>Difficulty: ★</Text>
+              </View>
+            </ScrollView>
+          </View>
+
+          {/* Comments Section - Only for Public Recipes */}
+          {!isPrivate && (
+            <View style={styles.section}>
+              <View style={styles.commentsHeader}>
+                <Text style={styles.sectionTitle}>Comments</Text>
+                <Text style={styles.commentCount}>{recipe.commentCount}</Text>
+              </View>
+
+              {/* Comment Input */}
+              <View style={styles.commentInputContainer}>
+                <Ionicons name="chatbubble-outline" size={18} color="#5F6C7B" />
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder="Leave your comment"
+                  placeholderTextColor="#99A3AD"
+                />
+              </View>
+
+              {/* Comments List */}
+              {recipe.comments?.map((comment) => (
+                <View key={comment.id} style={styles.commentItem}>
+                  <View style={styles.commentHeader}>
+                    <Text style={styles.commentAuthor}>{comment.author}</Text>
+                    <Text style={styles.commentTime}>{comment.time}</Text>
+                  </View>
+                  <Text style={styles.commentText}>{comment.text}</Text>
+                  <View style={styles.commentActions}>
+                    <Pressable style={styles.commentAction}>
+                      <Ionicons name="thumbs-up-outline" size={14} color="#5F6C7B" />
+                      <Text style={styles.commentActionText}>{comment.likes}</Text>
+                    </Pressable>
+                    {comment.replies > 0 && (
+                      <Pressable style={styles.commentAction}>
+                        <Ionicons name="chatbubble-outline" size={14} color="#5F6C7B" />
+                        <Text style={styles.commentActionText}>Reply</Text>
+                      </Pressable>
+                    )}
+                    <Pressable style={styles.commentAction}>
+                      <Ionicons name="flag-outline" size={14} color="#5F6C7B" />
+                      <Text style={styles.commentActionText}>Report</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+        </View>
+      </ScrollView>
+
+      {/* Footer - Only for Private Recipes */}
+      {isPrivate && (
+        <View style={styles.footer}>
+          <Pressable style={styles.publishButton} onPress={handlePublish}>
+            <Text style={styles.publishButtonText}>Publish</Text>
           </Pressable>
         </View>
-
-        <View style={{height: 100}} />
-      </ScrollView>
+      )}
     </View>
   );
 }
@@ -367,309 +510,599 @@ export default function RecipeDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+  scrollContent: {
+    paddingBottom: 20,
+  },
+  scrollContentWithFooter: {
+    paddingBottom: 100,
+  },
+  imageContainer: {
+    width: "100%",
+    height: 300,
+    position: "relative",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#E5E7EB",
   },
   backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    flex: 1,
-    textAlign: 'center',
+    position: "absolute",
+    top: 12,
+    left: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerActions: {
-    flexDirection: 'row',
+    position: "absolute",
+    top: 12,
+    right: 12,
+    flexDirection: "row",
     gap: 8,
   },
-  iconButton: {
-    padding: 4,
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  scrollView: {
-    flex: 1,
+  actionMenu: {
+    position: "absolute",
+    top: 44,
+    right: 0,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    minWidth: 120,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    overflow: "hidden",
   },
-  imageCarousel: {
-    position: 'relative',
-  },
-  imagePlaceholder: {
-    width: '100%',
-    height: 250,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  carouselDots: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  actionMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
     paddingVertical: 12,
+    gap: 8,
+  },
+  actionMenuText: {
+    fontFamily: "HankenGrotesk-Regular",
+    fontSize: 14,
+    fontWeight: "400",
+    color: "#100C08",
+  },
+  imageIndicators: {
+    position: "absolute",
+    bottom: 12,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
     gap: 6,
   },
-  dot: {
+  indicator: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#ddd',
+    backgroundColor: "rgba(255,255,255,0.5)",
   },
-  dotActive: {
-    backgroundColor: '#666',
+  indicatorActive: {
+    backgroundColor: "#fff",
+    width: 20,
   },
-  titleSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 16,
-    paddingTop: 16,
+  content: {
+    padding: 16,
   },
-  recipeTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#000',
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  title: {
+    fontFamily: "Geologica-Bold",
+    fontSize: 18,
+    fontWeight: "700",
+    lineHeight: 22,
+    color: "#100C08",
     flex: 1,
     marginRight: 12,
   },
-  likeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  likeCount: {
-    fontSize: 14,
-    color: '#666',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
+  statusBlurb: {
+    backgroundColor: "#E8F0DA",
+    borderRadius: 12,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    gap: 20,
   },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  statusBlurbText: {
+    fontFamily: "HankenGrotesk-Regular",
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 14,
+    textAlign: "center",
+    color: "#100C08",
+  },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    marginBottom: 12,
+  },
+  statItem: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
-  metaText: {
-    fontSize: 13,
-    color: '#666',
+  statIcon: {
+    width: 16,
+    height: 16,
+    resizeMode: "contain",
+  },
+  statSubheading: {
+    fontFamily: "HankenGrotesk-Light",
+    fontSize: 12,
+    fontWeight: "300",
+    lineHeight: 16,
+    color: "#100C08",
+  },
+  statText: {
+    fontFamily: "HankenGrotesk-Light",
+    fontSize: 12,
+    fontWeight: "300",
+    lineHeight: 16,
+    color: "#100C08",
+  },
+  rating: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1B2430",
+  },
+  starsContainer: {
+    flexDirection: "row",
+  },
+  star: {
+    fontSize: 12,
+    color: "#FFB800",
+  },
+  starEmpty: {
+    fontSize: 12,
+    color: "#D1D5DB",
   },
   description: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    fontFamily: "HankenGrotesk-Regular",
     fontSize: 14,
-    color: '#333',
-    lineHeight: 20,
+    fontWeight: "400",
+    lineHeight: 22,
+    color: "#100C08",
+    marginBottom: 12,
   },
-  tagRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 16,
+  tagsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   tag: {
-    backgroundColor: '#f0f0f0',
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   tagText: {
+    fontFamily: "HankenGrotesk-Light",
     fontSize: 12,
-    color: '#666',
+    fontWeight: "300",
+    lineHeight: 16,
   },
   section: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
   },
   sectionTitle: {
+    fontFamily: "Geologica-Bold",
     fontSize: 18,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: "700",
+    lineHeight: 22,
+    color: "#100C08",
+    marginBottom: 12,
+  },
+  ingredientGroup: {
     marginBottom: 16,
   },
-  ingredientRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  ingredientGroupTitle: {
+    fontFamily: "Geologica-SemiBold",
+    fontSize: 16,
+    fontWeight: "600",
+    fontStyle: "italic",
+    lineHeight: 20,
+    color: "#100C08",
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  ingredientItem: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 8,
+    gap: 8,
   },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#ddd',
-    marginRight: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxChecked: {
-    borderColor: '#000',
-    backgroundColor: '#f0f0f0',
-  },
-  ingredientText: {
+  ingredientAmount: {
+    fontFamily: "HankenGrotesk-Regular",
     fontSize: 14,
-    color: '#333',
+    fontWeight: "400",
+    lineHeight: 22,
+    color: "#100C08",
+    width: 80,
+  },
+  ingredientName: {
+    fontFamily: "HankenGrotesk-Regular",
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 22,
+    color: "#100C08",
     flex: 1,
   },
-  ingredientTextChecked: {
-    textDecorationLine: 'line-through',
-    color: '#999',
+  checkedText: {
+    textDecorationLine: "line-through",
+    color: "#99A3AD",
   },
-  storeSection: {
+  instructionItem: {
+    marginBottom: 16,
+  },
+  stepLabel: {
+    marginBottom: 4,
+  },
+  stepText: {
+    fontFamily: "Geologica-SemiBold",
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1B2430",
+  },
+  stepNumber: {
+    fontFamily: "Geologica-Light",
+    fontSize: 14,
+    fontWeight: "400",
+    color: "#8AB644",
+  },
+  instructionText: {
+    fontFamily: "HankenGrotesk-Regular",
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 22,
+    color: "#100C08",
+  },
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: "rgba(0,0,0,0.06)",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 10,
+  },
+  publishButton: {
+    backgroundColor: "#8AB644",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  publishButtonText: {
+    fontFamily: "Geologica-SemiBold",
+    fontSize: 16,
+    fontWeight: "600",
+    lineHeight: 20,
+    color: "#fff",
+  },
+  locationContainer: {
+    borderWidth: 1,
+    borderColor: "#D9D9D9",
+    borderRadius: 12,
+    padding: 12,
+    overflow: "hidden",
   },
   mapPlaceholder: {
     height: 150,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#D9D9D9",
   },
   mapText: {
+    fontFamily: "HankenGrotesk-Light",
     fontSize: 12,
-    color: '#999',
+    fontWeight: "300",
+    lineHeight: 16,
+    color: "#100C08",
     marginTop: 8,
   },
-  storeInfo: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  locationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
   },
-  storeRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  storeDetails: {
+  locationTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     flex: 1,
   },
-  storeName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 2,
+  locationIcon: {
+    width: 16,
+    height: 16,
+    resizeMode: "contain",
   },
-  storeAddress: {
-    fontSize: 13,
-    color: '#666',
-  },
-  storeSubtext: {
+  locationName: {
+    fontFamily: "HankenGrotesk-SemiBold",
     fontSize: 12,
-    color: '#999',
-    marginTop: 4,
+    fontWeight: "600",
+    lineHeight: 12,
+    color: "#100C08",
   },
-  storeDistance: {
-    fontSize: 13,
-    color: '#666',
-  },
-  instructionRow: {
-    marginBottom: 16,
-  },
-  stepNumber: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 4,
-  },
-  instructionText: {
-    fontSize: 14,
-    color: '#333',
-    lineHeight: 20,
-  },
-  allergyRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  allergyTag: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  allergyText: {
+  locationDistance: {
+    fontFamily: "HankenGrotesk-Light",
     fontSize: 12,
-    color: '#666',
+    fontWeight: "300",
+    lineHeight: 16,
+    color: "#100C08",
   },
-  tipRow: {
-    flexDirection: 'row',
-    gap: 8,
+  locationAddress: {
+    fontFamily: "HankenGrotesk-Regular",
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 22,
+    color: "#100C08",
+    marginBottom: 8,
+  },
+  locationIngredientsTag: {
+    backgroundColor: "#8AB644",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    alignSelf: "flex-start",
+  },
+  locationIngredientsText: {
+    fontFamily: "HankenGrotesk-Regular",
+    fontSize: 10,
+    fontWeight: "400",
+    lineHeight: 10,
+    color: "#8AB644",
+  },
+  allergiesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  allergyOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "48%",
+    paddingVertical: 10,
+    paddingHorizontal: 8,
     marginBottom: 12,
-    alignItems: 'flex-start',
-  },
-  tipText: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-    lineHeight: 20,
-  },
-  noteSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  noteHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  noteTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-  },
-  noteButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  noteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  noteButtonActive: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#f0f0f0',
-  },
-  noteButtonText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  noteInput: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    backgroundColor: '#f9f9f9',
+    borderColor: "#E5E7EB",
+    backgroundColor: "#fff",
   },
-  notePlaceholder: {
+  allergyOptionLeft: {
+    marginRight: "4%",
+  },
+  allergyIcon: {
+    width: 24,
+    height: 24,
+    resizeMode: "contain",
+    marginRight: 8,
+  },
+  allergyLabel: {
+    fontFamily: "HankenGrotesk-Regular",
     fontSize: 14,
-    color: '#999',
+    fontWeight: "400",
+    lineHeight: 22,
+    color: "#100C08",
     flex: 1,
+  },
+  tipItem: {
+    flexDirection: "row",
+    marginBottom: 8,
+    gap: 8,
+  },
+  tipBullet: {
+    fontFamily: "HankenGrotesk-Regular",
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 22,
+    color: "#100C08",
+  },
+  tipText: {
+    fontFamily: "HankenGrotesk-Regular",
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 22,
+    color: "#100C08",
+  },
+  noteInputContainer: {
+    flexDirection: "row",
+    gap: 8,
+    backgroundColor: "#F7F7F7",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#8AB644",
+    padding: 12,
+  },
+  noteInput: {
+    fontFamily: "HankenGrotesk-Regular",
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 22,
+    color: "#100C08",
+    minHeight: 60,
+    textAlignVertical: "top",
+    borderColor: "transparent",
+  },
+  moreForYouItem: {
+    width: 140,
+    marginRight: 12,
+  },
+  moreForYouImage: {
+    width: 140,
+    height: 140,
+    borderRadius: 12,
+    backgroundColor: "#E5E7EB",
+    marginBottom: 8,
+  },
+  moreForYouTitle: {
+    fontFamily: "HankenGrotesk-Regular",
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 22,
+    color: "#100C08",
+    marginBottom: 4,
+  },
+  moreForYouMeta: {
+    fontFamily: "HankenGrotesk-Light",
+    fontSize: 12,
+    fontWeight: "300",
+    lineHeight: 16,
+    color: "#100C08",
+  },
+  commentsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  commentCount: {
+    fontFamily: "Geologica-SemiBold",
+    fontSize: 16,
+    fontWeight: "600",
+    lineHeight: 20,
+    color: "#100C08",
+  },
+  commentInputContainer: {
+    flexDirection: "row",
+    gap: 8,
+    backgroundColor: "#F7FAFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 12,
+    marginBottom: 16,
+  },
+  commentInput: {
+    fontFamily: "HankenGrotesk-Regular",
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 22,
+    color: "#100C08",
+  },
+  commentItem: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  commentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  commentAuthor: {
+    fontFamily: "HankenGrotesk-Regular",
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 22,
+    color: "#100C08",
+  },
+  commentTime: {
+    fontFamily: "HankenGrotesk-Light",
+    fontSize: 12,
+    fontWeight: "300",
+    lineHeight: 16,
+    color: "#100C08",
+  },
+  commentText: {
+    fontFamily: "HankenGrotesk-Regular",
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 22,
+    color: "#100C08",
+    marginBottom: 8,
+  },
+  commentActions: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  commentAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  commentActionText: {
+    fontFamily: "HankenGrotesk-Light",
+    fontSize: 12,
+    fontWeight: "300",
+    lineHeight: 16,
+    color: "#100C08",
+  },
+  cookedToggleContainer: {
+    flexDirection: "row",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#8AB644",
+    overflow: "hidden",
+  },
+  cookedToggleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 4,
+    backgroundColor: "#fff",
+  },
+  cookedToggleButtonLeft: {
+    borderTopLeftRadius: 19,
+    borderBottomLeftRadius: 19,
+  },
+  cookedToggleButtonRight: {
+    borderTopRightRadius: 19,
+    borderBottomRightRadius: 19,
+  },
+  cookedToggleButtonActive: {
+    backgroundColor: "#E8F0DA",
+  },
+  cookedToggleText: {
+    fontFamily: "HankenGrotesk-Regular",
+    fontSize: 12,
+    fontWeight: "400",
+    color: "#000",
   },
 });

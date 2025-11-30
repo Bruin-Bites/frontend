@@ -1,3 +1,27 @@
+/*import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+
+import HomeScreen from "../screens/HomeScreen";
+import MapScreen from "../screens/MapScreen";
+import ChatScreen from "../screens/ChatScreen";
+import CommunityScreen from "../screens/CommunityScreen";
+
+const Stack = createNativeStackNavigator();
+
+export default function AppNavigator() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: true }}>
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Map" component={MapScreen} />
+        <Stack.Screen name="Recipes" component={RecipesScreen} />
+        <Stack.Screen name="Community" component={CommunityScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}*/
+
 import React from "react";
 import { Pressable } from "react-native";
 // import { NavigationContainer } from "@react-navigation/native"; // <-- 1. REMOVED THIS
@@ -8,11 +32,15 @@ import OnboardingScreen from "../screens/OnboardingScreen";
 import AuthScreen from "../screens/AuthScreen"; 
 import HomeScreen from "../screens/HomeScreen";
 import MapScreen from "../screens/MapScreen";
-import RecipesScreen from "../screens/RecipesScreen";
+import ChatScreen from "../screens/ChatScreen";
+import UserRecipesScreen from "../screens/UserRecipesScreen";
+import RecipeSearchScreen from "../screens/RecipeSearchScreen";
+import RecipeDetailScreen from "../screens/RecipeDetailScreen";
+import FilterScreen from "../screens/FilterScreen";
 import CommunityScreen from "../screens/CommunityScreen";
-import LoginScreen from "../screens/LoginScreen";
-import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
-import CreateAccountScreen from "../screens/CreateAccountScreen";
+import RecipeEditScreen from "../screens/RecipeEditScreen";
+import AddContributionScreen from "../screens/AddContributionScreen";
+import EventDetailsScreen from '../screens/EventDetailsScreen'; // <--- Import this
 import AIRecipeBotScreen from "../screens/AIRecipeBotScreen";
 import RecipeDetailScreen from "../screens/RecipeDetailScreen";
 import RecipeEditScreen from "../screens/RecipeEditScreen";
@@ -100,28 +128,13 @@ export default function AppNavigator() {
         <Stack.Screen name="EventDetails" component={EventDetailsScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Map" component={MapScreen} options={{ title: "Cheap Eats Map" }} />
-        <Stack.Screen name="Recipes" component={RecipesScreen} options={{ title: "Budget Recipes" }} />
+        <Stack.Screen name="UserRecipes" component={UserRecipesScreen} options={{ title: "User Recipes" }} />
+        <Stack.Screen name="RecipeSearch" component={RecipeSearchScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Filter" component={FilterScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Recipes" component={ChatScreen} options={{ title: "AI Recipe Chat" }} />
         <Stack.Screen name="Community" component={CommunityScreen} />
-        <Stack.Screen
-          name="AIRecipeBot"
-          component={AIRecipeBotScreen}
-          options={{ title: "AI Recipe Generator" }}
-        />
-        <Stack.Screen
-          name="RecipeDetail"
-          component={RecipeDetailScreen}
-          options={{ title: "Recipe Details" }}
-        />
-        <Stack.Screen
-          name="RecipeEdit"
-          component={RecipeEditScreen}
-          options={{ title: "Edit Recipe" }}
-        />
-        <Stack.Screen
-          name="SavedRecipes"
-          component={SavedRecipesScreen}
-          options={{ title: "My Recipes" }}
-        />
+        <Stack.Screen name="RecipeEdit" component={RecipeEditScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
   );
 }
