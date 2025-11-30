@@ -24,13 +24,10 @@ const deriveBaseUrl = () => {
 };
 
 const api = axios.create({
-<<<<<<< HEAD
   baseURL: BASE_URL,
   timeout: 100000,
-=======
-  baseURL: deriveBaseUrl(),
   timeout: 10000,
->>>>>>> main
+  timeout: 120000, // 120 seconds for AI recipe generation with pricing
 });
 
 export default api;

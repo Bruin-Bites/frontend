@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /*import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -23,8 +22,6 @@ export default function AppNavigator() {
   );
 }*/
 
-=======
->>>>>>> main
 import React from "react";
 import { Pressable } from "react-native";
 // import { NavigationContainer } from "@react-navigation/native"; // <-- 1. REMOVED THIS
@@ -41,15 +38,13 @@ import RecipeSearchScreen from "../screens/RecipeSearchScreen";
 import RecipeDetailScreen from "../screens/RecipeDetailScreen";
 import FilterScreen from "../screens/FilterScreen";
 import CommunityScreen from "../screens/CommunityScreen";
-<<<<<<< HEAD
 import RecipeEditScreen from "../screens/RecipeEditScreen";
-=======
-import LoginScreen from "../screens/LoginScreen";
-import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
-import CreateAccountScreen from "../screens/CreateAccountScreen";
 import AddContributionScreen from "../screens/AddContributionScreen";
 import EventDetailsScreen from '../screens/EventDetailsScreen'; // <--- Import this
->>>>>>> main
+import AIRecipeBotScreen from "../screens/AIRecipeBotScreen";
+import RecipeDetailScreen from "../screens/RecipeDetailScreen";
+import RecipeEditScreen from "../screens/RecipeEditScreen";
+import SavedRecipesScreen from "../screens/SavedRecipesScreen";
 import { colors } from "../theme/colors";
 
 const Stack = createNativeStackNavigator();

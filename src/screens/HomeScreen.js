@@ -33,6 +33,28 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.row}>
             <ActionCard
               icon={
+                <Ionicons
+                  name="sparkles"
+                  size={28}
+                  color={colors.uclaBlue}
+                />
+              }
+              title="AI Recipe Bot"
+              text="Generate budget recipes with AI."
+              onPress={() => navigation.navigate("AIRecipeBot")}
+            />
+            <ActionCard
+              icon={<Ionicons name="bookmark" size={28} color={colors.uclaBlue} />}
+              title="My Recipes"
+              text="View & manage saved recipes."
+              onPress={() => navigation.navigate("SavedRecipes")}
+            />
+          </View>
+
+          {/* Second row */}
+          <View style={styles.row}>
+            <ActionCard
+              icon={
                 <MaterialCommunityIcons
                   name="silverware-fork-knife"
                   size={28}
