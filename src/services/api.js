@@ -26,11 +26,12 @@ const deriveBaseUrl = () => {
   return "http://localhost:5050/api";
 };
 
-const BASE_URL = deriveBaseUrl();
+export const API_BASE_URL = deriveBaseUrl();
 
+// Some endpoints (uploads / large datasets) can take longer than 10s, so give a larger window.
 const api = axios.create({
-  baseURL: BASE_URL,
-  timeout: 120000, // 120 seconds for AI recipe generation with pricing
+  baseURL: API_BASE_URL,
+  timeout: 30000,
 });
 
 // Request interceptor to attach token to all requests

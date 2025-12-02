@@ -6,13 +6,13 @@ import {
   ScrollView,
   Image,
   Dimensions,
-  SafeAreaView,
   StatusBar,
   FlatList,
   Pressable, // 1. Changed from TouchableOpacity
   Platform,  // 2. Added Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const BRAND_GREEN = '#A8B84C';
 const DARK_GRAY = '#333';
@@ -29,45 +29,49 @@ export default function EventDetailsScreen({ route, navigation }) {
   const { item } = route.params || {};
 
   const eventDetails = {
-    ...item,
-    hostName: 'UCLA Career Center',
-    hostContributions: 23,
+    title: item?.title || 'Event',
+    time: item?.time,
+    date: item?.date,
     description:
-      'Join us for a Saturday Brunch event hosted by Student Media at UCLA. Listen to speakers and the first 40 attendees will get FREE food!',
-    address: '106 Strathmore Pl\nLos Angeles, CA 90095',
-    heroImage: 'https://placehold.co/800x600/ABEBC6/196F3D?text=Main+Pasta',
-    galleryImages: [
-      'https://placehold.co/100x100/ABEBC6/196F3D?text=Thumb1',
-      'https://placehold.co/100x100/FAD7A0/8A2E0E?text=Thumb2',
-      'https://placehold.co/100x100/82E0AA/2E86C1?text=Thumb3',
-      'https://placehold.co/100x100/D7BDE2/5B2C6F?text=Thumb4',
-      'https://placehold.co/100x100/F5B7B1/78281F?text=Thumb5',
-    ],
-    menuItems: [
-      { title: 'Chicken Sandwich', image: 'https://placehold.co/150x100/orange/white?text=Chicken' },
-      { title: 'Vegan Sandwich', image: 'https://placehold.co/150x100/green/white?text=Vegan' },
-      { title: 'Caesar Salad', image: 'https://placehold.co/150x100/lightgreen/white?text=Salad' },
-    ],
-    menuList: [
-      'Chicken Sandwich',
-      'Vegan Sandwich',
-      'Chips',
-      'Salad',
-      'Chocolate Cookies',
-      'Water',
-    ],
-    allergies: [
-      { label: 'Vegan', icon: 'leaf', color: '#88C057' },
-      { label: 'Low-Carbon-Footprint', icon: 'earth', color: '#4CAF50' },
-      { label: 'Contains Soy', icon: 'nutrition', color: '#AFA048' },
-      { label: 'Contains Gluten', icon: 'alert-circle', color: '#7B1FA2' },
-      { label: 'Contains Wheat', icon: 'flower-outline', color: '#F57F17' },
-      { label: 'Contains Egg', icon: 'egg', color: '#FBC02D' },
-    ],
-    accessibility: [
-      { label: 'Wheelchair accessible', icon: 'body', color: '#4285F4' },
-      { label: 'Accessible parking near entrance', icon: 'car', color: '#1967D2' },
-    ],
+      item?.description ||
+      'Join us for this community contribution.',
+    address: item?.address || item?.location || 'Address TBA',
+    hostName: item?.hostName || item?.host || 'Community Member',
+    hostContributions: item?.hostContributions || 1,
+    heroImage:
+      item?.image ||
+      item?.coverImage ||
+      (Array.isArray(item?.images) ? item.images[0] : null) ||
+      'https://placehold.co/800x600/ABEBC6/196F3D?text=Contribution',
+    galleryImages:
+      (Array.isArray(item?.images) && item.images.length
+        ? item.images
+        : [
+            item?.image ||
+              item?.coverImage ||
+              'https://placehold.co/800x600/ABEBC6/196F3D?text=Contribution',
+          ]),
+    menuItems: Array.isArray(item?.menuItems)
+      ? item.menuItems
+      : Array.isArray(item?.menu)
+      ? item.menu
+      : [],
+    menuList:
+      Array.isArray(item?.menu)
+        ? item.menu.flatMap((m) => m.items || [])
+        : [],
+    allergies: Array.isArray(item?.allergies)
+      ? item.allergies.map((label) => ({ label, icon: 'alert-circle', color: '#7B1FA2' }))
+      : [
+          { label: 'Vegan', icon: 'leaf', color: '#88C057' },
+          { label: 'Low-Carbon-Footprint', icon: 'earth', color: '#4CAF50' },
+        ],
+    accessibility: Array.isArray(item?.accessibility)
+      ? item.accessibility.map((label) => ({ label, icon: 'body', color: '#4285F4' }))
+      : [
+          { label: 'Wheelchair accessible', icon: 'body', color: '#4285F4' },
+          { label: 'Accessible parking near entrance', icon: 'car', color: '#1967D2' },
+        ],
   };
 
   return (
