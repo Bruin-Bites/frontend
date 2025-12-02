@@ -5,6 +5,10 @@ import { Geologica_600SemiBold, Geologica_700Bold, Geologica_400Regular } from "
 import * as SplashScreen from "expo-splash-screen";
 import AppNavigator from "./src/navigation/AppNavigator";
 import AnimatedSplashScreen from './src/screens/AnimatedSplashScreen';
+import { UserProvider } from "./src/contexts/UserContext";
+import { LikesProvider } from "./src/contexts/LikesContext";
+
+// 1. Import NavigationContainer here
 import { NavigationContainer } from '@react-navigation/native';
 import { AuthProvider } from './src/context/AuthContext';
 
@@ -48,11 +52,15 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer>
-          <SafeAreaView style={{ flex: 1 }}>
-            <AppNavigator />
-          </SafeAreaView>
-        </NavigationContainer>
+        <UserProvider>
+          <LikesProvider>
+            <NavigationContainer>
+              <SafeAreaView style={{ flex: 1 }}>
+                <AppNavigator />
+              </SafeAreaView>
+            </NavigationContainer>
+          </LikesProvider>
+        </UserProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
