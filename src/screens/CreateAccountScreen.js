@@ -6,12 +6,12 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { register } from '../services/authService';
+import api from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BRAND_GREEN = '#A8B84C';
 const ERROR_RED = '#D9534F';
@@ -30,22 +30,30 @@ export default function CreateAccountScreen({ navigation }) {
   const [isConfirmPasswordSecure, setIsConfirmPasswordSecure] = useState(true);
 
   const [errorMessage, setErrorMessage] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleCreateAccount = async () => {
-    // Check for empty fields first
-    if (!name || !email || !password || !confirmPassword) {
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+
+    // 2. Check for empty fields first
+    if (!trimmedName || !trimmedEmail || !password || !confirmPassword) {
       setErrorMessage('All fields are required.');
       return;
     }
 
-    // Check for valid email format
-    if (!emailRegex.test(email)) {
+    // 3. Check for valid email format
+    if (!emailRegex.test(trimmedEmail)) {
       setErrorMessage('Please enter a valid email address.');
       return;
     }
     
-    // Check for password mismatch
+    if (password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters.');
+      return;
+    }
+
+    // 4. Check for password mismatch
     if (password !== confirmPassword) {
       setErrorMessage('Passwords do not match. Please try again.');
       return;
@@ -57,18 +65,40 @@ export default function CreateAccountScreen({ navigation }) {
       return;
     }
 
-    // Clear any previous errors
-    setErrorMessage('');
-    setLoading(true);
-
+    setIsLoading(true);
     try {
-      await register(name, email, password, isUCLAStudent);
-      // Navigate to Home on success
-      navigation.replace('Home');
+      const response = await api.post('/auth/register', {
+        name: trimmedName,
+        email: trimmedEmail,
+        password,
+      });
+
+      if (response.data?.token) {
+        const token = response.data.token;
+        api.defaults.headers.common.Authorization = `Bearer ${token}`;
+        try {
+          await AsyncStorage.setItem('authToken', token);
+        } catch (err) {
+          console.warn('Unable to persist auth token:', err.message);
+        }
+      }
+
+      // Navigate to the new Onboarding screen
+      navigation.replace('Onboarding');
     } catch (error) {
-      setErrorMessage(error.message || 'Registration failed. Please try again.');
+      let message = 'Unable to create account. Please try again.';
+
+      if (error.response?.data?.error) {
+        message = error.response.data.error;
+      } else if (error.response?.data?.errors?.length) {
+        message = error.response.data.errors[0].msg;
+      } else if (error.request) {
+        message = 'Cannot reach the server. Check your connection or API URL.';
+      }
+
+      setErrorMessage(message);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -79,7 +109,7 @@ export default function CreateAccountScreen({ navigation }) {
 
         <TextInput
           style={styles.input}
-          placeholder="Name"
+          placeholder="Full name"
           value={name}
           onChangeText={setName}
           autoCapitalize="words"
@@ -92,6 +122,7 @@ export default function CreateAccountScreen({ navigation }) {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          textContentType="emailAddress"
         />
 
         <View style={styles.inputContainer}>
@@ -101,6 +132,7 @@ export default function CreateAccountScreen({ navigation }) {
             value={password}
             onChangeText={setPassword}
             secureTextEntry={isPasswordSecure}
+            textContentType="newPassword"
           />
           <TouchableOpacity
             onPress={() => setIsPasswordSecure(!isPasswordSecure)}
@@ -121,6 +153,7 @@ export default function CreateAccountScreen({ navigation }) {
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry={isConfirmPasswordSecure}
+            textContentType="password"
           />
           <TouchableOpacity
             onPress={() =>
@@ -144,9 +177,9 @@ export default function CreateAccountScreen({ navigation }) {
         <TouchableOpacity
           style={[styles.createButton, loading && styles.createButtonDisabled]}
           onPress={handleCreateAccount}
-          disabled={loading}
+          disabled={isLoading}
         >
-          {loading ? (
+          {isLoading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <Text style={styles.createButtonText}>Create Account</Text>
@@ -246,8 +279,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     marginLeft: 5,
-  },
-  createButtonDisabled: {
-    opacity: 0.6,
   },
 });

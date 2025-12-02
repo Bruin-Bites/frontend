@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -11,62 +11,66 @@ import {
   Modal,
   Image,
   Alert,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { Calendar } from 'react-native-calendars';
-import api from '../services/api';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { Calendar } from "react-native-calendars"; // Import the Calendar
+import api from "../services/api";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const BRAND_GREEN = '#A8B84C';
-const LIGHT_GRAY = '#F7F7F7';
-const BORDER_GRAY = '#E8E8E8';
-const TEXT_GRAY = '#8A8A8A';
-const ERROR_RED = '#D9534F';
+const BRAND_GREEN = "#A8B84C";
+const LIGHT_GRAY = "#F7F7F7";
+const BORDER_GRAY = "#E8E8E8";
+const TEXT_GRAY = "#8A8A8A";
+const ERROR_RED = "#D9534F";
+const MAX_IMAGE_WIDTH = 1280;
+const COMPRESS_QUALITY = 0.5; // 0-1
 
 // --- 1. Define all available tags with color codes ---
 const TAG_CATEGORIES = {
-  'Deal type': [
-    { name: 'Buy one get one free (BOGO)', color: '#FFD700' }, // Gold
-    { name: 'First come first serve (FCFS)', color: '#FFA07A' }, // LightSalmon
-    { name: 'Free item', color: '#87CEEB' }, // SkyBlue
-    { name: '% off discount', color: '#90EE90' }, // LightGreen
-    { name: 'Student discount', color: '#DA70D6' }, // Orchid
-    { name: 'Combo deal', color: '#F0E68C' }, // Khaki
-    { name: 'Rewards/points bonus', color: '#ADD8E6' }, // LightBlue
+  "Deal type": [
+    { name: "Buy one get one free (BOGO)", color: "#FFD700" }, // Gold
+    { name: "First come first serve (FCFS)", color: "#FFA07A" }, // LightSalmon
+    { name: "Free item", color: "#87CEEB" }, // SkyBlue
+    { name: "% off discount", color: "#90EE90" }, // LightGreen
+    { name: "Student discount", color: "#DA70D6" }, // Orchid
+    { name: "Combo deal", color: "#F0E68C" }, // Khaki
+    { name: "Rewards/points bonus", color: "#ADD8E6" }, // LightBlue
   ],
-  'Food type': [
-    { name: 'Meal', color: '#FFB6C1' }, // LightPink
-    { name: 'Snack', color: '#FFE4E1' }, // MistyRose
-    { name: 'Drink', color: '#B0E0E6' }, // PowderBlue
-    { name: 'Dessert', color: '#FFDEAD' }, // NavajoWhite
+  "Food type": [
+    { name: "Meal", color: "#FFB6C1" }, // LightPink
+    { name: "Snack", color: "#FFE4E1" }, // MistyRose
+    { name: "Drink", color: "#B0E0E6" }, // PowderBlue
+    { name: "Dessert", color: "#FFDEAD" }, // NavajoWhite
   ],
-  'Location type': [
-    { name: 'On Campus', color: '#C0C0C0' }, // Silver
-    { name: 'Westwood', color: '#D3D3D3' }, // LightGray
-    { name: 'Sawtelle', color: '#A9A9A9' }, // DarkGray
-    { name: 'Near Campus', color: '#E0FFFF' }, // LightCyan
+  "Location type": [
+    { name: "On Campus", color: "#C0C0C0" }, // Silver
+    { name: "Westwood", color: "#D3D3D3" }, // LightGray
+    { name: "Sawtelle", color: "#A9A9A9" }, // DarkGray
+    { name: "Near Campus", color: "#E0FFFF" }, // LightCyan
   ],
-  'Cuisine type': [
-    { name: 'Asian', color: '#F4A460' }, // SandyBrown
-    { name: 'American', color: '#E9967A' }, // DarkSalmon
-    { name: 'Mexican', color: '#CD5C5C' }, // IndianRed
-    { name: 'Italian', color: '#DB7093' }, // PaleVioletRed
-    { name: 'Mediterranean', color: '#8B008B' }, // DarkMagenta
+  "Cuisine type": [
+    { name: "Asian", color: "#F4A460" }, // SandyBrown
+    { name: "American", color: "#E9967A" }, // DarkSalmon
+    { name: "Mexican", color: "#CD5C5C" }, // IndianRed
+    { name: "Italian", color: "#DB7093" }, // PaleVioletRed
+    { name: "Mediterranean", color: "#8B008B" }, // DarkMagenta
   ],
   Timing: [
-    { name: 'Breakfast', color: '#FFEFD5' }, // PapayaWhip
-    { name: 'Lunch', color: '#FFDAB9' }, // PeachPuff
-    { name: 'Dinner', color: '#DDA0DD' }, // Plum
-    { name: 'Late night', color: '#BA55D3' }, // MediumOrchid
-    { name: 'Happy hour', color: '#EE82EE' }, // Violet
+    { name: "Breakfast", color: "#FFEFD5" }, // PapayaWhip
+    { name: "Lunch", color: "#FFDAB9" }, // PeachPuff
+    { name: "Dinner", color: "#DDA0DD" }, // Plum
+    { name: "Late night", color: "#BA55D3" }, // MediumOrchid
+    { name: "Happy hour", color: "#EE82EE" }, // Violet
   ],
-  'Dietary information': [
-    { name: 'Vegetarian', color: '#8FBC8F' }, // DarkSeaGreen
-    { name: 'Vegan', color: '#3CB371' }, // MediumSeaGreen
-    { name: 'Gluten-free', color: '#20B2AA' }, // LightSeaGreen
-    { name: 'Contains nuts', color: '#BDB76B' }, // DarkKhaki
-    { name: 'Contains fish', color: '#6A5ACD' }, // SlateBlue
+  "Dietary information": [
+    { name: "Vegetarian", color: "#8FBC8F" }, // DarkSeaGreen
+    { name: "Vegan", color: "#3CB371" }, // MediumSeaGreen
+    { name: "Gluten-free", color: "#20B2AA" }, // LightSeaGreen
+    { name: "Contains nuts", color: "#BDB76B" }, // DarkKhaki
+    { name: "Contains fish", color: "#6A5ACD" }, // SlateBlue
   ],
 };
 
@@ -79,6 +83,23 @@ const getTagColor = (tagName) => {
     }
   }
   return TEXT_GRAY; // Default color if not found
+};
+
+const compressImage = async (uri) => {
+  if (!uri) return null;
+  try {
+    const manipResult = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: MAX_IMAGE_WIDTH } }],
+      { compress: COMPRESS_QUALITY, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    );
+    if (manipResult?.base64) {
+      return `data:image/jpeg;base64,${manipResult.base64}`;
+    }
+  } catch (err) {
+    console.warn("Image compression failed:", err.message);
+  }
+  return null;
 };
 
 // --- NEW: time parsing + validation helpers ---
@@ -94,8 +115,8 @@ const parseTimeToMinutes = (str) => {
 
   if (hour < 1 || hour > 12 || minute < 0 || minute > 59) return null;
 
-  if (period === 'PM' && hour !== 12) hour += 12;
-  if (period === 'AM' && hour === 12) hour = 0;
+  if (period === "PM" && hour !== 12) hour += 12;
+  if (period === "AM" && hour === 12) hour = 0;
 
   return hour * 60 + minute;
 };
@@ -103,7 +124,7 @@ const parseTimeToMinutes = (str) => {
 const isValidTimeRange = (value) => {
   if (!value.trim()) return true; // empty is allowed (optional field)
 
-  const parts = value.split('-').map((p) => p.trim());
+  const parts = value.split("-").map((p) => p.trim());
 
   if (parts.length === 1) {
     // Single time like "3PM"
@@ -137,13 +158,13 @@ const Accordion = ({ title, options, selectedTags, onSelect }) => {
         onPress={() => setIsOpen(!isOpen)}
       >
         <Text style={styles.categoryTitle}>
-          {title}{' '}
+          {title}{" "}
           <Text style={styles.categoryCount}>
             ({selectedCount}/{options.length})
           </Text>
         </Text>
         <Ionicons
-          name={isOpen ? 'chevron-up' : 'chevron-down'}
+          name={isOpen ? "chevron-up" : "chevron-down"}
           size={20}
           color={TEXT_GRAY}
         />
@@ -160,8 +181,8 @@ const Accordion = ({ title, options, selectedTags, onSelect }) => {
               <Ionicons
                 name={
                   selectedTags.includes(option.name)
-                    ? 'checkbox'
-                    : 'square-outline'
+                    ? "checkbox"
+                    : "square-outline"
                 }
                 size={24}
                 color={option.color} // Use specific tag color here
@@ -177,137 +198,158 @@ const Accordion = ({ title, options, selectedTags, onSelect }) => {
 
 // --- Error Modal Component ---
 const ErrorModal = ({ visible, onClose, errors }) => {
-    if (!visible) return null;
-  
-    return (
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={visible}
-        onRequestClose={onClose}
+  if (!visible) return null;
+
+  return (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity
+        style={styles.errorModalBackdrop}
+        activeOpacity={1}
+        onPressOut={onClose}
       >
-        <TouchableOpacity
-          style={styles.errorModalBackdrop}
-          activeOpacity={1}
-          onPressOut={onClose}
-        >
-          <View style={styles.errorModalContainer}>
-            {errors.map((error, index) => (
-              <View key={index} style={styles.errorCard}>
-                <View style={styles.errorIconCircle}>
-                  <Text style={styles.errorIconText}>{error.icon || '!'}</Text>
-                </View>
-                <View style={styles.errorTextContent}>
-                  <Text style={styles.errorTitle}>{error.title}</Text>
-                  {error.details && <Text style={styles.errorDetails}>{error.details}</Text>}
-                </View>
+        <View style={styles.errorModalContainer}>
+          {errors.map((error, index) => (
+            <View key={index} style={styles.errorCard}>
+              <View style={styles.errorIconCircle}>
+                <Text style={styles.errorIconText}>{error.icon || "!"}</Text>
               </View>
-            ))}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    );
-  };
+              <View style={styles.errorTextContent}>
+                <Text style={styles.errorTitle}>{error.title}</Text>
+                {error.details && (
+                  <Text style={styles.errorDetails}>{error.details}</Text>
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
 
 export default function AddContributionScreen({ navigation }) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
 
   // Date State
-  const [date, setDate] = useState(''); // Will store 'MM/DD/YYYY'
+  const [date, setDate] = useState(""); // Will store 'MM/DD/YYYY'
   const [isCalendarVisible, setIsCalendarVisible] = useState(false);
 
-  const [time, setTime] = useState('');
+  const [time, setTime] = useState("");
 
   const [coverImage, setCoverImage] = useState(null);
 
   // Tag State
   const [tags, setTags] = useState([
-    '% off discount',
-    'Lunch',
-    'Franchise',
-    'Asian',
-    'Happy hour',
-    'Contains fish',
+    "% off discount",
+    "Lunch",
+    "Franchise",
+    "Asian",
+    "Happy hour",
+    "Contains fish",
   ]);
   const [isTagModalVisible, setIsTagModalVisible] = useState(false);
 
   // Menu State
   const [menuItems, setMenuItems] = useState([]);
   const [isMenuModalVisible, setIsMenuModalVisible] = useState(false);
-  const [newItemTitle, setNewItemTitle] = useState('');
+  const [newItemTitle, setNewItemTitle] = useState("");
   const [newItemImage, setNewItemImage] = useState(null);
-  const [modalError, setModalError] = useState('');
+  const [modalError, setModalError] = useState("");
 
-  const [validationErrors, setValidationErrors] = useState([]); 
+  const [validationErrors, setValidationErrors] = useState([]);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // NEW: form errors (for required fields + time)
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [libraryPermission, setLibraryPermission] = useState(null);
 
   const validateForm = () => {
     const errors = [];
+    let missingRequired = false;
 
     if (!title.trim()) {
       errors.push({
         title: "You're missing something!",
-        details: 'Missing: Title',
-        icon: '!'
+        details: "Missing: Title",
+        icon: "!",
       });
+      missingRequired = true;
     }
     if (!description.trim()) {
       errors.push({
         title: "You're missing something!",
-        details: 'Missing: Description',
-        icon: '!'
+        details: "Missing: Description",
+        icon: "!",
       });
+      missingRequired = true;
     }
     if (!location.trim()) {
       errors.push({
         title: "You're missing something!",
-        details: 'Missing: Location',
-        icon: '!'
+        details: "Missing: Location",
+        icon: "!",
       });
+      missingRequired = true;
     }
     if (!date.trim()) {
       errors.push({
         title: "You're missing something!",
-        details: 'Missing: Date',
-        icon: '!'
+        details: "Missing: Date",
+        icon: "!",
+      });
+      missingRequired = true;
+    }
+
+    // Time required and must be a valid range
+    if (!time.trim()) {
+      errors.push({
+        title: "You're missing something!",
+        details: "Missing: Time",
+        icon: "!",
+      });
+      missingRequired = true;
+    } else if (!isValidTimeRange(time)) {
+      errors.push({
+        title: "Error: Invalid time format.",
+        details: "Expected format: 1:00 PM - 2:00 PM",
+        icon: "!",
       });
     }
 
-    // Time Validation (Format: "HH:MM AM/PM - HH:MM AM/PM")
-    // Simple check: needs to look like a time range
-    if (time.trim()) { 
-        if (!time.includes('-')) {
-           errors.push({
-            title: 'Error: Invalid time format.',
-            details: 'Expected format: 1:00 PM - 2:00 PM',
-            icon: '!'
-          });
-        }
-      }
-
     // Check for specific tag requirement
-    const dealTypeTags = tags.filter(tag =>
-      TAG_CATEGORIES['Deal type'].some(dealTag => dealTag.name === tag)
+    const dealTypeTags = tags.filter((tag) =>
+      TAG_CATEGORIES["Deal type"].some((dealTag) => dealTag.name === tag)
     );
     if (dealTypeTags.length === 0) {
       errors.push({
         title: "You're missing something!",
-        details: 'Missing: Deal type tag',
-        icon: '!'
+        details: "Missing: Deal type tag",
+        icon: "!",
       });
     }
 
     if (tags.length > 30) {
       errors.push({
         title: "You can't add too many tags!",
-        details: 'Limit: 30',
-        icon: '!'
+        details: "Limit: 30",
+        icon: "!",
+      });
+    }
+
+    if (missingRequired) {
+      errors.unshift({
+        title: "Fill out all the required Fields",
+        details: "Title, description, location, date, and time are required.",
+        icon: "!",
       });
     }
 
@@ -317,37 +359,56 @@ export default function AddContributionScreen({ navigation }) {
   };
 
   const handlePost = async () => {
-    // 1. Run validation
+    // Ensure auth token is present
+    if (!api.defaults.headers.common.Authorization) {
+      const stored = await AsyncStorage.getItem("authToken");
+      if (stored) {
+        api.defaults.headers.common.Authorization = `Bearer ${stored}`;
+      } else {
+        Alert.alert("Login required", "Please log in again to post.");
+        return;
+      }
+    }
+
     if (!validateForm()) {
-      // Errors are already set and modal shown by validateForm
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      // Convert date from MM/DD/YYYY to ISO string
-      const [month, day, year] = date.split('/');
-      const dateObj = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
-      
-      // Backend expects: title, description, location, date, time, tags
-      await api.post('/community', {
-        title: title,
-        description: description,
-        location: location,
-        date: dateObj.toISOString(),
-        time: time.trim() || undefined,
-        tags: tags,
-      });
+    const payload = {
+      title: title.trim(),
+      description: description.trim(),
+      location: location.trim(),
+      date: date,
+      time: time.trim() ? time : "All Day",
+      tags: tags,
+      address: location.trim(),
+      coverImage: coverImage,
+      images: [
+        ...(coverImage ? [coverImage] : []),
+        ...menuItems.filter((m) => m.image).map((m) => m.image),
+      ],
+      menu: menuItems.map((m) => ({
+        title: m.title,
+        items: [],
+        image: m.image || undefined,
+      })),
+    };
 
-      Alert.alert('Success', 'Your contribution has been posted!', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
+    try {
+      setSubmitting(true);
+      // Allow more time for large image payloads to upload.
+      const res = await api.post("/contributions", payload, { timeout: 45000 });
+      const saved = res.data;
+      navigation.navigate("Community", { newPost: saved, refresh: true });
     } catch (error) {
-      console.error('Error posting contribution:', error);
-      const errorMessage = error.response?.data?.error || error.response?.data?.details?.[0] || error.message || 'Failed to post contribution';
-      Alert.alert('Error', errorMessage);
+      const message =
+        error.response?.data?.error ||
+        error.response?.data?.errors?.[0]?.msg ||
+        error.message ||
+        "Unable to save contribution.";
+      Alert.alert("Could not post", message);
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
 
@@ -363,30 +424,78 @@ export default function AddContributionScreen({ navigation }) {
     }
   };
 
+  useEffect(() => {
+    const requestPermission = async () => {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      setLibraryPermission(status === "granted");
+    };
+    requestPermission();
+  }, []);
+
+  const pickImageFromLibrary = useCallback(
+    async (onPick) => {
+      if (libraryPermission === false) {
+        Alert.alert(
+          "Permission needed",
+          "Please allow photo access to add images."
+        );
+        return;
+      }
+
+      if (libraryPermission === null) {
+        const { status } =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const granted = status === "granted";
+        setLibraryPermission(granted);
+        if (!granted) {
+          Alert.alert(
+            "Permission needed",
+            "Please allow photo access to add images."
+          );
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        base64: false,
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+      const asset = result.assets[0];
+      const compressed = await compressImage(asset.uri);
+      const dataUri =
+        compressed ||
+        (asset.base64
+          ? `data:${asset.type || "image/jpeg"};base64,${asset.base64}`
+          : asset.uri);
+      if (onPick) onPick(dataUri);
+    },
+    [libraryPermission]
+  );
+
   const handleAddMenuItem = () => {
     if (!newItemTitle.trim()) {
-      setModalError('Title is required.');
+      setModalError("Title is required.");
       return;
     }
     const newItem = {
       id: Date.now().toString(),
       title: newItemTitle,
-      image: newItemImage,
+      image: newItemImage || null,
     };
     setMenuItems([...menuItems, newItem]);
     setIsMenuModalVisible(false);
-    setNewItemTitle('');
+    setNewItemTitle("");
     setNewItemImage(null);
-    setModalError('');
-  };
-
-  const handlePickImage = () => {
-    console.log('Opening image picker...');
+    setModalError("");
   };
 
   // Handler for when a day is pressed on the calendar
   const onDayPress = (day) => {
-    const [year, month, dayStr] = day.dateString.split('-');
+    const [year, month, dayStr] = day.dateString.split("-");
     const formattedDate = `${month}/${dayStr}/${year}`;
 
     setDate(formattedDate);
@@ -398,25 +507,48 @@ export default function AddContributionScreen({ navigation }) {
 
   // Helper to convert our MM/DD/YYYY state back to YYYY-MM-DD for the calendar
   const getSelectedDateForCalendar = () => {
-    if (!date) return '';
-    const [month, day, year] = date.split('/');
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    if (!date) return "";
+    const [month, day, year] = date.split("/");
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView style={styles.scrollView}>
           <View style={styles.formContainer}>
             {/* Cover Image */}
             <Text style={styles.label}>Cover Image</Text>
-            <TouchableOpacity style={styles.imagePicker}>
-              <View style={styles.imagePlaceholder}>
-                <Ionicons name="image-outline" size={50} color={BORDER_GRAY} />
-              </View>
+            <TouchableOpacity
+              style={styles.imagePicker}
+              activeOpacity={0.9}
+              onPress={() =>
+                pickImageFromLibrary((uri) => {
+                  setCoverImage(uri);
+                })
+              }
+            >
+              {coverImage ? (
+                <Image
+                  source={{ uri: coverImage }}
+                  style={styles.coverPreview}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.imagePlaceholder}>
+                  <Ionicons
+                    name="image-outline"
+                    size={50}
+                    color={BORDER_GRAY}
+                  />
+                  <Text style={styles.imageHint}>
+                    Tap to pick a cover photo
+                  </Text>
+                </View>
+              )}
               <View style={styles.addIconCircle}>
                 <Ionicons name="add" size={20} color="white" />
               </View>
@@ -428,10 +560,7 @@ export default function AddContributionScreen({ navigation }) {
               <Text style={styles.charCount}>{title.length}/500</Text>
             </View>
             <View
-              style={[
-                styles.inputContainer,
-                errors.title && styles.inputError,
-              ]}
+              style={[styles.inputContainer, errors.title && styles.inputError]}
             >
               <TextInput
                 style={styles.input}
@@ -533,7 +662,7 @@ export default function AddContributionScreen({ navigation }) {
                       date ? {} : styles.placeholderText,
                     ]}
                   >
-                    {date || '10/24/2025'}
+                    {date || "10/24/2025"}
                   </Text>
                   <Ionicons
                     name="calendar-outline"
@@ -544,29 +673,27 @@ export default function AddContributionScreen({ navigation }) {
                 {errors.date && (
                   <Text style={styles.fieldErrorText}>{errors.date}</Text>
                 )}
-              </View>
+            </View>
 
-              <View style={styles.halfInput}>
-                <Text style={styles.label}>
-                  Time <Text style={styles.optional}>(Optional)</Text>
-                </Text>
+            <View style={styles.halfInput}>
+              <Text style={styles.label}>Time</Text>
 
-                {/* NEW: time error bubble (like screenshot) */}
-                {errors.time && (
-                  <View style={styles.timeErrorContainer}>
-                    <View style={styles.timeErrorBadge}>
-                      <Text style={styles.timeErrorBadgeText}>1</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.timeErrorTitle}>
-                        Error: Invalid time range.
-                      </Text>
-                      <Text style={styles.timeErrorSubtitle}>
-                        Double-check your AM and PM.
-                      </Text>
-                    </View>
+              {/* Time error bubble */}
+              {errors.time && (
+                <View style={styles.timeErrorContainer}>
+                  <View style={styles.timeErrorBadge}>
+                    <Text style={styles.timeErrorBadgeText}>1</Text>
                   </View>
-                )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.timeErrorTitle}>
+                      Error: Invalid time range.
+                    </Text>
+                    <Text style={styles.timeErrorSubtitle}>
+                      Use format: 12:30 PM - 1:30 PM.
+                    </Text>
+                  </View>
+                </View>
+              )}
 
                 <View
                   style={[
@@ -575,20 +702,23 @@ export default function AddContributionScreen({ navigation }) {
                   ]}
                 >
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, styles.dateText]}
                     value={time}
                     onChangeText={(text) => {
                       setTime(text);
-                      if (errors.time) {
+                      if (errors.time && isValidTimeRange(text)) {
                         setErrors((prev) => ({ ...prev, time: undefined }));
                       }
                     }}
-                    placeholder="1:30PM - 2:30PM"
+                    placeholder="e.g., 12:30 PM - 1:30 PM"
+                    placeholderTextColor={TEXT_GRAY}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
                   />
-                  <Ionicons name="time-outline" size={20} color={TEXT_GRAY} />
-                </View>
+                <Ionicons name="time-outline" size={20} color={TEXT_GRAY} />
               </View>
             </View>
+          </View>
 
             {/* Menu Section */}
             <View style={styles.labelRow}>
@@ -636,7 +766,9 @@ export default function AddContributionScreen({ navigation }) {
                     },
                   ]}
                 >
-                  <Text style={[styles.tagText, { color: 'white' }]}>{tag}</Text>
+                  <Text style={[styles.tagText, { color: "white" }]}>
+                    {tag}
+                  </Text>
                   <TouchableOpacity onPress={() => handleRemoveTag(tag)}>
                     <Ionicons name="close" size={14} color="white" />
                   </TouchableOpacity>
@@ -678,7 +810,7 @@ export default function AddContributionScreen({ navigation }) {
       >
         <View style={styles.modalBackdrop}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={styles.modalContainer}
           >
             <View style={styles.menuModalContent}>
@@ -690,14 +822,42 @@ export default function AddContributionScreen({ navigation }) {
                 onChangeText={setNewItemTitle}
                 placeholder="e.g., Chicken Sandwich"
               />
-              <Text style={styles.modalLabel}>Image (optional)</Text>
-              <TouchableOpacity
-                style={styles.modalImagePicker}
-                onPress={handlePickImage}
-              >
-                <Ionicons name="camera-outline" size={24} color={TEXT_GRAY} />
-                <Text style={styles.modalImagePickerText}>Add Image</Text>
-              </TouchableOpacity>
+              <Text style={styles.modalLabel}>Image URL (optional)</Text>
+              <View style={{ gap: 12 }}>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newItemImage || ""}
+                  onChangeText={setNewItemImage}
+                  placeholder="Select or paste an image"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <View style={styles.modalImagePickerRow}>
+                  <TouchableOpacity
+                    style={styles.modalImagePicker}
+                    onPress={() =>
+                      pickImageFromLibrary((uri) => {
+                        setNewItemImage(uri);
+                      })
+                    }
+                  >
+                    <Ionicons
+                      name="camera-outline"
+                      size={24}
+                      color={TEXT_GRAY}
+                    />
+                    <Text style={styles.modalImagePickerText}>
+                      Pick from photos
+                    </Text>
+                  </TouchableOpacity>
+                  {newItemImage ? (
+                    <Image
+                      source={{ uri: newItemImage }}
+                      style={styles.modalImagePreview}
+                    />
+                  ) : null}
+                </View>
+              </View>
               {modalError ? (
                 <Text style={styles.modalErrorText}>{modalError}</Text>
               ) : null}
@@ -756,7 +916,7 @@ export default function AddContributionScreen({ navigation }) {
                           },
                         ]}
                       >
-                        <Text style={[styles.tagText, { color: 'white' }]}>
+                        <Text style={[styles.tagText, { color: "white" }]}>
                           {tag}
                         </Text>
                         <TouchableOpacity onPress={() => handleRemoveTag(tag)}>
@@ -836,7 +996,7 @@ export default function AddContributionScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   scrollView: {
     flex: 1,
@@ -846,14 +1006,14 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: "500",
+    color: "#333",
     marginBottom: 8,
   },
   labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   charCount: {
     fontSize: 12,
@@ -862,42 +1022,58 @@ const styles = StyleSheet.create({
   optional: {
     fontSize: 12,
     color: TEXT_GRAY,
-    fontWeight: 'normal',
+    fontWeight: "normal",
   },
   imagePicker: {
-    width: '100%',
+    width: "100%",
     height: 180,
     borderRadius: 12,
     backgroundColor: LIGHT_GRAY,
     borderWidth: 1,
     borderColor: BORDER_GRAY,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 20,
-    position: 'relative',
+    position: "relative",
   },
   imagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  coverPreview: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 12,
+  },
+  imageHint: {
+    marginTop: 8,
+    color: TEXT_GRAY,
+  },
+  imageInput: {
+    flex: 0,
+    height: 48,
+    marginTop: 8,
+    marginBottom: 20,
+    backgroundColor: "#fff",
   },
   addIconCircle: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -10,
     right: 10,
     backgroundColor: BRAND_GREEN,
     borderRadius: 15,
     width: 30,
     height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 2,
-    borderColor: 'white',
+    borderColor: "white",
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: LIGHT_GRAY,
     borderWidth: 1,
     borderColor: BORDER_GRAY,
@@ -909,31 +1085,77 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 50,
     fontSize: 16,
-    color: '#333',
+    color: "#333",
+  },
+  timeRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  timeField: {
+    flex: 1,
+  },
+  timePickerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    paddingTop: 80,
+  },
+  timePickerCard: {
+    width: "90%",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+  },
+  timePickerTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  timePickerRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  timePickerLabel: {
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  timePickerDone: {
+    marginTop: 8,
+    alignSelf: "center",
+    backgroundColor: BRAND_GREEN,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  timePickerDoneText: {
+    color: "#fff",
+    fontWeight: "700",
   },
   // Style for the Date <Text> field
   dateText: {
-    height: 'auto',
+    height: "auto",
     paddingVertical: 15,
   },
   placeholderText: {
-    color: '#C7C7CD',
+    color: "#C7C7CD",
   },
   textAreaContainer: {
     height: 120,
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   textArea: {
     height: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
     paddingTop: 15,
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   halfInput: {
-    width: '48%',
+    width: "48%",
   },
   menuContainer: {
     backgroundColor: BRAND_GREEN,
@@ -944,68 +1166,68 @@ const styles = StyleSheet.create({
   menuItemCard: {
     width: 140,
     height: 140,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    backgroundColor: "rgba(255,255,255,0.8)",
     borderRadius: 12,
     marginRight: 10,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   menuItemImagePlaceholder: {
-    width: '100%',
+    width: "100%",
     height: 100,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255,255,255,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   menuItemTitle: {
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: "500",
+    color: "#333",
     paddingHorizontal: 10,
     paddingVertical: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   addItemCard: {
     width: 140,
     height: 140,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.8)',
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: "rgba(255,255,255,0.8)",
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
   },
   addItemText: {
-    color: 'white',
+    color: "white",
     marginTop: 5,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContainer: {
-    width: '100%',
+    width: "100%",
   },
   menuModalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 30,
   },
   menuModalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
   },
   modalLabel: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: "500",
+    color: "#333",
     marginBottom: 8,
   },
   modalInput: {
-    width: '100%',
+    width: "100%",
     height: 50,
     backgroundColor: LIGHT_GRAY,
     borderWidth: 1,
@@ -1016,62 +1238,73 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   modalImagePicker: {
-    width: '100%',
+    width: "100%",
     height: 100,
     backgroundColor: LIGHT_GRAY,
     borderWidth: 1,
     borderColor: BORDER_GRAY,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
   },
   modalImagePickerText: {
     color: TEXT_GRAY,
     marginLeft: 10,
     fontSize: 16,
   },
+  modalImagePickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  modalImagePreview: {
+    width: "100%",
+    height: 160,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
   modalErrorText: {
     color: ERROR_RED,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 15,
   },
   modalButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: 30,
   },
   modalButton: {
     flex: 1,
     padding: 15,
     borderRadius: 30,
-    alignItems: 'center',
+    alignItems: "center",
   },
   cancelButton: {
     backgroundColor: LIGHT_GRAY,
     marginRight: 10,
   },
   cancelButtonText: {
-    color: '#333',
-    fontWeight: 'bold',
+    color: "#333",
+    fontWeight: "bold",
   },
   addButton: {
     backgroundColor: BRAND_GREEN,
     marginLeft: 10,
   },
   addButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
   },
   tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginBottom: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 15,
@@ -1080,7 +1313,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   tagText: {
-    fontWeight: '500',
+    fontWeight: "500",
     marginRight: 5,
   },
   addTagButton: {
@@ -1088,13 +1321,13 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     backgroundColor: TEXT_GRAY,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 8,
   },
   postButtonContainer: {
     padding: 20,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderTopWidth: 1,
     borderColor: BORDER_GRAY,
   },
@@ -1102,11 +1335,11 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND_GREEN,
     padding: 18,
     borderRadius: 30,
-    alignItems: 'center',
+    alignItems: "center",
   },
   postButtonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+    color: "#FFFFFF",
+    fontWeight: "bold",
     fontSize: 16,
   },
   postButtonDisabled: {
@@ -1114,95 +1347,95 @@ const styles = StyleSheet.create({
   },
   tagModalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   tagModalContent: {
-    width: '90%',
-    height: '80%',
-    backgroundColor: 'white',
+    width: "90%",
+    height: "80%",
+    backgroundColor: "white",
     borderRadius: 20,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 15,
     borderBottomWidth: 1,
     borderColor: BORDER_GRAY,
   },
   modalTitle_Tags: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   selectedTagsContainer: {
     padding: 15,
   },
   noTagsText: {
     color: TEXT_GRAY,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   categoryContainer: {
     borderBottomWidth: 1,
     borderColor: BORDER_GRAY,
   },
   categoryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 15,
     backgroundColor: LIGHT_GRAY,
   },
   categoryTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   categoryCount: {
     fontSize: 14,
-    fontWeight: 'normal',
+    fontWeight: "normal",
     color: TEXT_GRAY,
   },
   categoryContent: {
     padding: 15,
   },
   checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 15,
   },
   checkboxLabel: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     marginLeft: 10,
   },
   doneButton: {
     backgroundColor: BRAND_GREEN,
     padding: 18,
     borderRadius: 30,
-    alignItems: 'center',
+    alignItems: "center",
     margin: 15,
   },
   doneButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
     fontSize: 16,
   },
   calendarBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   calendarContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 16,
-    width: '90%',
+    width: "90%",
     padding: 10,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
 
   // NEW: generic input error styles
@@ -1218,9 +1451,9 @@ const styles = StyleSheet.create({
 
   // NEW: time error bubble like screenshot
   timeErrorContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#FDECEA',
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#FDECEA",
     borderRadius: 8,
     padding: 8,
     marginBottom: 8,
@@ -1230,23 +1463,23 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     backgroundColor: BRAND_GREEN,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 8,
     marginTop: 2,
   },
   timeErrorBadgeText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
     fontSize: 12,
   },
   timeErrorTitle: {
     color: ERROR_RED,
-    fontWeight: '600',
+    fontWeight: "600",
     fontSize: 13,
   },
   timeErrorSubtitle: {
-    color: '#555',
+    color: "#555",
     fontSize: 11,
   },
 });

@@ -6,36 +6,73 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { login } from '../services/authService';
+import { Ionicons } from '@expo/vector-icons'; // 1. Import Ionicons
+import api from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BRAND_GREEN = '#A8B84C';
+const ERROR_RED = '#D9534F';
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordSecure, setIsPasswordSecure] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
+    const trimmedEmail = email.trim().toLowerCase();
+
+    if (!trimmedEmail || !password) {
+      setErrorMessage('Email and password are required.');
       return;
     }
 
-    setLoading(true);
+    if (!emailRegex.test(trimmedEmail)) {
+      setErrorMessage('Please enter a valid email address.');
+      return;
+    }
+
+    setErrorMessage('');
+    setIsLoading(true);
+
     try {
-      await login(email, password);
-      // Navigate to Home on success
+      const response = await api.post('/auth/login', {
+        email: trimmedEmail,
+        password,
+      });
+
+      // Attach JWT for subsequent requests in this session
+      if (response.data?.token) {
+        const token = response.data.token;
+        api.defaults.headers.common.Authorization = `Bearer ${token}`;
+        try {
+          await AsyncStorage.setItem('authToken', token);
+        } catch (err) {
+          // non-fatal if storage fails
+          console.warn('Unable to persist auth token:', err.message);
+        }
+      }
+
       navigation.replace('Home');
     } catch (error) {
-      Alert.alert('Login Failed', error.message || 'Invalid email or password');
+      let message = 'Unable to log in. Please try again.';
+
+      if (error.response?.data?.error) {
+        message = error.response.data.error;
+      } else if (error.response?.data?.errors?.length) {
+        message = error.response.data.errors[0].msg;
+      } else if (error.request) {
+        message = 'Cannot reach the server. Check your connection or API URL.';
+      }
+
+      setErrorMessage(message);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -46,11 +83,12 @@ export default function LoginScreen({ navigation }) {
 
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder="Email address"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          textContentType="emailAddress"
         />
 
         {/* 3. Wrap password input in a View */}
@@ -61,6 +99,7 @@ export default function LoginScreen({ navigation }) {
             value={password}
             onChangeText={setPassword}
             secureTextEntry={isPasswordSecure} // 4. Use state here
+            textContentType="password"
           />
           {/* 5. Add the icon button */}
           <TouchableOpacity
@@ -82,12 +121,16 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+        {errorMessage ? (
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        ) : null}
+
+        <TouchableOpacity
+          style={[styles.loginButton, isLoading && styles.disabledButton]}
           onPress={handleLogin}
-          disabled={loading}
+          disabled={isLoading}
         >
-          {loading ? (
+          {isLoading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <Text style={styles.loginButtonText}>Log In</Text>
@@ -157,6 +200,12 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     marginBottom: 30,
   },
+  errorText: {
+    color: ERROR_RED,
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
   forgotPasswordText: {
     color: BRAND_GREEN,
     fontSize: 14,
@@ -188,7 +237,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 5,
   },
-  loginButtonDisabled: {
-    opacity: 0.6,
+  disabledButton: {
+    opacity: 0.7,
   },
 });
