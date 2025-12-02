@@ -35,7 +35,9 @@ const RestaurantCard = ({
 
     return (photoReference, maxWidth = 600) => {
       if (!photoReference) return null;
-      return `${root}/api/photos/${encodeURIComponent(photoReference)}?maxwidth=${maxWidth}`;
+      return `${root}/api/photos/${encodeURIComponent(
+        photoReference
+      )}?maxwidth=${maxWidth}`;
     };
   }, []);
 
@@ -46,7 +48,8 @@ const RestaurantCard = ({
         typeof primary === "object" && typeof primary?.uri === "string"
           ? primary.uri
           : null;
-      const inlineUriSafe = inlineUri && inlineUri.includes("key=") ? null : inlineUri;
+      const inlineUriSafe =
+        inlineUri && inlineUri.includes("key=") ? null : inlineUri;
 
       const proxyUri =
         typeof primary === "object" && primary?.photo_reference
@@ -111,10 +114,7 @@ const RestaurantCard = ({
               event.stopPropagation();
               onToggleFavorite?.();
             }}
-            style={[
-              styles.favoriteBadge,
-              favorite && styles.favoriteBadgeOn,
-            ]}
+            style={[styles.favoriteBadge, favorite && styles.favoriteBadgeOn]}
             hitSlop={10}
           >
             <Ionicons
@@ -132,16 +132,13 @@ const RestaurantCard = ({
       <Text style={styles.name} numberOfLines={2}>
         {item?.name || "Unnamed place"}
       </Text>
-      
+
       <View style={styles.metaRow}>
-        <Text style={styles.dateText}>
-          {item?.date || "Available now"}
-        </Text>
+        <Text style={styles.dateText}>{item?.date || "Available now"}</Text>
         {distanceLabel ? (
           <Text style={styles.distance}>{distanceLabel}</Text>
         ) : null}
       </View>
-
 
       <View style={styles.bottomRow}>
         {displayTags.length > 0 && (

@@ -26,7 +26,12 @@ const deriveBaseUrl = () => {
   return "http://localhost:5050/api";
 };
 
+<<<<<<< Updated upstream
 export const API_BASE_URL = deriveBaseUrl();
+=======
+// Initialize base URL (will be set asynchronously)
+export let API_BASE_URL = getLocalhostUrl() || "http://localhost:5050/api";
+>>>>>>> Stashed changes
 
 // Some endpoints (uploads / large datasets) can take longer than 10s, so give a larger window.
 const api = axios.create({
