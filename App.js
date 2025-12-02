@@ -1,32 +1,65 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { useFonts, HankenGrotesk_400Regular, HankenGrotesk_600SemiBold, HankenGrotesk_300Light } from "@expo-google-fonts/hanken-grotesk";
+import { Geologica_600SemiBold, Geologica_700Bold, Geologica_400Regular } from "@expo-google-fonts/geologica";
+import * as SplashScreen from "expo-splash-screen";
 import AppNavigator from "./src/navigation/AppNavigator";
 import AnimatedSplashScreen from './src/screens/AnimatedSplashScreen';
+import { UserProvider } from "./src/contexts/UserContext";
+import { LikesProvider } from "./src/contexts/LikesContext";
 
 // 1. Import NavigationContainer here
 import { NavigationContainer } from '@react-navigation/native';
+import { AuthProvider } from './src/context/AuthContext';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
 
 export default function App() {
-  const [isAppReady, setIsAppReady] = useState(false);
+  const [fontsLoaded] = useFonts({
+    "HankenGrotesk-Light": HankenGrotesk_300Light,
+    "HankenGrotesk-Regular": HankenGrotesk_400Regular,
+    "HankenGrotesk-SemiBold": HankenGrotesk_600SemiBold,
+    "Geologica-Regular": Geologica_400Regular,
+    "Geologica-SemiBold": Geologica_600SemiBold,
+    "Geologica-Bold": Geologica_700Bold,
+  });
 
+  const [isAnimationFinished, setIsAnimationFinished] = useState(false);
+
+  const onAnimationFinish = useCallback(() => {
+    setIsAnimationFinished(true);
+  }, []);
+
+  // Hide splash screen when both fonts are loaded and animation is finished
+  const isAppReady = fontsLoaded && isAnimationFinished;
+
+  useEffect(() => {
+    if (isAppReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [isAppReady]);
+
+  // Show animated splash screen until fonts are loaded and animation finishes
   if (!isAppReady) {
     return (
       <AnimatedSplashScreen
-        onAnimationFinish={() => {
-          setIsAppReady(true);
-        }}
+        onAnimationFinish={onAnimationFinish}
       />
     );
   }
 
-
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <SafeAreaView style={{ flex: 1 }}>
-          <AppNavigator />
-        </SafeAreaView>
-      </NavigationContainer>
+      <UserProvider>
+        <LikesProvider>
+          <NavigationContainer>
+            <SafeAreaView style={{ flex: 1 }}>
+              <AppNavigator />
+            </SafeAreaView>
+          </NavigationContainer>
+        </LikesProvider>
+      </UserProvider>
     </SafeAreaProvider>
   );
 }

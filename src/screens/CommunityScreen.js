@@ -11,6 +11,8 @@ import {
   Keyboard,
   Pressable,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FilterModal from '../components/FilterModal';
@@ -398,19 +400,19 @@ export default function CommunityScreen({ navigation, route }) {
   const applyFilters = (filters) => {
     const filterList = (list) => {
       return list.filter(item => {
-        const itemDist = parseFloat(item.distance.split(' ')[0]);
+        const itemDist = parseFloat(item.distance?.split(' ')[0] || '0');
         if (itemDist < filters.minDist || itemDist > filters.maxDist) return false;
         if (filters.dietary.length > 0) {
-          const hasDietaryMatch = item.tags.some(tag => filters.dietary.includes(tag));
+          const hasDietaryMatch = item.tags?.some(tag => filters.dietary.includes(tag));
           if (!hasDietaryMatch) return false;
         }
         return true;
       });
     };
-    setDisplayRecs(filterList(recommendations));
-    setDisplayEvents(filterList(events));
-    setDisplayTrending(filterList(trending));
-    setDisplayClosest(filterList(closest));
+    setDisplayRecs(filterList(posts));
+    setDisplayEvents(filterList(posts));
+    setDisplayTrending(filterList(posts));
+    setDisplayClosest(filterList(posts));
   };
 
   const handleBackSearch = () => {
@@ -619,9 +621,16 @@ export default function CommunityScreen({ navigation, route }) {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {isSearchFocused ? renderSearchContent() : renderMainFeed()}
-      </ScrollView>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={BRAND_GREEN} />
+          <Text style={styles.loadingText}>Loading posts...</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          {isSearchFocused ? renderSearchContent() : renderMainFeed()}
+        </ScrollView>
+      )}
 
       <FilterModal 
         visible={isFilterVisible} 

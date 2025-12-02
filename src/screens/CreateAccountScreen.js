@@ -16,7 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BRAND_GREEN = '#A8B84C';
 const ERROR_RED = '#D9534F';
 
-// 1. A standard regex for basic email validation
+// A standard regex for basic email validation
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function CreateAccountScreen({ navigation }) {
@@ -24,6 +24,7 @@ export default function CreateAccountScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isUCLAStudent, setIsUCLAStudent] = useState(false);
 
   const [isPasswordSecure, setIsPasswordSecure] = useState(true);
   const [isConfirmPasswordSecure, setIsConfirmPasswordSecure] = useState(true);
@@ -55,11 +56,14 @@ export default function CreateAccountScreen({ navigation }) {
     // 4. Check for password mismatch
     if (password !== confirmPassword) {
       setErrorMessage('Passwords do not match. Please try again.');
-      return; // Stop the function here
+      return;
     }
 
-    // If all checks pass:
-    setErrorMessage(''); // Clear any previous errors
+    // Check password length (backend requires min 6)
+    if (password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters long.');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -171,7 +175,7 @@ export default function CreateAccountScreen({ navigation }) {
         ) : null}
 
         <TouchableOpacity
-          style={styles.createButton}
+          style={[styles.createButton, loading && styles.createButtonDisabled]}
           onPress={handleCreateAccount}
           disabled={isLoading}
         >

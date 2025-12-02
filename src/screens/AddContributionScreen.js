@@ -265,6 +265,7 @@ export default function AddContributionScreen({ navigation }) {
 
   const [validationErrors, setValidationErrors] = useState([]);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // NEW: form errors (for required fields + time)
   const [errors, setErrors] = useState({});
@@ -786,8 +787,16 @@ export default function AddContributionScreen({ navigation }) {
 
         {/* Post Button */}
         <View style={styles.postButtonContainer}>
-          <TouchableOpacity style={styles.postButton} onPress={handlePost}>
-            <Text style={styles.postButtonText}>Post</Text>
+          <TouchableOpacity 
+            style={[styles.postButton, isSubmitting && styles.postButtonDisabled]} 
+            onPress={handlePost}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.postButtonText}>Post</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -1332,6 +1341,9 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  postButtonDisabled: {
+    opacity: 0.6,
   },
   tagModalBackdrop: {
     flex: 1,
