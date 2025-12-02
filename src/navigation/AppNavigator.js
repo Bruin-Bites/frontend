@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable } from "react-native";
+import { Pressable, View, ActivityIndicator } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -141,8 +141,43 @@ export default function AppNavigator() {
         />
         <Stack.Screen
           name="Recipes"
-          component={RecipesScreen}
+          component={UserRecipesScreen}
           options={{ title: "Budget Recipes" }}
+        />
+        <Stack.Screen
+          name="AIRecipeBot"
+          component={AIRecipeBotScreen}
+          options={{ title: "AI Recipe Bot" }}
+        />
+        <Stack.Screen
+          name="SavedRecipes"
+          component={SavedRecipesScreen}
+          options={{ title: "My Recipes" }}
+        />
+        <Stack.Screen
+          name="UserRecipes"
+          component={UserRecipesScreen}
+          options={{ title: "Budget Recipes" }}
+        />
+        <Stack.Screen
+          name="Chat"
+          component={ChatScreen}
+          options={{ title: "Chat" }}
+        />
+        <Stack.Screen
+          name="RecipeDetail"
+          component={RecipeDetailScreen}
+          options={{ title: "Recipe Details" }}
+        />
+        <Stack.Screen
+          name="RecipeSearch"
+          component={RecipeSearchScreen}
+          options={{ title: "Search Recipes" }}
+        />
+        <Stack.Screen
+          name="Filter"
+          component={FilterScreen}
+          options={{ title: "Filters" }}
         />
         <Stack.Screen name="Community" component={CommunityScreen} />
         <Stack.Screen

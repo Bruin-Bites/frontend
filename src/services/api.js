@@ -3,14 +3,61 @@ import Constants from "expo-constants";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TOKEN_KEY = '@bruin_bites_token';
+const NGROK_URL_KEY = '@bruin_bites_ngrok_url';
 
-const deriveBaseUrl = () => {
+// Cache for ngrok URL
+let cachedNgrokUrl = null;
+
+const deriveBaseUrl = async () => {
+  // Priority 1: Environment variable
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   if (envUrl) return envUrl;
 
+  // Priority 2: Expo config extra
   const extraUrl = Constants?.expoConfig?.extra?.API_URL;
   if (extraUrl) return extraUrl;
 
+  // Priority 3: Try to get ngrok URL from backend
+  try {
+    // Check cache first
+    if (cachedNgrokUrl) {
+      return `${cachedNgrokUrl}/api`;
+    }
+
+    // Check AsyncStorage
+    const storedNgrokUrl = await AsyncStorage.getItem(NGROK_URL_KEY);
+    if (storedNgrokUrl) {
+      cachedNgrokUrl = storedNgrokUrl;
+      return `${storedNgrokUrl}/api`;
+    }
+
+    // Try to fetch from backend (non-blocking)
+    // Use localhost to fetch ngrok URL
+    const localhostUrl = getLocalhostUrl();
+    if (localhostUrl) {
+      try {
+        const response = await axios.get(`${localhostUrl.replace('/api', '')}/ngrok-url`, {
+          timeout: 2000
+        });
+        if (response.data?.url) {
+          cachedNgrokUrl = response.data.url;
+          await AsyncStorage.setItem(NGROK_URL_KEY, response.data.url);
+          return `${response.data.url}/api`;
+        }
+      } catch (error) {
+        // Silently fail - ngrok might not be running
+        console.log('Ngrok not available, using localhost');
+      }
+    }
+  } catch (error) {
+    // Fall through to localhost
+  }
+
+  // Priority 4: Localhost fallback
+  return getLocalhostUrl() || "http://localhost:5050/api";
+};
+
+const getLocalhostUrl = () => {
   const hostUri = Constants?.expoConfig?.hostUri;
   if (hostUri) {
     const host = hostUri.split(":")[0];
@@ -26,13 +73,46 @@ const deriveBaseUrl = () => {
   return "http://localhost:5050/api";
 };
 
-export const API_BASE_URL = deriveBaseUrl();
+// Initialize base URL (will be set asynchronously)
+let API_BASE_URL = getLocalhostUrl() || "http://localhost:5050/api";
 
 // Some endpoints (uploads / large datasets) can take longer than 10s, so give a larger window.
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
 });
+
+// Export function to get current base URL
+export const getApiBaseUrl = () => API_BASE_URL;
+
+// Initialize and update base URL
+(async () => {
+  API_BASE_URL = await deriveBaseUrl();
+  // Update axios instance with new base URL
+  api.defaults.baseURL = API_BASE_URL;
+  console.log('📡 API Base URL:', API_BASE_URL);
+})();
+
+// Function to refresh ngrok URL
+export const refreshNgrokUrl = async () => {
+  try {
+    const localhostUrl = getLocalhostUrl();
+    if (localhostUrl) {
+      const response = await axios.get(`${localhostUrl.replace('/api', '')}/ngrok-url`, {
+        timeout: 2000
+      });
+      if (response.data?.url) {
+        cachedNgrokUrl = response.data.url;
+        await AsyncStorage.setItem(NGROK_URL_KEY, response.data.url);
+        api.defaults.baseURL = `${response.data.url}/api`;
+        return `${response.data.url}/api`;
+      }
+    }
+  } catch (error) {
+    console.log('Failed to refresh ngrok URL:', error.message);
+  }
+  return null;
+};
 
 // Request interceptor to attach token to all requests
 api.interceptors.request.use(

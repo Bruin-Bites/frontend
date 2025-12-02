@@ -51,15 +51,17 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <UserProvider>
-        <LikesProvider>
-          <NavigationContainer>
-            <SafeAreaView style={{ flex: 1 }}>
-              <AppNavigator />
-            </SafeAreaView>
-          </NavigationContainer>
-        </LikesProvider>
-      </UserProvider>
+      <AuthProvider>
+        <UserProvider>
+          <LikesProvider>
+            <NavigationContainer>
+              <SafeAreaView style={{ flex: 1 }}>
+                <AppNavigator />
+              </SafeAreaView>
+            </NavigationContainer>
+          </LikesProvider>
+        </UserProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
