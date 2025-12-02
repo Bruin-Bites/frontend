@@ -2,11 +2,10 @@ import React, { useRef, useState } from "react";
 import { View, Text, FlatList, StyleSheet, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import api from "../services/api";
-import { colors } from "../theme/colors";
+import { generateRecipe } from "../services/recipeService";
 import RecipeCard from "../components/RecipeCard";
 
-export default function ChatScreen() { 
+export default function ChatScreen() {
   // chat state
   const [messages, setMessages] = useState([
     { id: "sys-0", role: "assistant", text: "Hi! I'm your AI Recipe Bot. Send me ingredients or a recipe name, and I'll create a custom recipe for you!" }
@@ -26,17 +25,17 @@ export default function ChatScreen() {
     setSending(true);
 
     try {
-      const res = await api.post("/chat/recipes", {
-        message: trimmed,
-        history: newHistory.map(({ role, text }) => ({ role, content: text }))
+      // Call generateRecipe from recipeService
+      const result = await generateRecipe(trimmed, {
+        maxPrice: 50,
+        limit: 30,
       });
 
       // Backend returns { reply, tips, pricing } format
-      const recipe = res?.data?.reply;
-      const tips = res?.data?.tips || [];
-      const pricing = res?.data?.pricing || {};
+      const recipe = result?.reply;
+      const tips = result?.tips || [];
+      const pricing = result?.pricing || {};
       const totalCost = pricing?.totalCost || 0;
-      const costPerServing = pricing?.costPerServing || 0;
 
       if (!recipe) {
         setMessages(prev => [
@@ -46,14 +45,17 @@ export default function ChatScreen() {
         return;
       }
 
+      console.log("Recipe generated:", recipe);
+      console.log("Tips:", tips);
+      console.log("Pricing:", pricing);
+
       const assistantMsg = {
         id: `a-${Date.now()}`,
         role: "assistant",
         text: "Here's a recipe you can make:",
         recipe,
         tips,
-        totalCost,
-        costPerServing
+        totalCost
       };
 
       setMessages(prev => [...prev, assistantMsg]);
@@ -107,7 +109,50 @@ function Bubble({ message, navigation }) {
 
   const handleEdit = () => {
     if (!message.recipe) return;
-    navigation.navigate("RecipeEdit", { recipe: message.recipe });
+
+    // Transform recipe to match backend schema
+    const transformedRecipe = {
+      name: message.recipe.name || "",
+      description: message.recipe.description || "", // No description in AI response, leave empty
+      servings: message.recipe.servings || 4,
+      ingredients: (message.recipe.ingredients || []).map(ing => ({
+        item: ing.item || "",
+        amount: ing.amount || ""
+      })),
+      instructions: message.recipe.instructions || [],
+      tips: message.tips || [],
+      image: "https://via.placeholder.com/200",
+      prepTime: roundToNearest15(parseTimeToMinutes(message.recipe.prepTime)),
+      difficulty: message.recipe.difficulty || 2,
+      budget_min: Math.ceil(message.totalCost),
+      budget_max: Math.ceil(message.totalCost * 1.5) + 2,
+      tags: [
+        ...(message.recipe.mealTypes || []),
+        ...(message.recipe.dietaryTags || []),
+        message.recipe.cuisine
+      ].filter(Boolean),
+      allergies: [],
+      isPublic: false,
+      rating: 0,
+      likes: 0,
+      comments: []
+    };
+
+    navigation.navigate("RecipeEdit", { recipe: transformedRecipe });
+  };
+
+  // Helper function to parse time strings like "25 minutes" to number
+  const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr) return 30;
+    if (typeof timeStr === 'number') return timeStr;
+
+    const match = timeStr.match(/(\d+)/);
+    return match ? parseInt(match[1], 10) : 30;
+  };
+
+  // Helper function to round to nearest 15 minutes
+  const roundToNearest15 = (minutes) => {
+    return Math.round(minutes / 15) * 15;
   };
 
   // If the message has a recipe, render text + RecipeCard in a bubble
@@ -122,8 +167,7 @@ function Bubble({ message, navigation }) {
             <RecipeCard
               recipe={message.recipe}
               tips={message.tips}
-              totalCost={message.totalCost}
-              costPerServing={message.costPerServing}
+              totalCost={Math.ceil(message.totalCost * 1.5) + 2}
               onEdit={handleEdit}
             />
           </View>

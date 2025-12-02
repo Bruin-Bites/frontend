@@ -9,210 +9,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import RecipeDisplay from "../components/RecipeDisplay";
-
-// Placeholder recipe data
-const PLACEHOLDER_RECIPES = [
-  {
-    id: 1,
-    name: "Creamy Mushroom Pasta",
-    image: "https://via.placeholder.com/200",
-    prepTime: 30,
-    difficulty: 2,
-    servings: 4,
-    rating: 4.5,
-    createdBy: "bruineats",
-    budget: 12,
-    tags: ["Italian", "Dinner", "Vegetarian", "Comfort Food"],
-    isCooked: false,
-    isLiked: true,
-    isPrivate: false,
-    likeCount: 25,
-    commentCount: 8,
-    description: "A rich and creamy pasta dish with sautéed mushrooms, garlic, and fresh herbs in a velvety parmesan sauce.",
-    ingredients: [
-      { name: "pasta", amount: "1 box", checked: false },
-      { name: "mushrooms", amount: "2 cups", checked: false },
-      { name: "heavy cream", amount: "1 cup", checked: false },
-      { name: "garlic", amount: "3 cloves", checked: false },
-      { name: "parmesan cheese", amount: "1/2 cup", checked: false },
-      { name: "olive oil", amount: "2 tbsp", checked: false },
-      { name: "fresh thyme", amount: "1 tsp", checked: false },
-    ],
-    instructions: [
-      "Bring a large pot of salted water to boil and cook pasta according to package directions.",
-      "While pasta cooks, heat olive oil in a large skillet over medium-high heat.",
-      "Add sliced mushrooms and cook until golden brown, about 5-7 minutes.",
-      "Add minced garlic and thyme, cook for 1 minute until fragrant.",
-      "Pour in heavy cream and bring to a simmer. Cook for 3-4 minutes until slightly thickened.",
-      "Stir in parmesan cheese until melted and smooth.",
-      "Drain pasta and add to the sauce. Toss to coat evenly.",
-      "Season with salt and pepper. Serve hot with extra parmesan.",
-    ],
-    allergies: ["gluten", "dairy", "vegetarian"],
-    tips: [
-      "Use a mix of mushrooms like cremini, shiitake, and oyster for more depth.",
-      "Add a splash of pasta water to the sauce if it gets too thick.",
-      "Garnish with fresh parsley for extra color.",
-    ],
-    personalNote: "",
-    location: { name: "99 Ranch Market", address: "1300 N Vermont Ave, Los Angeles, CA 90027", distance: "1.2 mi", ingredients: "All Ingredients" },
-    comments: [
-      {
-        id: 1,
-        author: "TofulLover22",
-        time: "45 min",
-        text: "Just made this for dinner tonight, and it turned out amazing! I added a bit of lemon zest and it really elevated the sauce.",
-        likes: 3,
-        replies: 2,
-      },
-      {
-        id: 2,
-        author: "michael.kev03",
-        time: "3 hr",
-        text: "Made this in my dorm with frozen veggies and it was a hit! Saving this to make it again for lunch the next day!",
-        likes: 5,
-        replies: 0,
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: "Avocado Egg Toast with Chili Flakes",
-    image: "https://via.placeholder.com/200",
-    prepTime: 10,
-    difficulty: 1,
-    servings: 2,
-    rating: 4.8,
-    createdBy: "ucla_foodie",
-    budget: 8,
-    tags: ["American", "Breakfast", "Vegetarian", "Quick & Easy"],
-    isCooked: false,
-    isLiked: false,
-    isPrivate: true,
-    likeCount: 44,
-    commentCount: 13,
-    description: "A simple yet delicious breakfast toast topped with creamy avocado, perfectly cooked eggs, and a kick of chili flakes.",
-    ingredients: [
-      { name: "bread slices", amount: "2", checked: false },
-      { name: "avocado", amount: "1 ripe", checked: false },
-      { name: "eggs", amount: "2", checked: false },
-      { name: "chili flakes", amount: "1/2 tsp", checked: false },
-      { name: "lime juice", amount: "1 tsp", checked: false },
-      { name: "salt and pepper", amount: "to taste", checked: false },
-      { name: "olive oil", amount: "1 tbsp", checked: false },
-    ],
-    instructions: [
-      "Toast the bread slices until golden and crispy.",
-      "Mash the avocado with lime juice, salt, and pepper.",
-      "Heat olive oil in a pan and fry eggs to your liking (sunny side up recommended).",
-      "Spread mashed avocado on toasted bread.",
-      "Top with fried egg and sprinkle with chili flakes.",
-      "Serve immediately while warm.",
-    ],
-    allergies: ["gluten", "eggs", "vegetarian"],
-    tips: [
-      "Use sourdough bread for extra flavor.",
-      "Add everything bagel seasoning for extra crunch.",
-      "Drizzle with hot sauce if you like it spicy.",
-    ],
-    personalNote: "",
-    location: { name: "Trader Joe's", address: "1000 Glendon Ave, Los Angeles, CA 90024", distance: "0.8 mi", ingredients: "All Ingredients" },
-    comments: [
-      {
-        id: 1,
-        author: "breakfast_lover",
-        time: "2 hr",
-        text: "Perfect quick breakfast! I added some cherry tomatoes on the side.",
-        likes: 8,
-        replies: 1,
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: "Spicy Garlic Tofu Stir-Fry",
-    image: "https://via.placeholder.com/200",
-    prepTime: 20,
-    difficulty: 3,
-    servings: 4,
-    rating: 4.7,
-    createdBy: "miyayeeekg",
-    budget: 15,
-    tags: ["Asian", "Dinner", "Vegan", "High Protein", "Quick & Easy"],
-    isCooked: false,
-    isLiked: false,
-    isPrivate: false,
-    likeCount: 32,
-    commentCount: 5,
-    description: "A quick plant-based stir-fry featuring crispy tofu, garlic, and a spicy soy glaze, perfect for busy weeknights.",
-    ingredients: [
-      {
-        title: "For the Tofu Marinade:",
-        items: [
-          { name: "extra firm tofu", amount: "1 block", checked: false },
-          { name: "soy sauce", amount: "2 tbsp", checked: false },
-          { name: "sesame oil", amount: "1 tbsp", checked: false },
-          { name: "cornstarch", amount: "1 tbsp", checked: false },
-        ],
-      },
-      {
-        title: "For the Stir-Fry Sauce:",
-        items: [
-          { name: "soy sauce", amount: "1 tbsp", checked: false },
-          { name: "chili paste", amount: "1 tbsp", checked: false },
-          { name: "garlic (minced)", amount: "4 cloves", checked: false },
-          { name: "ginger (minced)", amount: "1 tsp", checked: false },
-          { name: "rice vinegar", amount: "1 tbsp", checked: false },
-        ],
-      },
-      {
-        title: "For the Vegetables:",
-        items: [
-          { name: "bell peppers", amount: "2", checked: false },
-          { name: "broccoli florets", amount: "1 cup", checked: false },
-          { name: "green onions", amount: "3", checked: false },
-          { name: "snap peas", amount: "1/2 cup", checked: false },
-        ],
-      },
-    ],
-    instructions: [
-      "Drain and press tofu for 10 minutes, then cut into cubes.",
-      "Heat sesame oil in a large pan or wok over high heat.",
-      "Add tofu and cook until golden and crispy on all sides, about 8-10 minutes.",
-      "Remove tofu and set aside.",
-      "In the same pan, add garlic, chili paste, bell peppers, and broccoli.",
-      "Stir-fry for 3-4 minutes until vegetables are tender-crisp.",
-      "Add tofu back in and toss everything in the sauce.",
-      "Garnish with green onions and serve hot with rice or noodles.",
-    ],
-    allergies: ["soybeans", "vegan", "low-carbon"],
-    tips: [
-      "Swap tofu for tempeh or chicken if not vegetarian.",
-      "Add cashews for extra crunch.",
-      "Use a mix of colorful bell peppers for visual appeal.",
-    ],
-    personalNote: "",
-    location: { name: "99 Ranch Market", address: "1300 N Vermont Ave, Los Angeles, CA 90027", distance: "1.2 mi", ingredients: "All Ingredients" },
-    comments: [
-      {
-        id: 1,
-        author: "miyayeeekg",
-        time: "1 d",
-        text: "Holy moly!! I can't stop keeping the tofu crispy without it getting soggy after I put in it days crispp.",
-        likes: 12,
-        replies: 3,
-      },
-      {
-        id: 2,
-        author: "ikapono",
-        time: "2 d",
-        text: "Paired this with soba noodles instead of rice and added mushrooms. Seriously restaurant-quality!",
-        likes: 7,
-        replies: 1,
-      },
-    ],
-  },
-];
+import { getSavedRecipes, getUserSavedRecipes } from "../services/recipeService";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function UserRecipesScreen({ navigation, route }) {
   const [filters, setFilters] = useState({
@@ -227,6 +25,77 @@ export default function UserRecipesScreen({ navigation, route }) {
     selectedDietaryInfo: [],
     selectedFoodTypes: [],
   });
+
+  // State for fetched recipes
+  const [myRecipes, setMyRecipes] = useState([]);
+  const [savedRecipes, setSavedRecipes] = useState([]);
+  const [trendingRecipes, setTrendingRecipes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch recipes from database on mount and when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchRecipes();
+    }, [])
+  );
+
+  // Also refetch when filters change
+  useEffect(() => {
+    if (route.params?.filters) {
+      setFilters(route.params.filters);
+      fetchRecipes();
+    }
+  }, [route.params?.filters]);
+
+  const fetchRecipes = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch user's created recipes
+      const myRecipesResponse = await getSavedRecipes();
+      const fetchedMyRecipes = myRecipesResponse.recipes || [];
+
+      // Fetch user's saved/liked recipes
+      const savedRecipesResponse = await getUserSavedRecipes();
+      const fetchedSavedRecipes = savedRecipesResponse.recipes || [];
+
+      // Create a Set of saved recipe IDs for quick lookup
+      const savedRecipeIds = new Set(
+        fetchedSavedRecipes.map(r => r._id?.toString())
+      );
+
+      // Mark recipes as liked if they're in saved recipes
+      const markAsLiked = (recipes) => {
+        return recipes.map(recipe => ({
+          ...recipe,
+          isLiked: savedRecipeIds.has(recipe._id?.toString())
+        }));
+      };
+
+      // Set recipes with proper isLiked flags
+      setMyRecipes(markAsLiked(fetchedMyRecipes));
+      setSavedRecipes(fetchedSavedRecipes.map(r => ({ ...r, isLiked: true })));
+      setTrendingRecipes(markAsLiked(fetchedMyRecipes));
+
+    } catch (error) {
+      console.error("Error fetching recipes:", error);
+      // Keep empty arrays on error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle like/unlike from RecipeDisplay component
+  const handleLikeChange = async (recipeId, isLiked) => {
+    // Refresh saved recipes to show/hide the recipe
+    if (isLiked) {
+      // Recipe was just liked, refresh to show it in saved recipes
+      await fetchRecipes();
+    } else {
+      // Recipe was unliked, remove from saved recipes
+      setSavedRecipes(prev => prev.filter(r => r._id !== recipeId));
+    }
+  };
 
   // Listen for filter updates from FilterScreen
   useEffect(() => {
@@ -281,49 +150,70 @@ export default function UserRecipesScreen({ navigation, route }) {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.recipeRow}
           >
-            {PLACEHOLDER_RECIPES.map((recipe) => (
-              <RecipeDisplay
-                key={`trending-${recipe.id}`}
-                recipe={recipe}
-                onPress={() => handleRecipePress(recipe)}
-              />
-            ))}
+            {!loading && trendingRecipes.length > 0 ? (
+              trendingRecipes.map((recipe) => (
+                <RecipeDisplay
+                  key={`trending-${recipe._id}`}
+                  recipe={recipe}
+                  onPress={() => handleRecipePress(recipe)}
+                  onLikeChange={handleLikeChange}
+                />
+              ))
+            ) : loading ? (
+              <Text style={styles.loadingText}>Loading recipes...</Text>
+            ) : (
+              <Text style={styles.emptyText}>No recipes found. Create one in the AI Recipe Bot!</Text>
+            )}
           </ScrollView>
         </View>
 
-        {/* Most Liked Recipe Section */}
+        {/* Saved/Liked Recipes Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Most Liked Recipe</Text>
+          <Text style={styles.sectionTitle}>Saved Recipes</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.recipeRow}
           >
-            {PLACEHOLDER_RECIPES.map((recipe) => (
-              <RecipeDisplay
-                key={`liked-${recipe.id}`}
-                recipe={recipe}
-                onPress={() => handleRecipePress(recipe)}
-              />
-            ))}
+            {!loading && savedRecipes.length > 0 ? (
+              savedRecipes.map((recipe) => (
+                <RecipeDisplay
+                  key={`saved-${recipe._id}`}
+                  recipe={recipe}
+                  onPress={() => handleRecipePress(recipe)}
+                  onLikeChange={handleLikeChange}
+                />
+              ))
+            ) : loading ? (
+              <Text style={styles.loadingText}>Loading saved recipes...</Text>
+            ) : (
+              <Text style={styles.emptyText}>No saved recipes yet. Like recipes to save them!</Text>
+            )}
           </ScrollView>
         </View>
 
-        {/* Most Recent Recipe Section */}
+        {/* My Recipes Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Most Recent Recipe</Text>
+          <Text style={styles.sectionTitle}>My Recipes</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.recipeRow}
           >
-            {PLACEHOLDER_RECIPES.map((recipe) => (
-              <RecipeDisplay
-                key={`recent-${recipe.id}`}
-                recipe={recipe}
-                onPress={() => handleRecipePress(recipe)}
-              />
-            ))}
+            {!loading && myRecipes.length > 0 ? (
+              myRecipes.map((recipe) => (
+                <RecipeDisplay
+                  key={`my-${recipe._id}`}
+                  recipe={recipe}
+                  onPress={() => handleRecipePress(recipe)}
+                  onLikeChange={handleLikeChange}
+                />
+              ))
+            ) : loading ? (
+              <Text style={styles.loadingText}>Loading your recipes...</Text>
+            ) : (
+              <Text style={styles.emptyText}>No recipes yet. Create one in the AI Recipe Bot!</Text>
+            )}
           </ScrollView>
         </View>
 
@@ -378,7 +268,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    borderColor : "#8AB644",
+    borderColor: "#8AB644",
     backgroundColor: "#E8F0DA",
     alignItems: "center",
     justifyContent: "center",
@@ -539,5 +429,21 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 20,
     color: "#fff",
+  },
+  loadingText: {
+    fontFamily: "HankenGrotesk-Regular",
+    fontSize: 14,
+    color: "#5F6C7B",
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+    textAlign: "center",
+  },
+  emptyText: {
+    fontFamily: "HankenGrotesk-Regular",
+    fontSize: 14,
+    color: "#5F6C7B",
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+    textAlign: "center",
   },
 });
