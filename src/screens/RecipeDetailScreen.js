@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { getTagColors, isDietaryRestriction } from "../utils/tagHelpers";
+import { likeRecipe, unlikeRecipe, getUserSavedRecipes, markRecipeAsCooked, updatePersonalNote, getRecipeById } from "../services/recipeService";
+import { useFocusEffect } from '@react-navigation/native';
 
 // Import custom icons
 const clockIcon = require("../../assets/clock.png");
@@ -46,17 +48,13 @@ const DIETARY_RESTRICTION_ICONS = {
 };
 
 export default function RecipeDetailScreen({ route, navigation }) {
-  // Debug: Check what we're receiving
-  console.log("Route params:", route?.params);
-  console.log("Recipe:", route?.params?.recipe);
-
   // Add safety checks
   if (!route?.params?.recipe) {
     return (
       <View style={styles.container}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <Text style={{ fontSize: 18, marginBottom: 10 }}>Recipe not found</Text>
-          <Pressable 
+          <Pressable
             onPress={() => navigation.goBack()}
             style={{ padding: 10, backgroundColor: '#A8B84C', borderRadius: 8 }}
           >
@@ -67,19 +65,110 @@ export default function RecipeDetailScreen({ route, navigation }) {
     );
   }
 
-  const { recipe, isPrivate = false } = route.params;
-  const [liked, setLiked] = useState(recipe.isLiked || false);
+  const { isPrivate = false } = route.params;
+  const [recipe, setRecipe] = useState(route.params.recipe);
+  const [liked, setLiked] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
   const [ingredients, setIngredients] = useState(recipe.ingredients || []);
   const [personalNote, setPersonalNote] = useState(recipe.personalNote || "");
   const [isCooked, setIsCooked] = useState(recipe.isCooked || false);
   const [showActionMenu, setShowActionMenu] = useState(false);
 
-  // Debug: Log location data
-  console.log("Recipe location:", recipe.location);
-  console.log("Location ingredients:", recipe.location?.ingredients);
+  // Check if recipe is liked on mount
+  useEffect(() => {
+    checkIfLiked();
+  }, [recipe._id]);
+
+  // Refresh recipe data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (recipe?._id) {
+        loadRecipeData();
+      }
+    }, [recipe._id])
+  );
+
+  const loadRecipeData = async () => {
+    if (!recipe?._id) {
+      console.log('No recipe ID available');
+      return;
+    }
+
+    try {
+      const updatedRecipe = await getRecipeById(recipe._id);
+      setRecipe(updatedRecipe.recipe);
+      setIngredients(updatedRecipe.recipe.ingredients || []);
+      checkIfLiked();
+    } catch (error) {
+      console.error('Error loading recipe:', error);
+    }
+  };
+
+  const checkIfLiked = async () => {
+    try {
+      const savedRecipesResponse = await getUserSavedRecipes();
+      const savedRecipes = savedRecipesResponse.recipes || [];
+      const savedRecipe = savedRecipes.find(r => r._id?.toString() === recipe._id?.toString());
+
+      setLiked(!!savedRecipe);
+      if (savedRecipe) {
+        setIsCooked(savedRecipe?.isCooked || false);
+        setPersonalNote(savedRecipe?.personalNote || "");
+      }
+    } catch (error) {
+      console.error('Error checking if recipe is liked:', error);
+    }
+  };
 
   // Get dietary restrictions from tags - add safety check
   const dietaryRestrictions = (recipe.tags || []).filter(tag => isDietaryRestriction(tag));
+
+  const handleLike = async () => {
+    if (likeLoading || !recipe._id) return;
+
+    try {
+      setLikeLoading(true);
+
+      if (liked) {
+        await unlikeRecipe(recipe._id);
+        setLiked(false);
+      } else {
+        await likeRecipe(recipe._id);
+        setLiked(true);
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      Alert.alert('Error', 'Failed to toggle like. Please try again.');
+    } finally {
+      setLikeLoading(false);
+    }
+  };
+
+  const handleCookedToggle = async () => {
+    if (!liked || !recipe._id) return; // Only allow if recipe is liked
+
+
+    try {
+      const newCookedStatus = !isCooked;
+      await markRecipeAsCooked(recipe._id, newCookedStatus);
+      setIsCooked(newCookedStatus);
+    } catch (error) {
+      console.error('Error updating cooked status:', error);
+      Alert.alert('Error', 'Failed to update cooked status.');
+    }
+  };
+
+  const handleSavePersonalNote = async () => {
+    if (!liked || !recipe._id) return; // Only allow if recipe is liked
+
+    try {
+      await updatePersonalNote(recipe._id, personalNote);
+      Alert.alert('Success', 'Personal note saved!');
+    } catch (error) {
+      console.error('Error saving personal note:', error);
+      Alert.alert('Error', 'Failed to save personal note.');
+    }
+  };
 
   const handlePublish = () => {
     Alert.alert(
@@ -140,9 +229,9 @@ export default function RecipeDetailScreen({ route, navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={isPrivate ? styles.scrollContentWithFooter : styles.scrollContent}>
         {/* Header Image */}
         <View style={styles.imageContainer}>
-          <Image 
-            source={{ uri: recipe.image || 'https://placehold.co/400x300/cccccc/333333?text=Recipe' }} 
-            style={styles.image} 
+          <Image
+            source={{ uri: recipe.image || 'https://placehold.co/400x300/cccccc/333333?text=Recipe' }}
+            style={styles.image}
           />
 
           {/* Back Button */}
@@ -155,7 +244,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
             <Pressable style={styles.actionButton}>
               <Ionicons name="share-outline" size={20} color="#000" />
             </Pressable>
-            <Pressable onPress={() => setLiked(!liked)} style={styles.actionButton}>
+            <Pressable onPress={handleLike} style={styles.actionButton} disabled={likeLoading}>
               <Ionicons
                 name={liked ? "heart" : "heart-outline"}
                 size={20}
@@ -224,7 +313,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
             <View style={styles.statItem}>
               <Image source={dollarIcon} style={styles.statIcon} />
               <Text style={styles.statSubheading}>Budget: </Text>
-              <Text style={styles.statText}>${recipe.budget || "0"}</Text>
+              <Text style={styles.statText}>${recipe.budget_min || "0"} - ${recipe.budget_max || "0"}</Text>
             </View>
           </View>
 
@@ -301,7 +390,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
                     {ingredient.amount}
                   </Text>
                   <Text style={[styles.ingredientName, ingredient.checked && styles.checkedText]}>
-                    {ingredient.name}
+                    {ingredient.item || ingredient.name}
                   </Text>
                 </Pressable>
               ))
@@ -389,62 +478,71 @@ export default function RecipeDetailScreen({ route, navigation }) {
           )}
 
           {/* Personal Notes Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Personal Notes</Text>
-              <View style={styles.cookedToggleContainer}>
-                <Pressable
-                  onPress={() => setIsCooked(true)}
-                  style={[
-                    styles.cookedToggleButton,
-                    styles.cookedToggleButtonLeft,
-                    isCooked && styles.cookedToggleButtonActive
-                  ]}
-                >
-                  <Ionicons
-                    name="checkmark"
-                    size={14}
-                    color={"#000"}
-                  />
-                  <Text style={[
-                    styles.cookedToggleText
-                  ]}>
-                    Cooked
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setIsCooked(false)}
-                  style={[
-                    styles.cookedToggleButton,
-                    styles.cookedToggleButtonRight,
-                    !isCooked && styles.cookedToggleButtonActive
-                  ]}
-                >
-                  <Ionicons
-                    name="checkmark"
-                    size={14}
-                    color={"#000"}
-                  />
-                  <Text style={[
-                    styles.cookedToggleText
-                  ]}>
-                    Uncooked
-                  </Text>
-                </Pressable>
+          {liked && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Personal Notes</Text>
+                <View style={styles.cookedToggleContainer}>
+                  <Pressable
+                    onPress={() => handleCookedToggle()}
+                    style={[
+                      styles.cookedToggleButton,
+                      styles.cookedToggleButtonLeft,
+                      isCooked && styles.cookedToggleButtonActive
+                    ]}
+                  >
+                    <Ionicons
+                      name="checkmark"
+                      size={14}
+                      color={"#000"}
+                    />
+                    <Text style={[
+                      styles.cookedToggleText
+                    ]}>
+                      Cooked
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleCookedToggle()}
+                    style={[
+                      styles.cookedToggleButton,
+                      styles.cookedToggleButtonRight,
+                      !isCooked && styles.cookedToggleButtonActive
+                    ]}
+                  >
+                    <Ionicons
+                      name="checkmark"
+                      size={14}
+                      color={"#000"}
+                    />
+                    <Text style={[
+                      styles.cookedToggleText
+                    ]}>
+                      Uncooked
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+              <View style={styles.noteInputContainer}>
+                <View style={styles.noteIconContainer}>
+                  <Ionicons name="create-outline" size={18} color="#5F6C7B" />
+                  {personalNote.trim().length > 0 && (
+                    <Pressable onPress={() => handleSavePersonalNote()}>
+                      <Ionicons name="checkmark-circle" size={18} color="#8AB644" />
+                    </Pressable>
+                  )}
+                </View>
+                <TextInput
+                  style={styles.noteInput}
+                  placeholder="Add your own tips or insights about the recipe"
+                  placeholderTextColor="#99A3AD"
+                  value={personalNote}
+                  onChangeText={setPersonalNote}
+                  multiline
+                />
               </View>
             </View>
-            <View style={styles.noteInputContainer}>
-              <Ionicons name="create-outline" size={18} color="#5F6C7B" />
-              <TextInput
-                style={styles.noteInput}
-                placeholder="Add your own tips or insights about the recipe"
-                placeholderTextColor="#99A3AD"
-                value={personalNote}
-                onChangeText={setPersonalNote}
-                multiline
-              />
-            </View>
-          </View>
+          )}
 
           {/* More For You Section - Placeholder */}
           <View style={styles.section}>
@@ -989,6 +1087,7 @@ const styles = StyleSheet.create({
     minHeight: 60,
     textAlignVertical: "top",
     borderColor: "transparent",
+    outlineWidth: 0,
   },
   moreForYouItem: {
     width: 140,
@@ -1128,5 +1227,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "400",
     color: "#000",
+  },
+  noteIconContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 4,
   },
 });

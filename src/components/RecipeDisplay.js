@@ -1,11 +1,34 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Image, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import { getTagColors, isDietaryRestriction } from "../utils/tagHelpers";
+import { likeRecipe, unlikeRecipe, getUserSavedRecipes } from "../services/recipeService";
 
-export default function RecipeDisplay({ recipe, onPress }) {
-  const [liked, setLiked] = useState(recipe.isLiked || false);
+export default function RecipeDisplay({ recipe, onPress, onLikeChange }) {
+  const [liked, setLiked] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
+  const [isCooked, setIsCooked] = useState(false);
+
+  // Check if recipe is liked on mount (if isLiked not provided)
+  useEffect(() => {
+    if (recipe._id) {
+      checkIfLiked();
+    }
+  }, [recipe._id]);
+
+  const checkIfLiked = async () => {
+    try {
+      const savedRecipesResponse = await getUserSavedRecipes();
+      const savedRecipes = savedRecipesResponse.recipes || [];
+      const savedRecipe = savedRecipes.find(r => r._id?.toString() === recipe._id?.toString());
+
+      setLiked(!!savedRecipe);
+      setIsCooked(savedRecipe?.isCooked || false);
+    } catch (error) {
+      console.error('Error checking if recipe is liked:', error);
+    }
+  };
 
   const renderStars = (difficulty) => {
     const stars = [];
@@ -30,8 +53,30 @@ export default function RecipeDisplay({ recipe, onPress }) {
 
         {/* Like Button - Top Left */}
         <Pressable
-          onPress={() => setLiked(!liked)}
+          onPress={async (e) => {
+            e.stopPropagation(); // Prevent triggering onPress
+            if (likeLoading || !recipe._id) return;
+
+            try {
+              setLikeLoading(true);
+
+              if (liked) {
+                await unlikeRecipe(recipe._id);
+                setLiked(false);
+                if (onLikeChange) onLikeChange(recipe._id, false);
+              } else {
+                await likeRecipe(recipe._id);
+                setLiked(true);
+                if (onLikeChange) onLikeChange(recipe._id, true);
+              }
+            } catch (error) {
+              console.error('Error toggling like:', error);
+            } finally {
+              setLikeLoading(false);
+            }
+          }}
           style={styles.likeButton}
+          disabled={likeLoading}
         >
           <Ionicons
             name={liked ? "heart" : "heart-outline"}
@@ -43,7 +88,7 @@ export default function RecipeDisplay({ recipe, onPress }) {
         {/* Cooked/Uncooked Badge - Top Right */}
         <View style={styles.statusBadge}>
           <Text style={styles.statusText}>
-            {recipe.isCooked ? "Cooked" : "Uncooked"}
+            {isCooked ? "Cooked" : "Uncooked"}
           </Text>
         </View>
       </View>

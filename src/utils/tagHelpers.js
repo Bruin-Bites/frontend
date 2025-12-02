@@ -113,3 +113,6 @@ export const getTagCategory = (tag) => {
 export const isDietaryRestriction = (tag) => {
   return TAG_CATEGORIES.dietaryRestrictions.includes(tag);
 };
+
+// Export TAG_CATEGORIES for use in other components
+export { TAG_CATEGORIES };

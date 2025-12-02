@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import editIcon from "../../assets/edit.png";
 
-export default function RecipeCard({ recipe, tips, totalCost, costPerServing, onEdit }) {
+export default function RecipeCard({ recipe, tips, totalCost, onEdit }) {
   const [expanded, setExpanded] = useState(true);
 
   const renderStars = (difficulty) => {
@@ -62,7 +62,7 @@ export default function RecipeCard({ recipe, tips, totalCost, costPerServing, on
 
           {/* Meta Info */}
           <View style={styles.metaSection}>
-            <Text style={styles.metaText}>Prep Time: {recipe.prepTime} minutes</Text>
+            <Text style={styles.metaText}>Prep Time: {recipe.prepTime}</Text>
             <View style={styles.metaRow}>
               <Text style={styles.metaText}>Difficulty: </Text>
               <View style={styles.starsContainer}>
@@ -70,7 +70,7 @@ export default function RecipeCard({ recipe, tips, totalCost, costPerServing, on
                 <Text style={styles.metaText}> ({recipe.difficulty}/5)</Text>
               </View>
             </View>
-            <Text style={styles.metaText}>Budget: ${totalCost.toFixed(2)}</Text>
+            <Text style={styles.metaText}>Budget: ${((totalCost ?? 0) * 1.5 + 2).toFixed(0)}</Text>
           </View>
 
           {/* Tags */}
