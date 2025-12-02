@@ -12,10 +12,13 @@ import {
   Keyboard,
   Pressable,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FilterModal from '../components/FilterModal';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { getCommunityPosts } from '../services/recipeService';
 
 // --- Colors ---
 const BRAND_GREEN = '#A8B84C';
@@ -238,36 +241,73 @@ export default function CommunityScreen({ navigation, route }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   
-  const [recommendations, setRecommendations] = useState(MOCK_RECOMMENDATIONS);
-  const [events, setEvents] = useState(MOCK_EVENTS);
-  const [trending, setTrending] = useState(MOCK_TRENDING);
-  const [closest, setClosest] = useState(MOCK_CLOSEST_TO_YOU);
-
-  const [displayRecs, setDisplayRecs] = useState(MOCK_RECOMMENDATIONS);
-  const [displayEvents, setDisplayEvents] = useState(MOCK_EVENTS);
-  const [displayTrending, setDisplayTrending] = useState(MOCK_TRENDING);
-  const [displayClosest, setDisplayClosest] = useState(MOCK_CLOSEST_TO_YOU);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [displayRecs, setDisplayRecs] = useState([]);
+  const [displayEvents, setDisplayEvents] = useState([]);
+  const [displayTrending, setDisplayTrending] = useState([]);
+  const [displayClosest, setDisplayClosest] = useState([]);
 
   const [isFilterVisible, setIsFilterVisible] = useState(false);
 
+  // Fetch posts from API
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      const fetchedPosts = await getCommunityPosts();
+      
+      // Map backend post structure to frontend format
+      const mappedPosts = fetchedPosts.map(post => ({
+        id: post._id || post.id,
+        title: post.title,
+        date: post.date ? new Date(post.date).toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }) : 'Date TBD',
+        time: post.time || 'All Day',
+        distance: '0.1 mi', // Backend doesn't provide distance, using default
+        tags: post.tags || [],
+        likes: post.votes || 0,
+        comments: post.replies?.length || 0,
+        image: 'https://placehold.co/600x400/cccccc/333333?text=' + encodeURIComponent(post.title),
+        tagType: post.tags?.some(tag => tag.includes('Free') || tag.includes('FREE')) ? 'FREE' : 'DEAL',
+        description: post.description,
+        location: post.location,
+      }));
+
+      setPosts(mappedPosts);
+      
+      // For now, use all posts for all sections (can be filtered later)
+      setDisplayRecs(mappedPosts);
+      setDisplayEvents(mappedPosts);
+      setDisplayTrending(mappedPosts);
+      setDisplayClosest(mappedPosts);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      Alert.alert('Error', 'Failed to load community posts');
+      // Fallback to empty arrays
+      setPosts([]);
+      setDisplayRecs([]);
+      setDisplayEvents([]);
+      setDisplayTrending([]);
+      setDisplayClosest([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch posts when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchPosts();
+    }, [])
+  );
+
   useEffect(() => {
     if (route.params?.newPost) {
-      const newPost = route.params.newPost;
-      const newPostCard = {
-        id: newPost.id || Date.now().toString(),
-        title: newPost.title,
-        date: newPost.date,
-        time: newPost.time,
-        distance: '0.1 mi',
-        tags: newPost.tags?.slice(0, 3) || ['New Post'],
-        likes: 0,
-        comments: 0,
-        image: newPost.coverImage || 'https://placehold.co/600x400/cccccc/333333?text=New+Post',
-        tagType: newPost.tags?.includes('Free item') ? 'FREE' : 'DEAL',
-      };
-      const updatedRecs = [newPostCard, ...recommendations];
-      setRecommendations(updatedRecs);
-      setDisplayRecs(updatedRecs);
+      // Refresh posts after new post is created
+      fetchPosts();
       navigation.setParams({ newPost: null });
     }
   }, [route.params?.newPost, navigation]);
@@ -275,19 +315,19 @@ export default function CommunityScreen({ navigation, route }) {
   const applyFilters = (filters) => {
     const filterList = (list) => {
       return list.filter(item => {
-        const itemDist = parseFloat(item.distance.split(' ')[0]);
+        const itemDist = parseFloat(item.distance?.split(' ')[0] || '0');
         if (itemDist < filters.minDist || itemDist > filters.maxDist) return false;
         if (filters.dietary.length > 0) {
-          const hasDietaryMatch = item.tags.some(tag => filters.dietary.includes(tag));
+          const hasDietaryMatch = item.tags?.some(tag => filters.dietary.includes(tag));
           if (!hasDietaryMatch) return false;
         }
         return true;
       });
     };
-    setDisplayRecs(filterList(recommendations));
-    setDisplayEvents(filterList(events));
-    setDisplayTrending(filterList(trending));
-    setDisplayClosest(filterList(closest));
+    setDisplayRecs(filterList(posts));
+    setDisplayEvents(filterList(posts));
+    setDisplayTrending(filterList(posts));
+    setDisplayClosest(filterList(posts));
   };
 
   const handleBackSearch = () => {
@@ -440,9 +480,16 @@ export default function CommunityScreen({ navigation, route }) {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {isSearchFocused ? renderSearchContent() : renderMainFeed()}
-      </ScrollView>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={BRAND_GREEN} />
+          <Text style={styles.loadingText}>Loading posts...</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          {isSearchFocused ? renderSearchContent() : renderMainFeed()}
+        </ScrollView>
+      )}
 
       <FilterModal 
         visible={isFilterVisible} 
@@ -675,5 +722,16 @@ const styles = StyleSheet.create({
     color: MEDIUM_GRAY,
     marginLeft: 4,
     marginRight: 10,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 100,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: MEDIUM_GRAY,
   },
 });

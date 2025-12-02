@@ -7,7 +7,13 @@ import OnboardingScreen from "../screens/OnboardingScreen";
 import AuthScreen from "../screens/AuthScreen";
 import HomeScreen from "../screens/HomeScreen";
 import MapScreen from "../screens/MapScreen";
-import RecipesScreen from "../screens/RecipesScreen";
+import ChatScreen from "../screens/ChatScreen";
+import AIRecipeBotScreen from "../screens/AIRecipeBotScreen";
+import UserRecipesScreen from "../screens/UserRecipesScreen";
+import SavedRecipesScreen from "../screens/SavedRecipesScreen";
+import RecipeSearchScreen from "../screens/RecipeSearchScreen";
+import RecipeDetailScreen from "../screens/RecipeDetailScreen";
+import FilterScreen from "../screens/FilterScreen";
 import CommunityScreen from "../screens/CommunityScreen";
 import LoginScreen from "../screens/LoginScreen";
 import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
@@ -25,10 +31,22 @@ import LikedScreen from "../screens/LikedScreen";
 import AddContributionScreen from "../screens/AddContributionScreen";
 import EventDetailsScreen from '../screens/EventDetailsScreen';
 import { colors } from "../theme/colors";
+import { useAuth } from "../context/AuthContext";
 
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
+  const { isAuthenticated, loading } = useAuth();
+
+  // Show loading screen while checking auth
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={colors.uclaBlue} />
+      </View>
+    );
+  }
+
   return (
       <Stack.Navigator
         initialRouteName="Auth" 

@@ -10,10 +10,13 @@ import {
   Platform,
   Modal,
   Image,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Calendar } from 'react-native-calendars'; // Import the Calendar
+import { Calendar } from 'react-native-calendars';
+import api from '../services/api';
 
 const BRAND_GREEN = '#A8B84C';
 const LIGHT_GRAY = '#F7F7F7';
@@ -239,6 +242,7 @@ export default function AddContributionScreen({ navigation }) {
 
   const [validationErrors, setValidationErrors] = useState([]); 
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // NEW: form errors (for required fields + time)
   const [errors, setErrors] = useState({});
@@ -312,30 +316,38 @@ export default function AddContributionScreen({ navigation }) {
     return errors.length === 0;
   };
 
-  const handlePost = () => {
+  const handlePost = async () => {
     // 1. Run validation
-    if (validateForm()) {
+    if (!validateForm()) {
+      // Errors are already set and modal shown by validateForm
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Convert date from MM/DD/YYYY to ISO string
+      const [month, day, year] = date.split('/');
+      const dateObj = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
       
-      // 2. Create the new post object
-      const newPost = {
+      // Backend expects: title, description, location, date, time, tags
+      await api.post('/community', {
         title: title,
         description: description,
         location: location,
-        date: date,
-        time: time.trim() ? time : 'All Day' ,
-        menuItems: menuItems,
+        date: dateObj.toISOString(),
+        time: time.trim() || undefined,
         tags: tags,
-        coverImage: coverImage,
-        // Add any other data you want to pass
-      };
+      });
 
-      // 3. Navigate back to Community and pass the post as a param
-      console.log('Posting contribution:', newPost);
-      navigation.navigate('Community', { newPost: newPost });
-
-    } else {
-      // Errors are already set and modal shown by validateForm
-      console.log('Validation failed');
+      Alert.alert('Success', 'Your contribution has been posted!', [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+    } catch (error) {
+      console.error('Error posting contribution:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.details?.[0] || error.message || 'Failed to post contribution';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -643,8 +655,16 @@ export default function AddContributionScreen({ navigation }) {
 
         {/* Post Button */}
         <View style={styles.postButtonContainer}>
-          <TouchableOpacity style={styles.postButton} onPress={handlePost}>
-            <Text style={styles.postButtonText}>Post</Text>
+          <TouchableOpacity 
+            style={[styles.postButton, isSubmitting && styles.postButtonDisabled]} 
+            onPress={handlePost}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.postButtonText}>Post</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -1088,6 +1108,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  postButtonDisabled: {
+    opacity: 0.6,
   },
   tagModalBackdrop: {
     flex: 1,
