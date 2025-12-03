@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import editIcon from "../../assets/edit.png";
 
-export default function RecipeCard({ recipe, tips, totalCost, pricingLoading, onEdit }) {
+export default function RecipeCard({ recipe, tips, totalCost, pricingLoading, onEdit, onSave }) {
   const [expanded, setExpanded] = useState(true);
 
   const renderStars = (difficulty) => {
@@ -145,7 +145,7 @@ export default function RecipeCard({ recipe, tips, totalCost, pricingLoading, on
           <View style={styles.footer}>
             <Text style={styles.footerText}>Like This Recipe?</Text>
             {!pricingLoading && (
-              <Pressable style={styles.saveButton} onPress={onEdit}>
+              <Pressable style={styles.saveButton} onPress={onSave || onEdit}>
                 <Text style={styles.saveButtonText}>Save Recipe</Text>
               </Pressable>
             )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Image, Pressable } from "react-native";
+import { View, Text, StyleSheet, Image, Pressable, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../theme/colors";
 import { getTagColors, isDietaryRestriction } from "../utils/tagHelpers";
@@ -78,11 +78,15 @@ export default function RecipeDisplay({ recipe, onPress, onLikeChange }) {
           style={styles.likeButton}
           disabled={likeLoading}
         >
-          <Ionicons
-            name={liked ? "heart" : "heart-outline"}
-            size={20}
-            color="#EF4444"
-          />
+          {likeLoading ? (
+            <ActivityIndicator size="small" color="#EF4444" />
+          ) : (
+            <Ionicons
+              name={liked ? "heart" : "heart-outline"}
+              size={20}
+              color="#EF4444"
+            />
+          )}
         </Pressable>
 
         {/* Cooked/Uncooked Badge - Top Right */}

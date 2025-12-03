@@ -87,13 +87,16 @@ export default function UserRecipesScreen({ navigation, route }) {
 
   // Handle like/unlike from RecipeDisplay component
   const handleLikeChange = async (recipeId, isLiked) => {
-    // Refresh saved recipes to show/hide the recipe
     if (isLiked) {
       // Recipe was just liked, refresh to show it in saved recipes
       await fetchRecipes();
     } else {
-      // Recipe was unliked, remove from saved recipes
-      setSavedRecipes(prev => prev.filter(r => r._id !== recipeId));
+      // Recipe was unliked, remove from ALL sections at once
+      // Use string comparison to ensure matching
+      const recipeIdStr = recipeId?.toString();
+      setSavedRecipes(prev => prev.filter(r => r._id?.toString() !== recipeIdStr));
+      setMyRecipes(prev => prev.filter(r => r._id?.toString() !== recipeIdStr));
+      setTrendingRecipes(prev => prev.filter(r => r._id?.toString() !== recipeIdStr));
     }
   };
 

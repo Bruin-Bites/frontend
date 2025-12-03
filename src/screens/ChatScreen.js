@@ -1,8 +1,8 @@
 import React, { useRef, useState } from "react";
-import { View, Text, FlatList, StyleSheet, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, FlatList, StyleSheet, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { generateRecipe } from "../services/recipeService";
+import { generateRecipe, saveRecipe, likeRecipe } from "../services/recipeService";
 import RecipeCard from "../components/RecipeCard";
 
 export default function ChatScreen() {
@@ -130,7 +130,7 @@ function Bubble({ message, navigation }) {
     // Transform recipe to match backend schema
     const transformedRecipe = {
       name: message.recipe.name || "",
-      description: message.recipe.description || "", // No description in AI response, leave empty
+      description: message.recipe.description || "",
       servings: message.recipe.servings || 4,
       ingredients: (message.recipe.ingredients || []).map(ing => ({
         item: ing.item || "",
@@ -155,7 +155,89 @@ function Bubble({ message, navigation }) {
       comments: []
     };
 
+    // Navigate to RecipeEdit screen
     navigation.navigate("RecipeEdit", { recipe: transformedRecipe });
+  };
+
+  const handleSave = async () => {
+    if (!message.recipe) return;
+
+    try {
+      console.log('Full message object:', message);
+      console.log('Recipe object:', message.recipe);
+
+      // Transform recipe to match backend schema
+      // Check if recipe already has tags array or need to build from mealTypes/dietaryTags/cuisine
+      let tags = [];
+      if (message.recipe.tags && Array.isArray(message.recipe.tags)) {
+        tags = message.recipe.tags;
+      } else {
+        tags = [
+          ...(message.recipe.mealTypes || []),
+          ...(message.recipe.dietaryTags || []),
+          message.recipe.cuisine
+        ].filter(Boolean);
+      }
+
+      // Parse prepTime - AI returns string like "25 minutes", backend expects number
+      console.log('message.recipe.prepTime:', message.recipe.prepTime);
+      console.log('type:', typeof message.recipe.prepTime);
+
+      let prepTimeNumber = 30; // default
+      if (message.recipe.prepTime) {
+        if (typeof message.recipe.prepTime === 'number') {
+          prepTimeNumber = message.recipe.prepTime;
+        } else if (typeof message.recipe.prepTime === 'string') {
+          prepTimeNumber = roundToNearest15(parseTimeToMinutes(message.recipe.prepTime));
+        }
+      }
+
+      console.log('final prepTimeNumber:', prepTimeNumber);
+
+      const transformedRecipe = {
+        name: message.recipe.name || "",
+        description: message.recipe.description || "",
+        servings: message.recipe.servings || 4,
+        ingredients: (message.recipe.ingredients || []).map(ing => ({
+          item: ing.item || "",
+          amount: ing.amount || ""
+        })),
+        instructions: message.recipe.instructions || [],
+        tips: message.tips || [],
+        image: "https://via.placeholder.com/200",
+        prepTime: prepTimeNumber,
+        difficulty: message.recipe.difficulty || 2,
+        budget_min: Math.ceil(message.totalCost || 0),
+        budget_max: Math.ceil((message.totalCost || 0) * 1.5) + 2,
+        tags: tags,
+        allergies: message.recipe.allergies || [],
+        isPublic: false,
+        rating: 0,
+        likes: 0,
+        comments: []
+      };
+
+      console.log('Transformed recipe for saving:', transformedRecipe);
+
+      // Save recipe to backend
+      const savedRecipeResponse = await saveRecipe(transformedRecipe);
+      console.log('Save response:', savedRecipeResponse);
+      const savedRecipeId = savedRecipeResponse.recipe._id;
+      console.log('Saved recipe ID:', savedRecipeId);
+
+      // Automatically like the saved recipe so it appears in Saved Recipes
+      console.log('Attempting to like recipe with ID:', savedRecipeId);
+      await likeRecipe(savedRecipeId);
+      console.log('Successfully liked recipe');
+
+      Alert.alert('✓ Saved!', 'Recipe saved to your collection!');
+
+      // Navigate to Budget Recipes screen
+      navigation.navigate('Recipes');
+    } catch (error) {
+      console.error('Error saving recipe:', error);
+      Alert.alert('Error', 'Failed to save recipe. Please try again.');
+    }
   };
 
   // Helper function to parse time strings like "25 minutes" to number
@@ -167,9 +249,10 @@ function Bubble({ message, navigation }) {
     return match ? parseInt(match[1], 10) : 30;
   };
 
-  // Helper function to round to nearest 15 minutes
+  // Helper function to round to nearest 15 minutes (minimum 15)
   const roundToNearest15 = (minutes) => {
-    return Math.round(minutes / 15) * 15;
+    const rounded = Math.round(minutes / 15) * 15;
+    return rounded === 0 ? 15 : rounded; // Ensure minimum 15 minutes
   };
 
   // If the message has a recipe, render text + RecipeCard in a bubble
@@ -187,6 +270,7 @@ function Bubble({ message, navigation }) {
               totalCost={Math.ceil(message.totalCost * 1.5) + 2}
               pricingLoading={message.pricingLoading}
               onEdit={handleEdit}
+              onSave={handleSave}
             />
           </View>
         </View>

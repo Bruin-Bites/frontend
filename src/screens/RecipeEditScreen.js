@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
   FlatList,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import RangeSlider from "rn-range-slider";
@@ -484,8 +485,16 @@ export default function RecipeEditScreen({ route, navigation }) {
         </View>
 
         {/* Save Button */}
-        <Pressable style={styles.saveButton} onPress={() => handleSave()}>
-          <Text style={styles.saveButtonText}>Save</Text>
+        <Pressable
+          style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+          onPress={() => handleSave()}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.saveButtonText}>Save</Text>
+          )}
         </Pressable>
       </ScrollView>
 
@@ -989,6 +998,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 8,
+  },
+  saveButtonDisabled: {
+    opacity: 0.5,
   },
   saveButtonText: {
     fontFamily: "Geologica-SemiBold",
