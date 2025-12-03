@@ -116,6 +116,77 @@ export const deleteRecipe = async (recipeId) => {
   }
 };
 
+// Like/Save a recipe
+export const likeRecipe = async (recipeId) => {
+  try {
+    const response = await api.post(`/auth/me/recipes/${recipeId}/like`);
+    return response.data;
+  } catch (error) {
+    console.error('Error liking recipe:', error);
+    throw error;
+  }
+};
+
+// Unlike/Remove a saved recipe
+export const unlikeRecipe = async (recipeId) => {
+  try {
+    const response = await api.delete(`/auth/me/recipes/${recipeId}/like`);
+    return response.data;
+  } catch (error) {
+    console.error('Error unliking recipe:', error);
+    throw error;
+  }
+};
+
+// Get user's saved/liked recipes
+export const getUserSavedRecipes = async () => {
+  try {
+    const response = await api.get('/auth/me/recipes/saved');
+    return response.data;
+  } catch (error) {
+    if (error?.response?.status === 404) {
+      // Treat missing endpoint/user as no saved recipes instead of failing hard
+      return { recipes: [], count: 0 };
+    }
+
+    console.warn('Error fetching saved recipes:', error?.message || error);
+    throw error;
+  }
+};
+
+// Mark a recipe as cooked/uncooked
+export const markRecipeAsCooked = async (recipeId, isCooked) => {
+  try {
+    const response = await api.patch(`/auth/me/recipes/${recipeId}/cook`, { isCooked });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating cooked status:', error);
+    throw error;
+  }
+};
+
+// Update checked ingredients for a recipe
+export const updateCheckedIngredients = async (recipeId, checkedIngredients) => {
+  try {
+    const response = await api.patch(`/auth/me/recipes/${recipeId}/ingredients`, { checkedIngredients });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating checked ingredients:', error);
+    throw error;
+  }
+};
+
+// Update personal note for a saved recipe
+export const updatePersonalNote = async (recipeId, personalNote) => {
+  try {
+    const response = await api.patch(`/auth/me/recipes/${recipeId}/note`, { personalNote });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating personal note:', error);
+    throw error;
+  }
+};
+
 export default {
   generateRecipe,
   searchProducts,
@@ -126,4 +197,10 @@ export default {
   getRecipeById,
   updateRecipe,
   deleteRecipe,
+  likeRecipe,
+  unlikeRecipe,
+  getUserSavedRecipes,
+  markRecipeAsCooked,
+  updateCheckedIngredients,
+  updatePersonalNote,
 };

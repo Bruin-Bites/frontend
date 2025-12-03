@@ -1,9 +1,9 @@
 import axios from "axios";
 import Constants from "expo-constants";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const TOKEN_KEY = '@bruin_bites_token';
-const NGROK_URL_KEY = '@bruin_bites_ngrok_url';
+const TOKEN_KEY = "@bruin_bites_token";
+const NGROK_URL_KEY = "@bruin_bites_ngrok_url";
 
 // Cache for ngrok URL
 let cachedNgrokUrl = null;
@@ -36,9 +36,12 @@ const deriveBaseUrl = async () => {
     const localhostUrl = getLocalhostUrl();
     if (localhostUrl) {
       try {
-        const response = await axios.get(`${localhostUrl.replace('/api', '')}/ngrok-url`, {
-          timeout: 2000
-        });
+        const response = await axios.get(
+          `${localhostUrl.replace("/api", "")}/ngrok-url`,
+          {
+            timeout: 2000,
+          }
+        );
         if (response.data?.url) {
           cachedNgrokUrl = response.data.url;
           await AsyncStorage.setItem(NGROK_URL_KEY, response.data.url);
@@ -46,7 +49,7 @@ const deriveBaseUrl = async () => {
         }
       } catch (error) {
         // Silently fail - ngrok might not be running
-        console.log('Ngrok not available, using localhost');
+        console.log("Ngrok not available, using localhost");
       }
     }
   } catch (error) {
@@ -74,7 +77,7 @@ const getLocalhostUrl = () => {
 };
 
 // Initialize base URL (will be set asynchronously)
-let API_BASE_URL = getLocalhostUrl() || "http://localhost:5050/api";
+export let API_BASE_URL = getLocalhostUrl() || "http://localhost:5050/api";
 
 // Some endpoints (uploads / large datasets) can take longer than 10s, so give a larger window.
 const api = axios.create({
@@ -90,7 +93,7 @@ export const getApiBaseUrl = () => API_BASE_URL;
   API_BASE_URL = await deriveBaseUrl();
   // Update axios instance with new base URL
   api.defaults.baseURL = API_BASE_URL;
-  console.log('📡 API Base URL:', API_BASE_URL);
+  console.log("📡 API Base URL:", API_BASE_URL);
 })();
 
 // Function to refresh ngrok URL
@@ -98,9 +101,12 @@ export const refreshNgrokUrl = async () => {
   try {
     const localhostUrl = getLocalhostUrl();
     if (localhostUrl) {
-      const response = await axios.get(`${localhostUrl.replace('/api', '')}/ngrok-url`, {
-        timeout: 2000
-      });
+      const response = await axios.get(
+        `${localhostUrl.replace("/api", "")}/ngrok-url`,
+        {
+          timeout: 2000,
+        }
+      );
       if (response.data?.url) {
         cachedNgrokUrl = response.data.url;
         await AsyncStorage.setItem(NGROK_URL_KEY, response.data.url);
@@ -109,7 +115,7 @@ export const refreshNgrokUrl = async () => {
       }
     }
   } catch (error) {
-    console.log('Failed to refresh ngrok URL:', error.message);
+    console.log("Failed to refresh ngrok URL:", error.message);
   }
   return null;
 };
@@ -123,7 +129,7 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch (error) {
-      console.error('Error getting token for request:', error);
+      console.error("Error getting token for request:", error);
     }
     return config;
   },
@@ -140,11 +146,11 @@ api.interceptors.response.use(
       // Token expired or invalid - clear stored token
       try {
         await AsyncStorage.removeItem(TOKEN_KEY);
-        await AsyncStorage.removeItem('@bruin_bites_user');
+        await AsyncStorage.removeItem("@bruin_bites_user");
       } catch (storageError) {
-        console.error('Error clearing token on 401:', storageError);
+        console.error("Error clearing token on 401:", storageError);
       }
-      
+
       // You can add navigation logic here if needed
       // For now, we'll just reject the promise
     }

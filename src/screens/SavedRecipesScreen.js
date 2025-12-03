@@ -85,7 +85,14 @@ export default function SavedRecipesScreen({ navigation }) {
   const publicRecipes = recipes.filter(r => r.isPublic);
   const privateRecipes = recipes.filter(r => !r.isPublic);
 
-  const renderRecipeCard = ({ item }) => (
+  const renderRecipeCard = ({ item }) => {
+    const tags = Array.isArray(item?.tags)
+      ? item.tags
+      : typeof item?.tags === 'string'
+      ? [item.tags]
+      : [];
+
+    return (
     <Pressable
       style={styles.recipeCard}
       onPress={() => navigation.navigate('RecipeDetail', { recipe: item })}
@@ -136,8 +143,8 @@ export default function SavedRecipesScreen({ navigation }) {
 
       {/* Tags */}
       <View style={styles.tagRow}>
-        {item.tags.slice(0, 2).map((tag, index) => (
-          <View key={index} style={styles.tag}>
+        {tags.slice(0, 2).map((tag, index) => (
+          <View key={`${tag}-${index}`} style={styles.tag}>
             <Text style={styles.tagText}>{tag}</Text>
           </View>
         ))}
@@ -155,7 +162,8 @@ export default function SavedRecipesScreen({ navigation }) {
         </View>
       </View>
     </Pressable>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -199,8 +207,8 @@ export default function SavedRecipesScreen({ navigation }) {
               <View>
                 <Text style={styles.sectionTitle}>Public Recipe</Text>
                 <View style={styles.recipeGrid}>
-                  {publicRecipes.map((recipe) => (
-                    <View key={recipe._id} style={styles.gridItem}>
+                  {publicRecipes.map((recipe, index) => (
+                    <View key={recipe?._id || `public-${index}`} style={styles.gridItem}>
                       {renderRecipeCard({ item: recipe })}
                     </View>
                   ))}
@@ -213,8 +221,8 @@ export default function SavedRecipesScreen({ navigation }) {
               <View>
                 <Text style={styles.sectionTitle}>Private Recipe</Text>
                 <View style={styles.recipeGrid}>
-                  {privateRecipes.map((recipe) => (
-                    <View key={recipe._id} style={styles.gridItem}>
+                  {privateRecipes.map((recipe, index) => (
+                    <View key={recipe?._id || `private-${index}`} style={styles.gridItem}>
                       {renderRecipeCard({ item: recipe })}
                     </View>
                   ))}
