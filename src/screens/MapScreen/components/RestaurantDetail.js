@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../../theme/colors";
-import { API_BASE_URL } from "../../../services/api";
+import { getApiBaseUrl } from "../../../services/api";
 // import IconCircleButton from "../../../components/IconCircleButton";
 
 const DEFAULT_META = {
@@ -47,7 +47,8 @@ const RestaurantDetail = ({
   }, [addressSource]);
 
   const buildPhotoUri = useMemo(() => {
-    const base = API_BASE_URL.replace(/\/$/, "");
+    const rawBase = getApiBaseUrl?.() || "";
+    const base = rawBase.replace(/\/$/, "");
     const root = base.endsWith("/api") ? base.slice(0, -4) : base;
 
     return (photoReference, maxWidth = 800) => {

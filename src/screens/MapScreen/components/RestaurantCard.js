@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../../theme/colors";
-import { API_BASE_URL } from "../../../services/api";
+import { getApiBaseUrl } from "../../../services/api";
 
 const IGNORED_TYPES = new Set([
   "establishment",
@@ -30,7 +30,8 @@ const RestaurantCard = ({
   onToggleFavorite,
 }) => {
   const buildPhotoUri = useMemo(() => {
-    const base = API_BASE_URL.replace(/\/$/, "");
+    const rawBase = getApiBaseUrl?.() || "";
+    const base = rawBase.replace(/\/$/, "");
     const root = base.endsWith("/api") ? base.slice(0, -4) : base;
 
     return (photoReference, maxWidth = 600) => {
