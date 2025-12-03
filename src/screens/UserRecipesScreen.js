@@ -151,9 +151,9 @@ export default function UserRecipesScreen({ navigation, route }) {
             contentContainerStyle={styles.recipeRow}
           >
             {!loading && trendingRecipes.length > 0 ? (
-              trendingRecipes.map((recipe) => (
+              trendingRecipes.map((recipe, index) => (
                 <RecipeDisplay
-                  key={`trending-${recipe._id}`}
+                  key={`trending-${recipe?._id || index}`}
                   recipe={recipe}
                   onPress={() => handleRecipePress(recipe)}
                   onLikeChange={handleLikeChange}
@@ -176,9 +176,9 @@ export default function UserRecipesScreen({ navigation, route }) {
             contentContainerStyle={styles.recipeRow}
           >
             {!loading && savedRecipes.length > 0 ? (
-              savedRecipes.map((recipe) => (
+              savedRecipes.map((recipe, index) => (
                 <RecipeDisplay
-                  key={`saved-${recipe._id}`}
+                  key={`saved-${recipe?._id || index}`}
                   recipe={recipe}
                   onPress={() => handleRecipePress(recipe)}
                   onLikeChange={handleLikeChange}
@@ -201,9 +201,9 @@ export default function UserRecipesScreen({ navigation, route }) {
             contentContainerStyle={styles.recipeRow}
           >
             {!loading && myRecipes.length > 0 ? (
-              myRecipes.map((recipe) => (
+              myRecipes.map((recipe, index) => (
                 <RecipeDisplay
-                  key={`my-${recipe._id}`}
+                  key={`my-${recipe?._id || index}`}
                   recipe={recipe}
                   onPress={() => handleRecipePress(recipe)}
                   onLikeChange={handleLikeChange}

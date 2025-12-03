@@ -15,12 +15,36 @@ export const UserProvider = ({ children }) => {
   const loadUser = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
+
       if (token) {
         api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
         const response = await api.get("/user/profile");
         setUser(response.data);
+        return;
+      }
+
+      // No token: use mock user for development
+      setUser({
+        username: "My_super_username",
+        email: "user_name@ucla.edu",
+        school: "University of California, Los Angeles",
+        graduatingYear: "2029",
+        phone: "+1 (123) 456-789",
+      });
+    } catch (error) {
+      // If profile endpoint isn't available (404) or auth fails, fall back to mock user
+      const status = error?.response?.status;
+      if (status === 401 || status === 403 || status === 404) {
+        delete api.defaults.headers.common["Authorization"];
+        setUser({
+          username: "My_super_username",
+          email: "user_name@ucla.edu",
+          school: "University of California, Los Angeles",
+          graduatingYear: "2029",
+          phone: "+1 (123) 456-789",
+        });
       } else {
-        // Set a default mock user for development when not logged in
+        console.warn("Failed to load user:", error?.message || error);
         setUser({
           username: "My_super_username",
           email: "user_name@ucla.edu",
@@ -29,16 +53,6 @@ export const UserProvider = ({ children }) => {
           phone: "+1 (123) 456-789",
         });
       }
-    } catch (error) {
-      console.error("Failed to load user:", error);
-      // Set a default mock user on error for development
-      setUser({
-        username: "My_super_username",
-        email: "user_name@ucla.edu",
-        school: "University of California, Los Angeles",
-        graduatingYear: "2029",
-        phone: "+1 (123) 456-789",
-      });
     } finally {
       setLoading(false);
     }
@@ -72,4 +86,3 @@ export const UserProvider = ({ children }) => {
 };
 
 export const useUser = () => useContext(UserContext);
-

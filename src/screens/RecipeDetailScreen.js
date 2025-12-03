@@ -105,6 +105,8 @@ export default function RecipeDetailScreen({ route, navigation }) {
   };
 
   const checkIfLiked = async () => {
+    if (!recipe?._id) return;
+
     try {
       const savedRecipesResponse = await getUserSavedRecipes();
       const savedRecipes = savedRecipesResponse.recipes || [];
@@ -116,7 +118,15 @@ export default function RecipeDetailScreen({ route, navigation }) {
         setPersonalNote(savedRecipe?.personalNote || "");
       }
     } catch (error) {
-      console.error('Error checking if recipe is liked:', error);
+      // Treat missing endpoint or missing user data as "not liked" instead of crashing
+      if (error?.response?.status === 404) {
+        setLiked(false);
+        setIsCooked(false);
+        setPersonalNote("");
+        return;
+      }
+
+      console.warn('Error checking if recipe is liked:', error?.message || error);
     }
   };
 

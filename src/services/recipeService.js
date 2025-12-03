@@ -144,7 +144,12 @@ export const getUserSavedRecipes = async () => {
     const response = await api.get('/auth/me/recipes/saved');
     return response.data;
   } catch (error) {
-    console.error('Error fetching saved recipes:', error);
+    if (error?.response?.status === 404) {
+      // Treat missing endpoint/user as no saved recipes instead of failing hard
+      return { recipes: [], count: 0 };
+    }
+
+    console.warn('Error fetching saved recipes:', error?.message || error);
     throw error;
   }
 };
