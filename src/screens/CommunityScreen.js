@@ -20,6 +20,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import api from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useUser } from '../contexts/UserContext';
 
 // --- Colors ---
 const BRAND_GREEN = '#A8B84C';
@@ -116,32 +117,74 @@ const TRENDING_SEARCHES = [
 ];
 
 // --- Post Card Component (Standard Horizontal) ---
-const PostCard = ({ item, favoriteIds, onFavoriteChange }) => {
+const PostCard = ({ item, onFavoriteChange }) => {
   const navigation = useNavigation();
-  const [isLiked, setIsLiked] = useState(
-    favoriteIds?.has(item._id || item.id) || Boolean(item.favorite)
-  );
-  const [likeCount, setLikeCount] = useState(item.likes);
+  const { user } = useUser();
+  
+  // Check if current user has liked this contribution
+  const userId = user?.id || user?._id;
+  const likedBy = Array.isArray(item.likedBy) ? item.likedBy : [];
+  const normalizeId = (id) => {
+    if (!id) return null;
+    if (typeof id === 'string') return id;
+    if (typeof id?.toString === 'function') return id.toString();
+    if (id?._id) return String(id._id);
+    return String(id);
+  };
+  const userIdStr = userId ? String(userId) : null;
+  const initialIsLiked = userIdStr ? likedBy.some((likedId) => {
+    const normalizedLikedId = normalizeId(likedId);
+    return normalizedLikedId && normalizedLikedId === userIdStr;
+  }) : false;
+  
+  const [isLiked, setIsLiked] = useState(initialIsLiked);
+  const [likeCount, setLikeCount] = useState(item.votes ?? item.likes ?? 0);
 
+  // Update state when item changes
   useEffect(() => {
-    const id = item._id || item.id;
-    if (id && favoriteIds) {
-      setIsLiked(favoriteIds.has(id));
-    }
-  }, [favoriteIds, item]);
+    const currentLikedBy = Array.isArray(item.likedBy) ? item.likedBy : [];
+    const currentIsLiked = userIdStr ? currentLikedBy.some((likedId) => {
+      const normalizedLikedId = normalizeId(likedId);
+      return normalizedLikedId && normalizedLikedId === userIdStr;
+    }) : false;
+    setIsLiked(currentIsLiked);
+    setLikeCount(item.votes ?? item.likes ?? 0);
+  }, [item.likedBy, item.votes, item.likes, userIdStr]);
 
   const toggleLike = async () => {
     const id = item._id || item.id;
     if (!id) return;
+    
+    if (!api.defaults.headers.common.Authorization) {
+      Alert.alert("Login required", "Please log in to like contributions.");
+      return;
+    }
+    
+    if (!userId) {
+      Alert.alert("Login required", "Please log in to like contributions.");
+      return;
+    }
+
+    // Optimistically update UI
     const nextLiked = !isLiked;
     setIsLiked(nextLiked);
     setLikeCount((prev) => (nextLiked ? prev + 1 : Math.max(prev - 1, 0)));
     onFavoriteChange?.(id, nextLiked);
+    
     try {
-      if (nextLiked) {
-        await api.post(`/auth/me/favorites/contributions/${encodeURIComponent(id)}`);
-      } else {
-        await api.delete(`/auth/me/favorites/contributions/${encodeURIComponent(id)}`);
+      // Use the new toggle-like endpoint
+      const response = await api.post(`/contributions/${encodeURIComponent(id)}/toggle-like`);
+      
+      // Update with server response
+      if (response.data?.votes !== undefined) {
+        setLikeCount(response.data.votes);
+      }
+      if (Array.isArray(response.data?.likedBy)) {
+        const serverIsLiked = response.data.likedBy.some((likedId) => {
+          const normalizedLikedId = normalizeId(likedId);
+          return normalizedLikedId && normalizedLikedId === userIdStr;
+        });
+        setIsLiked(serverIsLiked);
       }
     } catch (err) {
       // revert on error
@@ -149,6 +192,7 @@ const PostCard = ({ item, favoriteIds, onFavoriteChange }) => {
       setIsLiked(revert);
       setLikeCount((prev) => (revert ? prev + 1 : Math.max(prev - 1, 0)));
       onFavoriteChange?.(id, revert);
+      console.error("Error toggling like:", err);
     }
   };
 
@@ -285,16 +329,19 @@ export default function CommunityScreen({ navigation, route }) {
       : 'Date TBA';
     return {
       id: item._id || item.id || Date.now().toString(),
+      _id: item._id, // Preserve _id for API calls
       title: item.title,
       date: dateString,
       time: item.time || 'All Day',
       distance: '0.0 mi',
       tags: Array.isArray(item.tags) ? item.tags : [],
-      likes: item.votes || 0,
+      likes: item.votes || item.likes || 0,
+      votes: item.votes || item.likes || 0, // Preserve votes
       comments: Array.isArray(item.replies) ? item.replies.length : 0,
       image: item.coverImage || item.images?.[0] || 'https://placehold.co/600x400/cccccc/333333?text=Contribution',
       images: Array.isArray(item.images) ? item.images : item.coverImage ? [item.coverImage] : [],
       description: item.description || '',
+      likedBy: Array.isArray(item.likedBy) ? item.likedBy : [], // Preserve likedBy array
       location: item.location || item.address || '',
       address: item.address || item.location || '',
       menuItems: Array.isArray(item.menu) ? item.menu : [],
@@ -344,6 +391,10 @@ export default function CommunityScreen({ navigation, route }) {
         const id = mapped.id;
         return {
           ...mapped,
+          // Preserve likedBy and votes from API
+          likedBy: Array.isArray(c.likedBy) ? c.likedBy : [],
+          votes: typeof c.votes === 'number' ? c.votes : (c.likes ?? 0),
+          // Keep favorite for backward compatibility but prefer likedBy
           favorite: id ? favoriteIdsRef.current.has(id) : false,
         };
       });
@@ -482,7 +533,6 @@ export default function CommunityScreen({ navigation, route }) {
           renderItem={({ item }) => (
             <PostCard
               item={item}
-              favoriteIds={favoriteContributionIds}
               onFavoriteChange={(id, liked) => {
                 setFavoriteContributionIds((prev) => {
                   const next = new Set(prev);
@@ -509,7 +559,6 @@ export default function CommunityScreen({ navigation, route }) {
           renderItem={({ item }) => (
             <PostCard
               item={item}
-              favoriteIds={favoriteContributionIds}
               onFavoriteChange={(id, liked) => {
                 setFavoriteContributionIds((prev) => {
                   const next = new Set(prev);
@@ -536,7 +585,6 @@ export default function CommunityScreen({ navigation, route }) {
           renderItem={({ item }) => (
             <PostCard
               item={item}
-              favoriteIds={favoriteContributionIds}
               onFavoriteChange={(id, liked) => {
                 setFavoriteContributionIds((prev) => {
                   const next = new Set(prev);
@@ -563,7 +611,6 @@ export default function CommunityScreen({ navigation, route }) {
           renderItem={({ item }) => (
             <PostCard
               item={item}
-              favoriteIds={favoriteContributionIds}
               onFavoriteChange={(id, liked) => {
                 setFavoriteContributionIds((prev) => {
                   const next = new Set(prev);

@@ -38,6 +38,7 @@ import api from "../../services/api";
 import useRestaurantList from "../../hooks/useRestaurantList";
 import useUserLocation from "./hooks/useUserLocation";
 import useRestaurantResults from "./hooks/useRestaurantResults";
+import { useUser } from "../../contexts/UserContext";
 import { calculateDistanceMeters, formatDistanceText } from "../../utils/geo";
 
 const FILTER_OPTIONS = {
@@ -160,6 +161,12 @@ const MapScreen = () => {
   const [contributions, setContributions] = useState(CONTRIBUTIONS);
   const [contributionError, setContributionError] = useState(null);
   const [contributionsLoaded, setContributionsLoaded] = useState(false);
+  const contributionsRef = useRef(contributions);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    contributionsRef.current = contributions;
+  }, [contributions]);
 
   const contributionsWithCoordinates = useMemo(
     () =>
@@ -241,6 +248,7 @@ const MapScreen = () => {
 
   const { restaurants, loading, error: listError } = useRestaurantList();
   const { userLocation, locationError } = useUserLocation();
+  const { user } = useUser();
 
   const { filtered } = useRestaurantResults({
     restaurants,
@@ -293,6 +301,7 @@ const MapScreen = () => {
         image: c.image || c.coverImage || (Array.isArray(c.images) ? c.images[0] : undefined),
         comments: Array.isArray(c.replies) ? c.replies.length : c.comments,
         votes: typeof c.votes === "number" ? c.votes : 0,
+        likedBy: Array.isArray(c.likedBy) ? c.likedBy : [], // Preserve likedBy array
       }));
       setContributions(normalized);
       setContributionError(null);
@@ -605,6 +614,7 @@ const MapScreen = () => {
 
   const toggleFavorite = useCallback(
     async (item) => {
+      console.log("🔥 toggleFavorite CALLED with item:", item?._id || item?.id || item?.name);
       if (!item) return;
       if (!api.defaults.headers.common.Authorization) {
         Alert.alert("Login required", "Please log in to save favorites.");
@@ -619,6 +629,8 @@ const MapScreen = () => {
         item.place_id ||
         item.name;
       if (!id) return;
+
+      console.log("🔵 toggleFavorite called for:", { isRestaurant, id, itemType: isRestaurant ? 'restaurant' : 'contribution' });
 
       if (isRestaurant) {
         const placeId = item.place_id || item.id || item.name || id;
@@ -655,36 +667,147 @@ const MapScreen = () => {
           setFavoriteRestaurantIds(prev);
         }
       } else {
-        const prev = new Set(favoriteContributionIds);
-        const isFav = prev.has(id);
-
-        setFavoriteContributionIds((current) => {
-          const next = new Set(current);
-          if (next.has(id)) {
-            next.delete(id);
-          } else {
-            next.add(id);
-          }
-          return next;
+        // For contributions, use the like/unlike endpoints
+        const userId = user?.id || user?._id;
+        if (!userId) {
+          Alert.alert("Login required", "Please log in to like contributions.");
+          return;
+        }
+        
+        // Get current contribution state from the contributions array (use ref for latest state)
+        const currentContributions = contributionsRef.current;
+        const currentContribution = currentContributions.find((c) => {
+          const cId = (c._id && c._id.toString ? c._id.toString() : c._id) || c.id || c.name;
+          return cId === id;
+        }) || item; // Fallback to item if not found
+        
+        const currentLikedBy = Array.isArray(currentContribution.likedBy) ? currentContribution.likedBy : [];
+        const userIdStr = String(userId);
+        
+        // Helper to normalize ID for comparison (handles both strings and ObjectIds)
+        const normalizeId = (id) => {
+          if (!id) return null;
+          // If it's already a string, return it
+          if (typeof id === 'string') return id;
+          // If it has toString method, use it
+          if (typeof id?.toString === 'function') return id.toString();
+          // If it has _id property, use that
+          if (id?._id) return String(id._id);
+          // Otherwise convert to string
+          return String(id);
+        };
+        
+        const isLiked = currentLikedBy.some((likedId) => {
+          const normalizedLikedId = normalizeId(likedId);
+          return normalizedLikedId && normalizedLikedId === userIdStr;
         });
 
+        // Optimistically update the UI
+        const updatedLikedBy = isLiked
+          ? currentLikedBy.filter((likedId) => {
+              const normalizedLikedId = normalizeId(likedId);
+              return !normalizedLikedId || normalizedLikedId !== userIdStr;
+            })
+          : [...currentLikedBy, userIdStr]; // Add as string to match backend format
+
+        const updatedContribution = {
+          ...currentContribution,
+          likedBy: updatedLikedBy,
+          votes: isLiked ? Math.max(0, (currentContribution.votes || 0) - 1) : (currentContribution.votes || 0) + 1,
+        };
+
+        // Store original for potential revert
+        const originalContribution = { ...currentContribution };
+
+        // Update the contribution in the array
+        setContributions((prev) =>
+          prev.map((c) => {
+            const cId = (c._id && c._id.toString ? c._id.toString() : c._id) || c.id || c.name;
+            if (cId === id) {
+              return updatedContribution;
+            }
+            return c;
+          })
+        );
+
+        // Also update selectedContribution if it's the same item
+        if (selectedContribution) {
+          const selectedId = (selectedContribution._id && selectedContribution._id.toString
+            ? selectedContribution._id.toString()
+            : selectedContribution._id) ||
+            selectedContribution.id ||
+            selectedContribution.name;
+          if (selectedId === id) {
+            setSelectedContribution(updatedContribution);
+          }
+        }
+
+        // Make the API call
         try {
-          if (isFav) {
-            await api.delete(
-              `/auth/me/favorites/contributions/${encodeURIComponent(id)}`
-            );
-          } else {
-            await api.post(
-              `/auth/me/favorites/contributions/${encodeURIComponent(id)}`
-            );
+          console.log("🔄 Toggling like for contribution:", id);
+          const response = await api.post(`/contributions/${encodeURIComponent(id)}/toggle-like`);
+          console.log("✅ Toggle like response:", response.data);
+          // Update with server response - use server's likedBy array if provided
+          const serverVotes = response.data?.votes;
+          const serverLikedBy = Array.isArray(response.data?.likedBy) ? response.data.likedBy : updatedLikedBy;
+          
+          setContributions((current) =>
+            current.map((c) => {
+              const cId = (c._id && c._id.toString ? c._id.toString() : c._id) || c.id || c.name;
+              if (cId === id) {
+                return {
+                  ...c,
+                  votes: serverVotes ?? c.votes,
+                  likedBy: serverLikedBy, // Use server's likedBy array
+                };
+              }
+              return c;
+            })
+          );
+          
+          // Also update selectedContribution if it's the same item
+          if (selectedContribution) {
+            const selectedId = (selectedContribution._id && selectedContribution._id.toString
+              ? selectedContribution._id.toString()
+              : selectedContribution._id) ||
+              selectedContribution.id ||
+              selectedContribution.name;
+            if (selectedId === id) {
+              setSelectedContribution((prev) => ({
+                ...prev,
+                votes: serverVotes ?? prev.votes,
+                likedBy: serverLikedBy,
+              }));
+            }
           }
         } catch (error) {
-          console.error("Error toggling contribution favorite:", error.message);
-          setFavoriteContributionIds(prev);
+          console.error("❌ Error toggling contribution like:", error.message);
+          console.error("Error details:", error.response?.data || error);
+          // Revert on error
+          setContributions((current) =>
+            current.map((c) => {
+              const cId = (c._id && c._id.toString ? c._id.toString() : c._id) || c.id || c.name;
+              if (cId === id) {
+                return originalContribution; // Revert to state before toggle
+              }
+              return c;
+            })
+          );
+          
+          if (selectedContribution) {
+            const selectedId = (selectedContribution._id && selectedContribution._id.toString
+              ? selectedContribution._id.toString()
+              : selectedContribution._id) ||
+              selectedContribution.id ||
+              selectedContribution.name;
+            if (selectedId === id) {
+              setSelectedContribution(originalContribution);
+            }
+          }
         }
       }
     },
-    [favoriteContributionIds, favoriteRestaurantIds]
+    [favoriteContributionIds, favoriteRestaurantIds, user, setContributions, selectedContribution, setSelectedContribution]
   );
 
   const handleSelectRestaurant = useCallback(
@@ -888,13 +1011,23 @@ const MapScreen = () => {
   const errorMessage = transientError || locationError || listError;
   const isDetailView = viewMode === "detail" && selectedRestaurant;
   const selectedContributionFavorite = selectedContribution
-    ? favoriteContributionIds.has(
-        (selectedContribution._id && selectedContribution._id.toString
-          ? selectedContribution._id.toString()
-          : selectedContribution._id) ||
-          selectedContribution.id ||
-          selectedContribution.name
-      )
+    ? (() => {
+        const userId = user?.id || user?._id;
+        if (!userId) return false;
+        const currentLikedBy = Array.isArray(selectedContribution.likedBy) ? selectedContribution.likedBy : [];
+        const normalizeId = (id) => {
+          if (!id) return null;
+          if (typeof id === 'string') return id;
+          if (typeof id?.toString === 'function') return id.toString();
+          if (id?._id) return String(id._id);
+          return String(id);
+        };
+        const userIdStr = String(userId);
+        return currentLikedBy.some((likedId) => {
+          const normalizedLikedId = normalizeId(likedId);
+          return normalizedLikedId && normalizedLikedId === userIdStr;
+        });
+      })()
     : false;
   const handleTopLayout = useCallback(
     ({ nativeEvent }) => {
@@ -912,10 +1045,27 @@ const MapScreen = () => {
           (item._id && item._id.toString ? item._id.toString() : item._id) ||
           item.id ||
           item.name;
+        
+        // Check if current user has liked this contribution
+        const userId = user?.id || user?._id;
+        const currentLikedBy = Array.isArray(item.likedBy) ? item.likedBy : [];
+        const normalizeId = (id) => {
+          if (!id) return null;
+          if (typeof id === 'string') return id;
+          if (typeof id?.toString === 'function') return id.toString();
+          if (id?._id) return String(id._id);
+          return String(id);
+        };
+        const userIdStr = userId ? String(userId) : null;
+        const isLiked = userIdStr && currentLikedBy.some((likedId) => {
+          const normalizedLikedId = normalizeId(likedId);
+          return normalizedLikedId && normalizedLikedId === userIdStr;
+        });
+        
         return (
           <ContributionCard
             item={item}
-            favorite={contribId ? favoriteContributionIds.has(contribId) : false}
+            favorite={isLiked}
             onPress={() => {
               const nextId =
                 (item._id && item._id.toString ? item._id.toString() : item._id) ||
@@ -955,6 +1105,7 @@ const MapScreen = () => {
       selectedId,
       toggleFavorite,
       animateSheetTo,
+      user,
     ]
   );
 
@@ -1391,6 +1542,8 @@ const ContributionCard = ({ item, favorite, onPress, onToggleFavorite }) => (
         ]}
         onPress={(e) => {
           e.stopPropagation?.();
+          console.log("❤️ ContributionCard heart button clicked!");
+          console.log("❤️ onToggleFavorite function:", typeof onToggleFavorite);
           onToggleFavorite?.();
         }}
         hitSlop={12}
