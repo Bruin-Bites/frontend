@@ -144,9 +144,11 @@ export default function RecipeCard({ recipe, tips, totalCost, pricingLoading, on
           {/* Footer with Like and Save */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>Like This Recipe?</Text>
-            <Pressable style={styles.saveButton}>
-              <Text style={styles.saveButtonText}>Save Recipe</Text>
-            </Pressable>
+            {!pricingLoading && (
+              <Pressable style={styles.saveButton} onPress={onEdit}>
+                <Text style={styles.saveButtonText}>Save Recipe</Text>
+              </Pressable>
+            )}
           </View>
         </View>
       )}
