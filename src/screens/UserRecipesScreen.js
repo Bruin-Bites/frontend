@@ -110,7 +110,8 @@ export default function UserRecipesScreen({ navigation, route }) {
   };
 
   const handleChatPress = () => {
-    navigation.navigate("Recipes");
+    console.log("Chat pressed");
+    navigation.navigate("Chat");
   };
 
   const handleFilterPress = () => {

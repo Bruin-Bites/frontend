@@ -25,37 +25,55 @@ export default function ChatScreen() {
     setSending(true);
 
     try {
-      // Call generateRecipe from recipeService
+      // Generate a unique ID for this assistant message
+      const assistantMsgId = `a-${Date.now()}`;
+
+      // Call generateRecipe with pricing update callback
       const result = await generateRecipe(trimmed, {
         maxPrice: 50,
         limit: 30,
+        onPricingUpdate: (pricingData) => {
+          // Update the message with pricing when it arrives
+          setMessages(prev => prev.map(msg => {
+            if (msg.id === assistantMsgId) {
+              return {
+                ...msg,
+                totalCost: pricingData.totalCost || 0,
+                pricingLoading: false,
+              };
+            }
+            return msg;
+          }));
+        }
       });
 
-      // Backend returns { reply, tips, pricing } format
+      // Backend returns { reply, tips, pricingLoading } format
       const recipe = result?.reply;
       const tips = result?.tips || [];
+      const pricingLoading = result?.pricingLoading || false;
       const pricing = result?.pricing || {};
       const totalCost = pricing?.totalCost || 0;
 
       if (!recipe) {
         setMessages(prev => [
           ...prev,
-          { id: `a-${Date.now()}`, role: "assistant", text: "Sorry, I couldn't generate a recipe." }
+          { id: assistantMsgId, role: "assistant", text: "Sorry, I couldn't generate a recipe." }
         ]);
         return;
       }
 
       console.log("Recipe generated:", recipe);
       console.log("Tips:", tips);
-      console.log("Pricing:", pricing);
+      console.log("Pricing loading:", pricingLoading);
 
       const assistantMsg = {
-        id: `a-${Date.now()}`,
+        id: assistantMsgId,
         role: "assistant",
         text: "Here's a recipe you can make:",
         recipe,
         tips,
-        totalCost
+        totalCost,
+        pricingLoading, // Flag to indicate pricing is still loading
       };
 
       setMessages(prev => [...prev, assistantMsg]);
@@ -72,7 +90,6 @@ export default function ChatScreen() {
       setSending(false);
     }
   };
-
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: "#fff" }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <FlatList
@@ -168,6 +185,7 @@ function Bubble({ message, navigation }) {
               recipe={message.recipe}
               tips={message.tips}
               totalCost={Math.ceil(message.totalCost * 1.5) + 2}
+              pricingLoading={message.pricingLoading}
               onEdit={handleEdit}
             />
           </View>

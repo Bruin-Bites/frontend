@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import editIcon from "../../assets/edit.png";
 
-export default function RecipeCard({ recipe, tips, totalCost, onEdit }) {
+export default function RecipeCard({ recipe, tips, totalCost, pricingLoading, onEdit }) {
   const [expanded, setExpanded] = useState(true);
 
   const renderStars = (difficulty) => {
@@ -24,9 +24,11 @@ export default function RecipeCard({ recipe, tips, totalCost, onEdit }) {
       <View style={styles.recipeHeader}>
         <Text style={styles.recipeHeaderText}>Recipe</Text>
         <View style={styles.headerIcons}>
-          <Pressable style={styles.iconButton} onPress={onEdit}>
-            <Image source={editIcon} style={styles.editIcon} />
-          </Pressable>
+          {!pricingLoading && (
+            <Pressable style={styles.iconButton} onPress={onEdit}>
+              <Image source={editIcon} style={styles.editIcon} />
+            </Pressable>
+          )}
           <Pressable onPress={() => setExpanded(!expanded)} style={styles.iconButton}>
             <Ionicons
               name={expanded ? "chevron-up" : "chevron-down"}
@@ -70,7 +72,9 @@ export default function RecipeCard({ recipe, tips, totalCost, onEdit }) {
                 <Text style={styles.metaText}> ({recipe.difficulty}/5)</Text>
               </View>
             </View>
-            <Text style={styles.metaText}>Budget: ${((totalCost ?? 0) * 1.5 + 2).toFixed(0)}</Text>
+            <Text style={styles.metaText}>
+              Budget: {pricingLoading ? "Loading..." : `$${((totalCost ?? 0) * 1.5 + 2).toFixed(0)}`}
+            </Text>
           </View>
 
           {/* Tags */}
