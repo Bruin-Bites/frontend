@@ -75,7 +75,9 @@ export default function UserRecipesScreen({ navigation, route }) {
       // Set recipes with proper isLiked flags
       setMyRecipes(markAsLiked(fetchedMyRecipes));
       setSavedRecipes(fetchedSavedRecipes.map(r => ({ ...r, isLiked: true })));
-      setTrendingRecipes(markAsLiked(fetchedMyRecipes));
+      // Trending should not auto-update with user's new recipes
+      // Keep trending as is, or set to empty
+      // setTrendingRecipes(markAsLiked(fetchedMyRecipes));
 
     } catch (error) {
       console.error("Error fetching recipes:", error);
