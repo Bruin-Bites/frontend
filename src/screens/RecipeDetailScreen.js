@@ -8,6 +8,7 @@ import {
   Pressable,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { getTagColors, isDietaryRestriction } from "../utils/tagHelpers";
@@ -255,11 +256,15 @@ export default function RecipeDetailScreen({ route, navigation }) {
               <Ionicons name="share-outline" size={20} color="#000" />
             </Pressable>
             <Pressable onPress={handleLike} style={styles.actionButton} disabled={likeLoading}>
-              <Ionicons
-                name={liked ? "heart" : "heart-outline"}
-                size={20}
-                color={liked ? "#EF4444" : "#000"}
-              />
+              {likeLoading ? (
+                <ActivityIndicator size="small" color="#000" />
+              ) : (
+                <Ionicons
+                  name={liked ? "heart" : "heart-outline"}
+                  size={20}
+                  color={liked ? "#EF4444" : "#000"}
+                />
+              )}
             </Pressable>
             <Pressable style={styles.actionButton} onPress={toggleActionMenu}>
               <Ionicons name="ellipsis-horizontal" size={20} color="#000" />

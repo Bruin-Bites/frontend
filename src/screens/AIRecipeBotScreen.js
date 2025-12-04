@@ -112,6 +112,9 @@ export default function AIRecipeBotScreen({ navigation }) {
       setSavedRecipeIds(prev => new Set([...prev, messageId]));
       setSavingRecipeId(null);
       Alert.alert('✓ Saved!', 'Recipe saved to your collection!');
+
+      // Navigate to Budget Recipes screen
+      navigation.navigate('Recipes');
     } catch (error) {
       console.error('Error saving recipe:', error);
       setSavingRecipeId(null);

@@ -41,7 +41,7 @@ export default function HomeScreen({ navigation }) {
               }
               title="AI Recipe Bot"
               text="Generate budget recipes with AI."
-              onPress={() => navigation.navigate("AIRecipeBot")}
+              onPress={() => navigation.navigate("Chat")}
             />
             <ActionCard
               icon={<Ionicons name="bookmark" size={28} color={colors.uclaBlue} />}

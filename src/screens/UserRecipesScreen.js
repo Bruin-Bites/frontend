@@ -75,7 +75,9 @@ export default function UserRecipesScreen({ navigation, route }) {
       // Set recipes with proper isLiked flags
       setMyRecipes(markAsLiked(fetchedMyRecipes));
       setSavedRecipes(fetchedSavedRecipes.map(r => ({ ...r, isLiked: true })));
-      setTrendingRecipes(markAsLiked(fetchedMyRecipes));
+      // Trending should not auto-update with user's new recipes
+      // Keep trending as is, or set to empty
+      // setTrendingRecipes(markAsLiked(fetchedMyRecipes));
 
     } catch (error) {
       console.error("Error fetching recipes:", error);
@@ -87,13 +89,16 @@ export default function UserRecipesScreen({ navigation, route }) {
 
   // Handle like/unlike from RecipeDisplay component
   const handleLikeChange = async (recipeId, isLiked) => {
-    // Refresh saved recipes to show/hide the recipe
     if (isLiked) {
       // Recipe was just liked, refresh to show it in saved recipes
       await fetchRecipes();
     } else {
-      // Recipe was unliked, remove from saved recipes
-      setSavedRecipes(prev => prev.filter(r => r._id !== recipeId));
+      // Recipe was unliked, remove from ALL sections at once
+      // Use string comparison to ensure matching
+      const recipeIdStr = recipeId?.toString();
+      setSavedRecipes(prev => prev.filter(r => r._id?.toString() !== recipeIdStr));
+      setMyRecipes(prev => prev.filter(r => r._id?.toString() !== recipeIdStr));
+      setTrendingRecipes(prev => prev.filter(r => r._id?.toString() !== recipeIdStr));
     }
   };
 
@@ -110,7 +115,8 @@ export default function UserRecipesScreen({ navigation, route }) {
   };
 
   const handleChatPress = () => {
-    navigation.navigate("Recipes");
+    console.log("Chat pressed");
+    navigation.navigate("Chat");
   };
 
   const handleFilterPress = () => {

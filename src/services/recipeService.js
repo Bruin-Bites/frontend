@@ -1,8 +1,10 @@
 import api from './api';
 
 // Generate recipe using RAG (Retrieval-Augmented Generation)
+// Now supports two-phase loading: returns recipe immediately and fetches pricing separately
 export const generateRecipe = async (query, options = {}) => {
   try {
+    // Phase 1: Get recipe without pricing
     const response = await api.post('/rag-recipes', {
       query,
       maxPrice: options.maxPrice || 50,
@@ -10,9 +12,62 @@ export const generateRecipe = async (query, options = {}) => {
       categories: options.categories || [],
       limit: options.limit || 30,
     });
-    return response.data;
+
+    const result = response.data;
+
+    // If pricing is pending, fetch it separately
+    if (result.pricingPending && options.onPricingUpdate) {
+      // Immediately return the recipe data
+      const initialResult = {
+        ...result,
+        pricing: null, // No pricing yet
+        pricingLoading: true,
+      };
+
+      // Fetch pricing in the background
+      fetchRecipePricing(
+        result.reply.ingredients,
+        result.reply.servings,
+        query,
+        options
+      ).then(pricingData => {
+        // Call the callback with pricing data when ready
+        if (options.onPricingUpdate) {
+          options.onPricingUpdate(pricingData);
+        }
+      }).catch(error => {
+        console.error('Error fetching pricing:', error);
+        // Still call the callback with error state
+        if (options.onPricingUpdate) {
+          options.onPricingUpdate({ error: true, totalCost: 0 });
+        }
+      });
+
+      return initialResult;
+    }
+
+    return result;
   } catch (error) {
     console.error('Error generating recipe:', error);
+    throw error;
+  }
+};
+
+// Helper function to fetch pricing separately
+const fetchRecipePricing = async (ingredients, servings, query, options = {}) => {
+  try {
+    const response = await api.post('/rag-recipes/pricing', {
+      ingredients,
+      servings,
+      query,
+      maxPrice: options.maxPrice || 50,
+      onSaleOnly: options.onSaleOnly || false,
+      categories: options.categories || [],
+      limit: options.limit || 30,
+    });
+    return response.data.pricing;
+  } catch (error) {
+    console.error('Error fetching pricing:', error);
     throw error;
   }
 };
